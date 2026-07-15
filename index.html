@@ -70,15 +70,14 @@ button{font-family:inherit;cursor:pointer}
 .mtab:hover>button,.mtab.open>button{background:var(--menu-hover);color:#fff}
 .mtab.active>button{background:var(--menu-active);color:var(--accent-ink)}
 .mtab.active>button svg{opacity:1}
-.mtab .drop{position:fixed;min-width:230px;background:#fff;border:1px solid var(--line);border-radius:0 0 6px 6px;box-shadow:0 12px 32px rgba(16,30,43,.22);padding:6px;display:none;z-index:200}
-.mtab.open .drop{display:block}
-.mtab .drop a{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:5px;color:var(--txt);text-decoration:none;font-size:13px;font-weight:500;white-space:nowrap}
-.mtab .drop a svg{width:15px;height:15px;color:var(--txt-faint);flex:none}
-.mtab .drop a:hover{background:var(--accent-soft);color:var(--accent-ink)}
-.mtab .drop a:hover svg{color:var(--accent)}
-.mtab .drop a.cur{background:var(--accent-soft);color:var(--accent-ink);font-weight:600}
-.mtab .drop .sep{height:1px;background:var(--line-2);margin:5px 8px}
-.mtab .drop .lbl{font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--txt-faint);font-weight:700;padding:8px 10px 4px}
+.menu-layer{position:fixed;z-index:250}
+.drop{position:fixed;min-width:230px;background:#fff;border:1px solid var(--line);border-radius:0 0 8px 8px;box-shadow:0 16px 40px rgba(16,30,43,.28);padding:6px;z-index:250;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.drop a{display:flex;align-items:center;gap:10px;padding:11px 12px;border-radius:6px;color:var(--txt);text-decoration:none;font-size:14px;font-weight:500;white-space:nowrap}
+.drop a svg{width:16px;height:16px;color:var(--txt-faint);flex:none}
+.drop a:hover,.drop a:active{background:var(--accent-soft);color:var(--accent-ink)}
+.drop a:hover svg{color:var(--accent)}
+.drop a.cur{background:var(--accent-soft);color:var(--accent-ink);font-weight:600}
+.drop .sep{height:1px;background:var(--line-2);margin:5px 8px}
 .menubar .newje{margin-left:8px;align-self:center;height:28px;padding:0 12px;border-radius:5px;background:#2f88d0;color:#fff;border:none;font-size:12px;font-weight:600;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;flex:none}
 .menubar .newje:hover{background:#3d97e0}
 .menubar .newje svg{width:14px;height:14px}
@@ -110,6 +109,22 @@ button{font-family:inherit;cursor:pointer}
 .viewhead .desc{font-size:12.5px;color:var(--txt-soft);margin-top:3px}
 .viewhead .tools{margin-left:auto;display:flex;gap:9px;align-items:center;flex-wrap:wrap}
 @media(max-width:900px){.nsHeader .company .ent{display:none}.hsearch{width:150px}.menubar{overflow-x:auto}}
+@media(max-width:640px){
+  .nsHeader{flex-wrap:wrap;height:auto;min-height:50px;padding:8px 12px;gap:8px}
+  .nsHeader .company{font-size:13px}
+  .hsearch{order:6;width:100%;margin-left:0}
+  .period{display:none}
+  .balchip{padding:6px 8px}.balchip span:not(.dot){display:none}
+  .whoami select{max-width:120px}
+  .whoami span{display:none}
+  .mtab>button{padding:0 13px;font-size:13px}
+  .menubar .newje{font-size:0;padding:0 10px}.menubar .newje svg{margin:0}
+  .view{padding:14px 12px 60px}
+  .kpis{grid-template-columns:repeat(2,1fr)}
+  .viewhead h2{font-size:18px}
+  .subbar{padding:0 12px}.substatus{display:none}
+  .drop a{padding:13px 12px;font-size:14.5px}
+}
 
 /* Panels & tables */
 .panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
@@ -227,6 +242,72 @@ td.mono,th.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
 .whoami span{color:#fff;font-size:12px;font-weight:600}
 .whoami select{background:transparent;border:none;color:#fff;font-size:12px;font-weight:600;outline:none}
 .whoami select option{color:#111}
+/* ---------- Login screen ---------- */
+#login{position:fixed;inset:0;z-index:1000;display:flex;background:var(--canvas)}
+#login.hide{display:none}
+.login-brand{flex:1;background:linear-gradient(155deg,#2b4a68,#182f47 55%,#0f1f33);color:#fff;display:flex;flex-direction:column;justify-content:center;padding:64px 72px;position:relative;overflow:hidden}
+.login-brand:before{content:"";position:absolute;right:-160px;top:-120px;width:460px;height:460px;border-radius:50%;background:radial-gradient(circle,rgba(47,136,208,.35),transparent 70%)}
+.login-brand:after{content:"";position:absolute;left:-140px;bottom:-160px;width:420px;height:420px;border-radius:50%;background:radial-gradient(circle,rgba(47,136,208,.18),transparent 70%)}
+.login-brand .lgb{position:relative;z-index:2;max-width:440px}
+.login-brand .mark{display:flex;align-items:center;gap:12px;margin-bottom:38px}
+.login-brand .mark .glyph{width:46px;height:46px;border-radius:11px;background:linear-gradient(150deg,#3a97e0,#0e4e80);display:grid;place-items:center;font-weight:800;font-size:18px;box-shadow:inset 0 1px 0 rgba(255,255,255,.3),0 8px 24px rgba(0,0,0,.3)}
+.login-brand .mark .nm{font-size:19px;font-weight:700;letter-spacing:.2px}
+.login-brand .mark .nm small{display:block;font-size:11.5px;color:#9db4c9;font-weight:500;letter-spacing:.3px}
+.login-brand h1{font-size:34px;line-height:1.18;font-weight:700;letter-spacing:-.6px;margin:0 0 16px}
+.login-brand p{font-size:15px;line-height:1.6;color:#c2d3e2;margin:0 0 30px}
+.login-brand .feat{display:flex;flex-direction:column;gap:13px}
+.login-brand .feat div{display:flex;align-items:center;gap:11px;font-size:13.5px;color:#dbe6f0}
+.login-brand .feat svg{width:18px;height:18px;color:#5db0f0;flex:none}
+.login-brand .foot{position:absolute;bottom:26px;left:72px;font-size:11.5px;color:#7f97ac;z-index:2}
+.login-panel{width:460px;max-width:100%;background:#fff;display:flex;flex-direction:column;justify-content:center;padding:0 56px;box-shadow:-8px 0 40px rgba(16,30,43,.06)}
+.login-card{width:100%;max-width:340px;margin:0 auto}
+.login-card h2{font-size:23px;font-weight:700;letter-spacing:-.3px;margin:0 0 5px;color:var(--header)}
+.login-card .sub{font-size:13.5px;color:var(--txt-soft);margin:0 0 26px}
+.login-card label{display:block;font-size:12px;font-weight:600;color:var(--txt-soft);margin:0 0 6px;letter-spacing:.2px}
+.login-card .field{margin-bottom:16px;position:relative}
+.login-card input[type=text],.login-card input[type=password]{width:100%;height:44px;border:1px solid var(--line);border-radius:8px;padding:0 12px 0 40px;font-family:inherit;font-size:14px;color:var(--txt);outline:none;transition:.15s;background:#fff}
+.login-card input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.login-card .field>svg{position:absolute;left:12px;top:35px;width:17px;height:17px;color:var(--txt-faint)}
+.login-card .field.nolabel>svg{top:14px}
+.login-card .togpw{position:absolute;right:10px;top:33px;background:none;border:none;color:var(--txt-faint);cursor:pointer;font-size:11px;font-weight:700;letter-spacing:.4px}
+.login-card .row{display:flex;align-items:center;justify-content:space-between;margin:2px 0 20px;font-size:12.5px}
+.login-card .row label{display:flex;align-items:center;gap:7px;margin:0;font-weight:500;color:var(--txt-soft);cursor:pointer}
+.login-card .row a{color:var(--accent);text-decoration:none;font-weight:600}
+.login-card .signin{width:100%;height:46px;border:none;border-radius:8px;background:linear-gradient(180deg,#1c7ac0,var(--accent));color:#fff;font-size:14.5px;font-weight:700;letter-spacing:.2px;cursor:pointer;transition:.15s;box-shadow:0 6px 18px rgba(22,104,168,.3)}
+.login-card .signin:hover{filter:brightness(1.06)}
+.login-card .signin:active{transform:translateY(1px)}
+.login-err{background:var(--neg-soft);border:1px solid #EAC9C5;color:var(--neg);border-radius:8px;padding:10px 12px;font-size:12.5px;margin-bottom:16px;display:none;align-items:center;gap:8px}
+.login-err.show{display:flex}
+.login-demo{margin-top:24px;padding:12px 14px;background:var(--canvas);border:1px dashed var(--line);border-radius:8px;font-size:11.5px;color:var(--txt-soft);line-height:1.7}
+.login-demo b{color:var(--txt)}
+.login-demo code{font-family:var(--mono);background:#fff;border:1px solid var(--line);border-radius:4px;padding:1px 6px;color:var(--accent-ink)}
+.login-copyright{text-align:center;font-size:11px;color:var(--txt-faint);margin-top:26px}
+@media(max-width:820px){.login-brand{display:none}.login-panel{flex:1;width:auto}}
+.signout-btn{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.14);color:#cdd9e4;width:32px;height:32px;border-radius:8px;display:grid;place-items:center;cursor:pointer;flex:none}
+.signout-btn:hover{background:rgba(255,255,255,.2);color:#fff}
+.signout-btn svg{width:16px;height:16px}
+/* sub-tabs within a module */
+.subtabs{display:flex;gap:2px;border-bottom:1px solid var(--line);margin-bottom:18px;overflow-x:auto;scrollbar-width:none}
+.subtabs::-webkit-scrollbar{height:0}
+.subtabs button{border:none;background:none;padding:10px 15px;font-size:13px;font-weight:600;color:var(--txt-soft);border-bottom:2px solid transparent;white-space:nowrap;cursor:pointer}
+.subtabs button:hover{color:var(--accent)}
+.subtabs button.on{color:var(--accent-ink);border-bottom-color:var(--accent)}
+/* cycle SOP map */
+.cyc{border:1px solid var(--line);border-radius:8px;margin-bottom:16px;overflow:hidden;background:#fff}
+.cyc .ch{display:flex;align-items:center;gap:12px;padding:14px 18px;background:linear-gradient(180deg,#fbfcfd,#eef2f6);border-bottom:1px solid var(--line)}
+.cyc .ch .ic{width:34px;height:34px;border-radius:8px;background:var(--accent-soft);color:var(--accent-ink);display:grid;place-items:center;flex:none}
+.cyc .ch .ic svg{width:18px;height:18px}
+.cyc .ch h3{margin:0;font-size:14.5px;font-weight:700;color:var(--header)}
+.cyc .ch .d{font-size:12px;color:var(--txt-soft);margin-top:1px}
+.cyc .steps{display:flex;flex-wrap:wrap;gap:0;padding:16px 18px;align-items:stretch}
+.cyc .step{flex:1;min-width:150px;position:relative;padding:0 14px}
+.cyc .step:not(:last-child):after{content:"→";position:absolute;right:-6px;top:16px;color:var(--txt-faint);font-size:15px}
+.cyc .step .n{font-size:10px;font-weight:700;color:var(--accent);letter-spacing:.5px}
+.cyc .step .t{font-size:13px;font-weight:600;margin:3px 0}
+.cyc .step .doc{font-size:11px;color:var(--txt-faint)}
+.cyc .step .ctl{font-size:11px;color:var(--txt-soft);margin-top:4px;line-height:1.5}
+.cyc .go{padding:10px 18px;border-top:1px solid var(--line-2);display:flex;gap:8px;flex-wrap:wrap}
+.minibadge{font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:4px;background:var(--accent-soft);color:var(--accent-ink)}
 
 /* select / inputs */
 select,input.f{height:34px;border:1px solid var(--line);border-radius:7px;padding:0 10px;font-family:inherit;font-size:13px;background:#fff;color:var(--txt);outline:none;max-width:340px}
@@ -302,6 +383,46 @@ mark{background:#FCEFB4;color:inherit;padding:0 1px;border-radius:2px}
 @media(max-width:820px){#app{grid-template-columns:1fr}.side{display:none}.search{width:180px}}
 </style>
 
+<div id="login" class="hide">
+  <div class="login-brand">
+    <div class="lgb">
+      <div class="mark"><div class="glyph">EM</div><div class="nm">El Matager<small>Ledger Console · ERP</small></div></div>
+      <h1>The financial control center for El Matager.</h1>
+      <p>General ledger, payables &amp; receivables, treasury, fixed assets, procurement and reporting — one connected system.</p>
+      <div class="feat">
+        <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg>Real-time consolidated financial statements</div>
+        <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg>Full procurement-to-pay &amp; fixed-asset lifecycle</div>
+        <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg>Role-based approvals and period controls</div>
+      </div>
+    </div>
+    <div class="foot">© 2026 El Matager · Nana Group (Egypt : eDirect)</div>
+  </div>
+  <div class="login-panel">
+    <div class="login-card">
+      <h2>Sign in</h2>
+      <div class="sub">Use your El Matager account to continue.</div>
+      <div class="login-err" id="loginErr"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg><span id="loginErrTxt"></span></div>
+      <div class="field">
+        <label>Email address</label>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>
+        <input type="text" id="loginEmail" autocomplete="username" placeholder="you@elmatager.com">
+      </div>
+      <div class="field">
+        <label>Password</label>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+        <input type="password" id="loginPass" autocomplete="current-password" placeholder="••••••••">
+        <button class="togpw" id="togPw" type="button">SHOW</button>
+      </div>
+      <div class="row">
+        <label><input type="checkbox" id="loginRemember" checked style="width:auto"> Keep me signed in</label>
+        <a href="#" id="forgotLink">Forgot password?</a>
+      </div>
+      <button class="signin" id="loginBtn">Log In</button>
+      <div class="login-demo" id="loginDemo"></div>
+      <div class="login-copyright">Secured workspace · El Matager Ledger Console</div>
+    </div>
+  </div>
+</div>
 <div id="app">
   <header class="nsHeader">
     <div class="logo">EM</div>
@@ -397,7 +518,8 @@ let PROC=[];   // procurement documents (PR/PO/Bill/Payment)
 let USERS=[];  // user management
 let CURRENT_USER=null;
 let APPROVALS_ON=true;
-const PROC_KEY='elmatager_proc_v1', USERS_KEY='elmatager_users_v1', CFG_KEY='elmatager_cfg_v1';
+const PROC_KEY='elmatager_proc_v1', USERS_KEY='elmatager_users_v1', CFG_KEY='elmatager_cfg_v1', INV_KEY='elmatager_inv_v1';
+let INV={items:[],warehouses:[],moves:[]};
 const store={
   async load(){
     try{const r=await window.storage.get(STORE_KEY);if(r&&r.value)POSTED=JSON.parse(r.value);}catch(e){POSTED=[];}
@@ -407,6 +529,7 @@ const store={
     try{const r=await window.storage.get(PROC_KEY);if(r&&r.value)PROC=JSON.parse(r.value);}catch(e){PROC=[];}
     try{const r=await window.storage.get(USERS_KEY);if(r&&r.value)USERS=JSON.parse(r.value);}catch(e){USERS=[];}
     try{const r=await window.storage.get(CFG_KEY);if(r&&r.value){const c=JSON.parse(r.value);CURRENT_USER=c.currentUser;APPROVALS_ON=c.approvalsOn!==false;}}catch(e){}
+    try{const r=await window.storage.get(INV_KEY);if(r&&r.value)INV=Object.assign({items:[],warehouses:[],moves:[]},JSON.parse(r.value));}catch(e){}
   },
   async save(){try{await window.storage.set(STORE_KEY,JSON.stringify(POSTED));}catch(e){}},
   async savePeriods(){try{await window.storage.set(PERIOD_KEY,JSON.stringify(PERIOD_STATUS));}catch(e){}},
@@ -414,6 +537,7 @@ const store={
   async saveProc(){try{await window.storage.set(PROC_KEY,JSON.stringify(PROC));await window.storage.set(SEQ_KEY,JSON.stringify(SEQ));}catch(e){}},
   async saveUsers(){try{await window.storage.set(USERS_KEY,JSON.stringify(USERS));await window.storage.set(CFG_KEY,JSON.stringify({currentUser:CURRENT_USER,approvalsOn:APPROVALS_ON}));}catch(e){}},
   async saveCfg(){try{await window.storage.set(CFG_KEY,JSON.stringify({currentUser:CURRENT_USER,approvalsOn:APPROVALS_ON}));}catch(e){}},
+  async saveInv(){try{await window.storage.set(INV_KEY,JSON.stringify(INV));await window.storage.set(SEQ_KEY,JSON.stringify(SEQ));}catch(e){}},
 };
 
 /* ---- Accounting periods ---- */
@@ -582,6 +706,7 @@ const MODULES=[
     {id:'inventory',t:'Inventory',icon:'asset'}]},
   {id:'reports',label:'Reports',pages:[
     {id:'reports_hub',t:'Reports & Inquiries',icon:'list'},
+    {id:'cycles',t:'Accounting Cycles (SOP)',icon:'layers'},
     {sep:1},
     {id:'balance',t:'Balance Sheet',icon:'layers'},
     {id:'income',t:'Income Statement',icon:'trend'},
@@ -607,48 +732,57 @@ function buildMenu(){
   MODULES.forEach(m=>{
     const tab=el('div','mtab'+(curMod&&curMod.id===m.id?' active':'')+(OPEN_MENU===m.id?' open':''));
     tab.dataset.mod=m.id;
-    tab.innerHTML=`<button>${m.label}${m.pages.length>1?' <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m6 9 6 6 6-6"/></svg>':''}</button>`;
+    tab.innerHTML=`<button type="button">${m.label}${m.pages.length>1?' <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m6 9 6 6 6-6"/></svg>':''}</button>`;
+    const btn=tab.querySelector('button');
     if(m.pages.length===1){
-      tab.querySelector('button').onclick=()=>{OPEN_MENU=null;go(m.pages[0].id);};
+      btn.onclick=e=>{e.stopPropagation();closeMenuLayer();go(m.pages[0].id);};
     }else{
-      const drop=el('div','drop');
-      m.pages.forEach(p=>{
-        if(p.sep){drop.appendChild(el('div','sep'));return;}
-        const a=el('a',p.id===CURRENT?'cur':'');
-        a.innerHTML=`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">${ICONS[p.icon]||''}</svg><span>${p.t}</span>`;
-        a.href='#';a.onclick=e=>{e.preventDefault();e.stopPropagation();OPEN_MENU=null;if(p.action==='je'){buildMenu();openJE();}else go(p.id);};
-        drop.appendChild(a);
-      });
-      tab.appendChild(drop);
-      tab.querySelector('button').onclick=e=>{e.stopPropagation();OPEN_MENU=OPEN_MENU===m.id?null:m.id;buildMenu();};
+      btn.onclick=e=>{e.stopPropagation();if(OPEN_MENU===m.id){closeMenuLayer();}else{openMenuLayer(m);}};
     }
     bar.appendChild(tab);
   });
-  // quick action
-  const nj=el('button','newje');
+  const nj=el('button','newje');nj.type='button';
   nj.innerHTML=`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>New Journal Entry`;
-  nj.onclick=()=>{OPEN_MENU=null;buildMenu();openJE();};
+  nj.onclick=e=>{e.stopPropagation();closeMenuLayer();openJE();};
   bar.appendChild(nj);
-  positionDropdown();
+  if(OPEN_MENU){const m=MODULES.find(x=>x.id===OPEN_MENU);if(m&&m.pages.length>1)openMenuLayer(m);}
 }
-/* dropdowns render with position:fixed so the scrollable menu bar can't clip them */
-function positionDropdown(){
-  if(!OPEN_MENU)return;
-  const tab=document.querySelector('.mtab[data-mod="'+OPEN_MENU+'"]');
-  if(!tab)return;const drop=tab.querySelector('.drop');if(!drop)return;
-  const r=tab.getBoundingClientRect();
-  drop.style.left=Math.max(6,Math.min(r.left,window.innerWidth-250))+'px';
-  drop.style.top=r.bottom+'px';
+/* dropdown rendered into a body-level layer → never clipped by the scrollable bar
+   (robust inside mobile webviews that put a transform on an ancestor). */
+function closeMenuLayer(){OPEN_MENU=null;const l=$('#menuLayer');if(l)l.remove();
+  document.querySelectorAll('.mtab.open').forEach(t=>t.classList.remove('open'));}
+function openMenuLayer(m){
+  OPEN_MENU=m.id;
+  let l=$('#menuLayer');if(l)l.remove();
+  l=el('div');l.id='menuLayer';l.className='menu-layer';
+  const drop=el('div','drop');drop.style.display='block';
+  m.pages.forEach(p=>{
+    if(p.sep){drop.appendChild(el('div','sep'));return;}
+    const a=el('a',p.id===CURRENT?'cur':'');
+    a.innerHTML=`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">${ICONS[p.icon]||''}</svg><span>${p.t}</span>`;
+    a.href='#';
+    a.onclick=e=>{e.preventDefault();e.stopPropagation();const act=p.action,pid=p.id;closeMenuLayer();buildMenu();if(act==='je'){openJE();}else go(pid);};
+    drop.appendChild(a);
+  });
+  l.appendChild(drop);document.body.appendChild(l);
+  // position under the tab button
+  const tab=document.querySelector('.mtab[data-mod="'+m.id+'"]');
+  if(tab){tab.classList.add('open');const r=tab.getBoundingClientRect();
+    const w=Math.min(260,window.innerWidth-12);drop.style.minWidth=Math.max(200,w)+'px';
+    drop.style.left=Math.max(6,Math.min(r.left,window.innerWidth-w-6))+'px';
+    drop.style.top=r.bottom+'px';drop.style.maxHeight=(window.innerHeight-r.bottom-12)+'px';}
+  // prevent taps inside the layer from bubbling to the document closer
+  l.onclick=e=>e.stopPropagation();
 }
-window.addEventListener('resize',()=>{if(OPEN_MENU)buildMenu();});
-document.addEventListener('click',()=>{if(OPEN_MENU){OPEN_MENU=null;buildMenu();}});
+window.addEventListener('resize',()=>{if(OPEN_MENU){const m=MODULES.find(x=>x.id===OPEN_MENU);if(m)openMenuLayer(m);}});
+document.addEventListener('click',()=>{if(OPEN_MENU)closeMenuLayer();});
 
 let CRUMB_CTX='';   // drill context (account / party) shown as last crumb
 function go(id,opts={}){
   CURRENT=id; if(opts.acct!==undefined)LEDGER_ACCT=opts.acct;
   if(opts.party!==undefined)SOA_PARTY=opts.party;
   CRUMB_CTX='';
-  buildMenu(); render(); $('#view').scrollTop=0;
+  closeMenuLayer(); buildMenu(); render(); $('#view').scrollTop=0;
 }
 function crumbs(){
   const mod=PAGE_MODULE[CURRENT], parts=[];
@@ -683,7 +817,7 @@ function render(){
     search:renderSearch,banking:renderBanking,vendors:renderVendors,assetreg:renderAssetRegister,
     ap:renderAP,ar:renderAR,cashflow:renderCashFlow,depreciation:renderDepreciation,
     sales:renderSales,purchases:renderPurchases,procurement:renderProcurement,inventory:renderInventory,
-    periods:renderPeriods,acquisitions:renderAcquisitions,proccycle:renderProcCycle,
+    periods:renderPeriods,acquisitions:renderAcquisitions,proccycle:renderProcCycle,cycles:renderCycles,
     users:renderUsers,approvals:renderApprovals,reports_hub:renderReportsHub}[CURRENT]||renderDashboard)(v);
   updateBalChip();
 }
@@ -1532,7 +1666,7 @@ function agingModule(v,title,desc,rootSet,mode){
   $$('#view tr[data-party]').forEach(tr=>tr.onclick=()=>go('soa',{party:tr.dataset.party}));
   $('#agExport').onclick=()=>exportCSV((mode==='AP'?'ap':'ar')+'_aging',['Counterparty','0-30','31-60','61-90','90+','Total'],parties.map(p=>[p.name,...p.buckets,p.total]));
 }
-function renderAP(v){agingModule(v,'Accounts Payable','Amounts owed to vendors and suppliers.',new Set(['Accounts Payable/s']),'AP');}
+function renderAP(v){apWorkspace(v);}
 function renderAR(v){agingModule(v,'Accounts Receivable','Amounts due from customers and related parties.',new Set(['Accounts Receivable/s','Other Receivables']),'AR');}
 
 /* ---- Banks & Treasury: Cash Flow (direct, movement-based) ---- */
@@ -1705,34 +1839,7 @@ function renderProcurement(v){
 }
 
 /* ---- Inventory (no item-level data in a GL export) ---- */
-function renderInventory(v){
-  const head=el('div','viewhead');
-  head.innerHTML=`<div><h2>Inventory</h2><div class="desc">Stock and item management.</div></div>`;
-  v.appendChild(head);
-  const invAccs=ACC.filter(a=>/inventor|stock|goods|merchandise|warehouse/i.test(a.name+' '+a.root)&&ACCSTATE[a.name]);
-  v.appendChild(noteBox('This entity\'s General Ledger export contains <b>no inventory or stock accounts</b>, and a GL never holds item-level detail (SKUs, quantities on hand, valuations, movements). A full Inventory module needs an inventory sub-ledger feed — item master, stock movements and valuation. The structure below is ready to populate once that data is provided.'));
-  const panel=el('div','panel');
-  panel.innerHTML=`<div class="phd"><h3>Inventory GL Accounts</h3><div class="meta">${invAccs.length} found</div></div>`;
-  if(!invAccs.length){
-    panel.appendChild(el('div','empty','<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M3 13h18M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg><div>No inventory accounts in the general ledger.</div>'));
-  }else{
-    const tbl=el('table');tbl.innerHTML=`<thead><tr><th>Account</th><th class="r">Balance</th></tr></thead>`;const tb=el('tbody');
-    invAccs.forEach(a=>{tb.innerHTML+=`<tr class="click" data-acc="${esc(a.name)}"><td>${esc(a.name)}</td><td class="r mono">${fmt(accBalance(a.name))}</td></tr>`;});
-    tbl.appendChild(tb);panel.appendChild(tbl);
-  }
-  v.appendChild(panel);
-  // expected module structure preview
-  const p2=el('div','panel');
-  p2.innerHTML=`<div class="phd"><h3>What this module will show with an inventory feed</h3></div>
-    <div style="padding:14px 18px;color:var(--txt-soft);font-size:13px;line-height:1.7">
-      <b>Stock on hand</b> by item and location · <b>Inventory valuation</b> (FIFO / weighted average) ·
-      <b>Turnover & days-on-hand</b> ratios · <b>Reorder points</b> and low-stock alerts ·
-      <b>Movement history</b> (receipts, issues, transfers, adjustments) · <b>Ageing / slow-moving</b> stock ·
-      reconciliation of the inventory sub-ledger to the GL control account.
-    </div>`;
-  v.appendChild(p2);
-  $$('#view tr[data-acc]').forEach(tr=>tr.onclick=()=>go('ledger',{acct:tr.dataset.acc}));
-}
+function renderInventory(v){invWorkspace(v);}
 
 /* ============================================================
    SEARCH EVERYTHING (all fields, all books, within period)
@@ -2594,12 +2701,20 @@ const ROLES=['Administrator','Controller','Accountant','AP Clerk','Viewer'];
 function seedUsers(){
   if(USERS.length)return;
   USERS=[
-    {id:'u_admin',name:'System Administrator',role:'Administrator',limit:Infinity,active:true},
-    {id:'u_ctrl',name:'Financial Controller',role:'Controller',limit:1000000,active:true},
-    {id:'u_acct',name:'Senior Accountant',role:'Accountant',limit:100000,active:true},
-    {id:'u_ap',name:'AP Clerk',role:'AP Clerk',limit:25000,active:true},
+    {id:'u_admin',name:'System Administrator',role:'Administrator',limit:Infinity,active:true,email:'admin@elmatager.com',password:'ElMatager@2025'},
+    {id:'u_ctrl',name:'Financial Controller',role:'Controller',limit:1000000,active:true,email:'controller@elmatager.com',password:'Welcome@2025'},
+    {id:'u_acct',name:'Senior Accountant',role:'Accountant',limit:100000,active:true,email:'accountant@elmatager.com',password:'Welcome@2025'},
+    {id:'u_ap',name:'AP Clerk',role:'AP Clerk',limit:25000,active:true,email:'apclerk@elmatager.com',password:'Welcome@2025'},
   ];
   CURRENT_USER='u_admin';
+}
+function migrateUsers(){ // ensure pre-existing stored users can still sign in
+  const slug=n=>n.toLowerCase().replace(/[^a-z]+/g,'')+'@elmatager.com';
+  USERS.forEach(u=>{
+    if(!u.email)u.email = u.id==='u_admin'?'admin@elmatager.com':slug(u.name);
+    if(!u.password)u.password = u.id==='u_admin'?'ElMatager@2025':'Welcome@2025';
+    if(u.active===undefined)u.active=true;
+  });
 }
 function initials(n){return n.split(/\s+/).slice(0,2).map(x=>x[0]).join('').toUpperCase();}
 function renderUsers(v){
@@ -2612,7 +2727,7 @@ function renderUsers(v){
   panel.innerHTML=`<div class="phd"><h3>Users</h3><div class="meta">${USERS.length}</div></div>`;
   USERS.forEach(u=>{const c=el('div','usercard');
     c.innerHTML=`<div class="avatar">${initials(u.name)}</div>
-      <div class="meta"><div class="nm">${esc(u.name)} ${u.id===CURRENT_USER?'<span class="attach-pill">you</span>':''}</div><div class="rl">${u.role}</div></div>
+      <div class="meta"><div class="nm">${esc(u.name)} ${u.id===CURRENT_USER?'<span class="attach-pill">you</span>':''}</div><div class="rl">${u.role} · ${esc(u.email||'')}</div></div>
       <div style="text-align:right"><div class="l" style="font-size:10px;color:var(--txt-faint);text-transform:uppercase;letter-spacing:.5px">Approval limit</div>
         <div class="mono" style="font-weight:600">${u.limit===null||u.limit===Infinity?'Unlimited':fmt(u.limit)}</div></div>
       <button class="btn sm ghost" data-edit="${u.id}">Edit</button>
@@ -2642,14 +2757,18 @@ function userModal(u){
   $('#modalBody').innerHTML=`<div class="jgrid">
     <label class="fld">Name<input class="f" id="uName" value="${esc(editing?u.name:'')}" style="max-width:none"></label>
     <label class="fld">Role<select id="uRole" style="max-width:none">${ROLES.map(r=>`<option${editing&&u.role===r?' selected':''}>${r}</option>`).join('')}</select></label>
+    <label class="fld">Email (sign-in)<input class="f" id="uEmail" value="${esc(editing?(u.email||''):'')}" placeholder="user@elmatager.com" style="max-width:none"></label>
+    <label class="fld">Password<input class="f" id="uPass" value="${esc(editing?(u.password||''):'')}" placeholder="set a password" style="max-width:none"></label>
     <label class="fld">Approval limit (blank = unlimited)<input class="f r" id="uLimit" inputmode="decimal" value="${editing&&u.limit!==Infinity&&u.limit!==null?u.limit:''}" style="max-width:none"></label>
   </div>`;
   $('#modalFoot').innerHTML=`<div style="margin-left:auto;display:flex;gap:10px">${editing?'<button class="btn danger" id="uDel">Delete</button>':''}<button class="btn" id="uCancel">Cancel</button><button class="btn primary" id="uSave">Save</button></div>`;
   $('#uCancel').onclick=closeModal;
   $('#uSave').onclick=async()=>{const name=$('#uName').value.trim();if(!name){toast('Enter a name.',true);return;}
     const role=$('#uRole').value;const lv=$('#uLimit').value.trim();const limit=role==='Administrator'?Infinity:(lv===''?Infinity:+lv);
-    if(editing){u.name=name;u.role=role;u.limit=limit;}
-    else USERS.push({id:'u_'+Date.now(),name,role,limit,active:true});
+    const email=$('#uEmail').value.trim()||name.toLowerCase().replace(/[^a-z]+/g,'')+'@elmatager.com';
+    const password=$('#uPass').value.trim()||'Welcome@2025';
+    if(editing){u.name=name;u.role=role;u.limit=limit;u.email=email;u.password=password;}
+    else USERS.push({id:'u_'+Date.now(),name,role,limit,active:true,email,password});
     await store.saveUsers();closeModal();buildUserSwitcher();render();toast('User saved');};
   if(editing)$('#uDel').onclick=async()=>{if(USERS.length<=1){toast('At least one user required.',true);return;}USERS=USERS.filter(x=>x.id!==u.id);if(CURRENT_USER===u.id)CURRENT_USER=USERS[0].id;await store.saveUsers();closeModal();buildUserSwitcher();render();toast('User removed');};
   openModal();
@@ -2727,11 +2846,545 @@ function renderReportsHub(v){
 function buildUserSwitcher(){
   let host=$('#whoami');
   if(!host){host=el('div','whoami');host.id='whoami';
-    const chip=$('#balChip');chip.parentNode.insertBefore(host,chip.nextSibling);}
+    const chip=$('#balChip');chip.parentNode.insertBefore(host,chip.nextSibling);
+    const so=el('button','signout-btn');so.id='signOutBtn';so.title='Sign out';
+    so.innerHTML=`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>`;
+    so.onclick=doLogout;host.parentNode.insertBefore(so,host.nextSibling);}
   const u=currentUser();if(!u){host.innerHTML='';return;}
   host.innerHTML=`<div class="avatar">${initials(u.name)}</div>
     <select id="userSel" title="Acting user">${USERS.map(x=>`<option value="${x.id}"${x.id===CURRENT_USER?' selected':''}>${esc(x.name)} · ${x.role}</option>`).join('')}</select>`;
   $('#userSel').onchange=async e=>{CURRENT_USER=e.target.value;await store.saveCfg();buildUserSwitcher();if(['approvals','users'].includes(CURRENT))render();toast('Acting as '+currentUser().name);};
+}
+
+/* ============================================================
+   AUTHENTICATION (front-end demo gate)
+   ============================================================ */
+const SESSION_KEY='elmatager_session_v1';
+let AUTHED=false;
+async function checkSession(){
+  try{const r=await window.storage.get(SESSION_KEY);
+    if(r&&r.value){const s=JSON.parse(r.value);const u=USERS.find(x=>x.id===s.userId);
+      if(u){CURRENT_USER=u.id;AUTHED=true;return true;}}}catch(e){}
+  return false;
+}
+function showLogin(){
+  AUTHED=false;
+  $('#login').classList.remove('hide');
+  $('#app').style.display='none';
+  const d=$('#loginDemo');
+  if(d)d.innerHTML=`<b>Administrator credentials</b><br>Email: <code>admin@elmatager.com</code><br>Password: <code>ElMatager@2025</code>`;
+  $('#loginErr').classList.remove('show');
+  $('#loginPass').value='';
+  setTimeout(()=>$('#loginEmail').focus(),50);
+}
+function loginError(msg){const e=$('#loginErr');$('#loginErrTxt').textContent=msg;e.classList.add('show');}
+async function doLogin(){
+  const email=($('#loginEmail').value||'').trim().toLowerCase();
+  const pass=$('#loginPass').value||'';
+  if(!email||!pass){loginError('Enter your email and password.');return;}
+  const u=USERS.find(x=>(x.email||'').toLowerCase()===email);
+  if(!u||u.password!==pass){loginError('Incorrect email or password. Please try again.');return;}
+  if(u.active===false){loginError('This account is inactive. Contact an administrator.');return;}
+  CURRENT_USER=u.id;AUTHED=true;
+  await store.saveCfg();
+  if($('#loginRemember').checked){try{await window.storage.set(SESSION_KEY,JSON.stringify({userId:u.id,ts:Date.now()}));}catch(e){}}
+  else{try{await window.storage.delete(SESSION_KEY);}catch(e){}}
+  enterApp();
+  toast('Welcome, '+u.name.split(' ')[0]+'.');
+}
+async function doLogout(){
+  try{await window.storage.delete(SESSION_KEY);}catch(e){}
+  if(OPEN_MENU){OPEN_MENU=null;}
+  showLogin();
+}
+function enterApp(){
+  $('#login').classList.add('hide');
+  $('#app').style.display='';
+  buildMenu();buildUserSwitcher();render();
+}
+function wireLogin(){
+  $('#loginBtn').onclick=doLogin;
+  $('#togPw').onclick=()=>{const p=$('#loginPass');const show=p.type==='password';p.type=show?'text':'password';$('#togPw').textContent=show?'HIDE':'SHOW';};
+  $('#forgotLink').onclick=e=>{e.preventDefault();loginError('This is a demonstration workspace — use the administrator credentials shown below.');};
+  [$('#loginEmail'),$('#loginPass')].forEach(inp=>inp.addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();}));
+}
+
+/* ============================================================
+   SUB-TABS helper
+   ============================================================ */
+function subTabBar(tabs,active,onSel){
+  const bar=el('div','subtabs');
+  tabs.forEach(t=>{const b=el('button',t.id===active?'on':'');b.textContent=t.label;b.onclick=()=>onSel(t.id);bar.appendChild(b);});
+  return bar;
+}
+
+/* ============================================================
+   INVENTORY SUB-LEDGER  (item master · movements · valuation)
+   ============================================================ */
+let INV_TAB='dash', INV_LEDGER_ITEM=null;
+const INV_MOVE_LABEL={GRN:'Goods Receipt',ISSUE:'Stock Issue',ADJ:'Adjustment',XFER:'Transfer'};
+function invItemMoves(id){return INV.moves.filter(m=>m.itemId===id).sort((a,b)=>a.date<b.date?-1:(a.date>b.date?1:0));}
+function invState(id){
+  const ms=invItemMoves(id);let qty=0,val=0;const byWh={};
+  ms.forEach(m=>{const wh=m.warehouse||'Main';byWh[wh]=byWh[wh]||0;
+    if(m.qtyIn){const uc=(m.unitCost!=null&&m.unitCost!=='')?+m.unitCost:(qty>0?val/qty:0);qty+=+m.qtyIn;val+=(+m.qtyIn)*uc;byWh[wh]+=+m.qtyIn;}
+    if(m.qtyOut){const avg=qty>0?val/qty:0;qty-=+m.qtyOut;val-=(+m.qtyOut)*avg;byWh[wh]-=+m.qtyOut;}});
+  return {qty,val:Math.max(0,val),avg:qty>0?val/qty:0,byWh,last:ms.length?ms[ms.length-1].date:null,moves:ms.length};
+}
+function invTotals(){let items=INV.items.length,qty=0,val=0,below=0,zero=0;
+  INV.items.forEach(it=>{const s=invState(it.id);qty+=s.qty;val+=s.val;if(s.qty<=(it.reorderPoint||0))below++;if(s.qty<=0)zero++;});
+  return {items,qty,val,below,zero};}
+function invIssuesValue(fromISO){return INV.moves.filter(m=>m.type==='ISSUE'&&(!fromISO||m.date>=fromISO)).reduce((s,m)=>{const st=0;return s;},0);}
+function nextSKU(){return nextSeq('sku','SKU-',4);}
+
+function invWorkspace(v){
+  const head=el('div','viewhead');
+  head.innerHTML=`<div><h2>Inventory Management</h2><div class="desc">Item master, multi-warehouse stock, weighted-average valuation and a full report suite (inventory sub-ledger).</div></div>
+    <div class="tools">
+      <button class="btn sm" id="invMove"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12h16M12 4v16"/></svg>Record Movement</button>
+      <button class="btn sm primary" id="invAdd"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>Add Item</button>
+    </div>`;
+  v.appendChild(head);
+  const tabs=[['dash','Dashboard'],['items','Item Master'],['moves','Stock Movements'],['val','Valuation'],
+    ['reorder','Reorder Report'],['abc','ABC Analysis'],['aging','Stock Aging'],['ledger','Stock Ledger'],['turn','Turnover'],['wh','Warehouses']]
+    .map(([id,label])=>({id,label}));
+  v.appendChild(subTabBar(tabs,INV_TAB,id=>{INV_TAB=id;render();}));
+  const c=el('div');c.id='invBody';v.appendChild(c);
+  if(!INV.items.length){
+    c.appendChild(noteBox('A General Ledger holds no item-level stock data, so this is a full inventory <b>sub-ledger</b>. Add items and record movements, or load a sample catalog to explore every report. Movements can optionally post to GL control accounts.'));
+    const s=el('div');s.style.margin='8px 0 18px';
+    s.innerHTML=`<button class="btn primary" id="invSeed">Load sample catalog</button>`;
+    c.appendChild(s);
+    $('#invSeed').onclick=async()=>{invSeed();await store.saveInv();render();toast('Sample catalog loaded');};
+    if(INV_TAB!=='dash')return; // still show tab shell but nothing else
+  }
+  ({dash:invDash,items:invItemsTab,moves:invMovesTab,val:invValTab,reorder:invReorderTab,
+    abc:invABCTab,aging:invAgingTab,ledger:invLedgerTab,turn:invTurnTab,wh:invWhTab}[INV_TAB]||invDash)(c);
+  $('#invAdd').onclick=()=>invItemModal();
+  $('#invMove').onclick=()=>invMoveModal();
+}
+function invDash(c){
+  const t=invTotals();
+  const kp=el('div','kpis');
+  kp.innerHTML=kpiCount('a','SKUs',t.items,'Active items')+
+    kpi('a','Stock Value',t.val,'Weighted-average cost')+
+    kpiCount('r','Units on Hand',Math.round(t.qty),'Across warehouses')+
+    kpiCount('x','Reorder Alerts',t.below,t.zero+' out of stock');
+  c.appendChild(kp);
+  if(!INV.items.length)return;
+  // value by category donut + top items bars
+  const cat={};INV.items.forEach(it=>{const s=invState(it.id);cat[it.category||'Uncategorised']=(cat[it.category||'Uncategorised']||0)+s.val;});
+  const items=Object.entries(cat).map(([k,v])=>({name:k,value:v})).sort((a,b)=>b.value-a.value);items.forEach((x,i)=>x.color=PALS[i%PALS.length]);
+  const g=el('div','chartgrid');
+  const dp=el('div','panel');dp.innerHTML=`<div class="phd"><h3>Stock Value by Category</h3></div><div class="donutwrap">${chartDonut(items,160)}${donutLegend(items)}</div>`;
+  g.appendChild(dp);
+  const top=INV.items.map(it=>({it,s:invState(it.id)})).sort((a,b)=>b.s.val-a.s.val).slice(0,8);
+  g.appendChild(chartPanel('Top Items by Value','weighted-average',chartBars(top.map(x=>x.it.sku),[{name:'Value',color:'#1668A8',values:top.map(x=>x.s.val)}],{cw:80,maxBw:40})));
+  c.appendChild(g);
+  // reorder alerts
+  const low=INV.items.filter(it=>invState(it.id).qty<=(it.reorderPoint||0));
+  if(low.length){const p=el('div','panel');p.innerHTML=`<div class="phd"><h3>Reorder Alerts</h3><div class="meta">${low.length} below reorder point</div></div>`;
+    const tbl=el('table');tbl.innerHTML=`<thead><tr><th>SKU</th><th>Item</th><th class="r">On hand</th><th class="r">Reorder point</th><th class="r">Suggested order</th></tr></thead>`;
+    const tb=el('tbody');low.forEach(it=>{const s=invState(it.id);tb.innerHTML+=`<tr><td class="mono">${esc(it.sku)}</td><td>${esc(it.name)}</td><td class="r mono ${s.qty<=0?'neg':''}">${s.qty}</td><td class="r mono">${it.reorderPoint||0}</td><td class="r mono">${it.reorderQty||Math.max(0,(it.reorderPoint||0)*2-s.qty)}</td></tr>`;});
+    tbl.appendChild(tb);p.appendChild(tbl);c.appendChild(p);}
+}
+function invItemsTab(c){
+  const p=el('div','panel');p.innerHTML=`<div class="phd"><h3>Item Master</h3><div class="meta">${INV.items.length} items</div><button class="btn sm" id="invExp" style="margin-left:auto">Export CSV</button></div>`;
+  const tbl=el('table');tbl.innerHTML=`<thead><tr><th>SKU</th><th>Item</th><th>Category</th><th>UOM</th><th class="r">On hand</th><th class="r">Avg cost</th><th class="r">Value</th><th class="r">Sell price</th><th>Status</th><th></th></tr></thead>`;
+  const tb=el('tbody');
+  INV.items.forEach(it=>{const s=invState(it.id);const st=s.qty<=0?'Out of stock':(s.qty<=(it.reorderPoint||0)?'Low':'In stock');
+    tb.innerHTML+=`<tr class="click" data-id="${it.id}"><td class="mono">${esc(it.sku)}</td><td class="acctcell">${esc(it.name)}</td>
+      <td class="muted">${esc(it.category||'—')}</td><td>${esc(it.uom||'ea')}</td>
+      <td class="r mono ${s.qty<=0?'neg':''}">${s.qty}</td><td class="r mono">${fmt(s.avg)}</td><td class="r mono">${fmt(s.val)}</td>
+      <td class="r mono">${it.price?fmt(it.price):'—'}</td>
+      <td><span class="st-tag ${st==='Out of stock'?'st-rejected':(st==='Low'?'st-pending':'st-approved')}">${st.toUpperCase()}</span></td>
+      <td class="r"><span class="lnk">Ledger →</span></td></tr>`;});
+  tbl.appendChild(tb);p.appendChild(tbl);c.appendChild(p);
+  $$('#invBody tr[data-id]').forEach(tr=>tr.onclick=()=>{INV_LEDGER_ITEM=tr.dataset.id;INV_TAB='ledger';render();});
+  $('#invExp').onclick=()=>exportCSV('item_master',['SKU','Item','Category','UOM','OnHand','AvgCost','Value','Price'],INV.items.map(it=>{const s=invState(it.id);return [it.sku,it.name,it.category,it.uom,s.qty,s.avg.toFixed(2),s.val.toFixed(2),it.price||''];}));
+}
+function invMovesTab(c){
+  const p=el('div','panel');p.innerHTML=`<div class="phd"><h3>Stock Movements</h3><div class="meta">${INV.moves.length} movements</div><button class="btn sm" id="invExp" style="margin-left:auto">Export CSV</button></div>`;
+  const tbl=el('table');tbl.innerHTML=`<thead><tr><th>Date</th><th>Ref</th><th>Type</th><th>Item</th><th>Warehouse</th><th class="r">In</th><th class="r">Out</th><th class="r">Unit cost</th><th>Memo</th></tr></thead>`;
+  const tb=el('tbody');const byItem={};INV.items.forEach(it=>byItem[it.id]=it);
+  INV.moves.slice().sort((a,b)=>a.date<b.date?1:-1).slice(0,400).forEach(m=>{const it=byItem[m.itemId]||{};
+    tb.innerHTML+=`<tr><td class="mono">${m.date}</td><td class="mono" style="font-size:12px">${esc(m.ref||'')}</td>
+      <td><span class="st-tag ${m.type==='ISSUE'?'st-pending':'st-approved'}">${INV_MOVE_LABEL[m.type]||m.type}</span></td>
+      <td>${esc(it.sku||'')} ${esc(it.name||'')}</td><td>${esc(m.warehouse||'Main')}</td>
+      <td class="r mono">${m.qtyIn||''}</td><td class="r mono">${m.qtyOut||''}</td><td class="r mono">${m.unitCost!=null&&m.unitCost!==''?fmt(+m.unitCost):'—'}</td>
+      <td>${esc(m.memo||'')}</td></tr>`;});
+  tbl.appendChild(tb);p.appendChild(tbl);c.appendChild(p);
+  $('#invExp').onclick=()=>exportCSV('stock_movements',['Date','Ref','Type','Item','Warehouse','In','Out','UnitCost','Memo'],INV.moves.map(m=>{const it=byItem[m.itemId]||{};return [m.date,m.ref,m.type,(it.sku||'')+' '+(it.name||''),m.warehouse,m.qtyIn||'',m.qtyOut||'',m.unitCost||'',m.memo||''];}));
+}
+function invValTab(c){
+  const rows=INV.items.map(it=>({it,s:invState(it.id)}));
+  const total=rows.reduce((s,r)=>s+r.s.val,0);
+  const cat={};rows.forEach(r=>{const k=r.it.category||'Uncategorised';cat[k]=cat[k]||{qty:0,val:0};cat[k].qty+=r.s.qty;cat[k].val+=r.s.val;});
+  const kp=el('div','kpis');kp.innerHTML=kpi('a','Total Inventory Value',total,'Weighted-average basis')+kpiCount('r','Items Valued',rows.length,'')+kpiCount('e','Categories',Object.keys(cat).length,'');
+  c.appendChild(kp);
+  const p=el('div','panel');p.innerHTML=`<div class="phd"><h3>Inventory Valuation</h3><div class="meta">weighted average</div><button class="btn sm" id="invExp" style="margin-left:auto">Export CSV</button></div>`;
+  const tbl=el('table');tbl.innerHTML=`<thead><tr><th>SKU</th><th>Item</th><th>Category</th><th class="r">Qty</th><th class="r">Avg cost</th><th class="r">Value</th><th class="r">% of total</th></tr></thead>`;
+  const tb=el('tbody');rows.sort((a,b)=>b.s.val-a.s.val).forEach(r=>{tb.innerHTML+=`<tr><td class="mono">${esc(r.it.sku)}</td><td>${esc(r.it.name)}</td><td class="muted">${esc(r.it.category||'—')}</td>
+    <td class="r mono">${r.s.qty}</td><td class="r mono">${fmt(r.s.avg)}</td><td class="r mono" style="font-weight:600">${fmt(r.s.val)}</td><td class="r mono muted">${total?(r.s.val/total*100).toFixed(1):'0'}%</td></tr>`;});
+  const tf=el('tfoot');tf.innerHTML=`<tr style="border-top:2px solid var(--header);font-weight:700;background:#f4f6f8"><td colspan="5" style="padding:10px 14px">Total inventory value</td><td class="r mono">${fmt(total)}</td><td></td></tr>`;
+  tbl.appendChild(tb);tbl.appendChild(tf);p.appendChild(tbl);c.appendChild(p);
+  c.appendChild(noteBox('Inventory sub-ledger value is <b>'+fmt(total)+'</b>. This is a stock sub-ledger; if you post movements to the GL, this reconciles to the inventory control account. The GL as imported has no inventory account.'));
+  $('#invExp').onclick=()=>exportCSV('valuation',['SKU','Item','Category','Qty','AvgCost','Value'],rows.map(r=>[r.it.sku,r.it.name,r.it.category,r.s.qty,r.s.avg.toFixed(2),r.s.val.toFixed(2)]));
+}
+function invReorderTab(c){
+  const low=INV.items.map(it=>({it,s:invState(it.id)})).filter(x=>x.s.qty<=(x.it.reorderPoint||0));
+  const kp=el('div','kpis');kp.innerHTML=kpiCount('x','Items to Reorder',low.length,'At/below reorder point')+
+    kpiCount('n','Out of Stock',low.filter(x=>x.s.qty<=0).length,'Zero on hand')+
+    kpi('l','Est. Replenishment Cost',low.reduce((s,x)=>s+(x.it.reorderQty||Math.max(0,(x.it.reorderPoint||0)*2-x.s.qty))*x.s.avg,0),'At average cost');
+  c.appendChild(kp);
+  const p=el('div','panel');p.innerHTML=`<div class="phd"><h3>Reorder Report</h3><div class="meta">${low.length} items</div></div>`;
+  if(!low.length)p.appendChild(el('div','empty','<div>All items are above their reorder points.</div>'));
+  else{const tbl=el('table');tbl.innerHTML=`<thead><tr><th>SKU</th><th>Item</th><th class="r">On hand</th><th class="r">Reorder point</th><th class="r">Suggested qty</th><th class="r">Est. cost</th></tr></thead>`;
+    const tb=el('tbody');low.forEach(x=>{const q=x.it.reorderQty||Math.max(0,(x.it.reorderPoint||0)*2-x.s.qty);tb.innerHTML+=`<tr><td class="mono">${esc(x.it.sku)}</td><td>${esc(x.it.name)}</td><td class="r mono ${x.s.qty<=0?'neg':''}">${x.s.qty}</td><td class="r mono">${x.it.reorderPoint||0}</td><td class="r mono">${q}</td><td class="r mono">${fmt(q*x.s.avg)}</td></tr>`;});
+    tbl.appendChild(tb);p.appendChild(tbl);}
+  c.appendChild(p);
+}
+function invABCTab(c){
+  const rows=INV.items.map(it=>({it,s:invState(it.id)})).filter(x=>x.s.val>0).sort((a,b)=>b.s.val-a.s.val);
+  const total=rows.reduce((s,r)=>s+r.s.val,0);let cum=0;
+  c.appendChild(noteBox('ABC analysis ranks items by inventory value. <b>Class A</b> ≈ top 80% of value (tight control), <b>B</b> next 15%, <b>C</b> final 5%.'));
+  const p=el('div','panel');p.innerHTML=`<div class="phd"><h3>ABC Analysis</h3><div class="meta">${rows.length} items · total ${fmt(total)}</div></div>`;
+  const tbl=el('table');tbl.innerHTML=`<thead><tr><th>Rank</th><th>SKU</th><th>Item</th><th class="r">Value</th><th class="r">% of total</th><th class="r">Cumulative %</th><th>Class</th></tr></thead>`;
+  const tb=el('tbody');rows.forEach((r,i)=>{cum+=r.s.val;const cp=total?cum/total*100:0;const cls=cp<=80?'A':(cp<=95?'B':'C');
+    tb.innerHTML+=`<tr><td class="mono">${i+1}</td><td class="mono">${esc(r.it.sku)}</td><td>${esc(r.it.name)}</td><td class="r mono">${fmt(r.s.val)}</td>
+      <td class="r mono muted">${total?(r.s.val/total*100).toFixed(1):0}%</td><td class="r mono">${cp.toFixed(1)}%</td>
+      <td><span class="st-tag ${cls==='A'?'st-approved':(cls==='B'?'st-pending':'st-draft')}">${cls}</span></td></tr>`;});
+  tbl.appendChild(tb);p.appendChild(tbl);c.appendChild(p);
+}
+function invAgingTab(c){
+  const asOf=_maxDate();const buckets=[0,0,0,0];const rows=[];
+  INV.items.forEach(it=>{const s=invState(it.id);if(s.qty<=0)return;const age=s.last?daysBetween(s.last,todayISO()):999;
+    const b=age<=30?0:age<=90?1:age<=180?2:3;buckets[b]+=s.val;rows.push({it,s,age,b});});
+  const labels=['0–30 days','31–90 days','91–180 days','180+ days'];const cols=['#1E7A46','#B07515','#CB6D2C','#C0392B'];
+  const kp=el('div','kpis');kp.innerHTML=kpi('a','Fresh (0–30d)',buckets[0],'Recently moved')+kpi('l','Slow (91–180d)',buckets[2],'')+kpi('x','Obsolete (180d+)',buckets[3],'Review for write-down')+kpiCount('n','Items',rows.length,'');
+  c.appendChild(kp);
+  const seg=labels.map((l,i)=>({name:l,value:buckets[i],color:cols[i]}));
+  const g=el('div','chartgrid');const dp=el('div','panel');dp.innerHTML=`<div class="phd"><h3>Stock Aging by Value</h3></div><div class="donutwrap">${chartDonut(seg,160)}${donutLegend(seg)}</div>`;g.appendChild(dp);
+  const p=el('div','panel');p.innerHTML=`<div class="phd"><h3>Slow-moving / Obsolete</h3></div>`;
+  const slow=rows.filter(r=>r.b>=2).sort((a,b)=>b.age-a.age);
+  if(!slow.length)p.appendChild(el('div','empty','<div>No slow-moving stock.</div>'));
+  else{const tbl=el('table');tbl.innerHTML=`<thead><tr><th>SKU</th><th>Item</th><th class="r">Qty</th><th class="r">Value</th><th class="r">Days since move</th></tr></thead>`;const tb=el('tbody');
+    slow.forEach(r=>tb.innerHTML+=`<tr><td class="mono">${esc(r.it.sku)}</td><td>${esc(r.it.name)}</td><td class="r mono">${r.s.qty}</td><td class="r mono">${fmt(r.s.val)}</td><td class="r mono ${r.b===3?'neg':''}">${r.age}</td></tr>`);
+    tbl.appendChild(tb);p.appendChild(tbl);}
+  g.appendChild(p);c.appendChild(g);
+}
+function invLedgerTab(c){
+  const sel=el('div','panel');sel.innerHTML=`<div class="phd"><h3>Stock Ledger Card</h3></div><div class="filters" style="padding:14px 16px">
+    <label class="fld">Item<select id="invLedSel" style="max-width:none;min-width:280px"><option value="">Select item…</option>${INV.items.map(it=>`<option value="${it.id}"${INV_LEDGER_ITEM===it.id?' selected':''}>${esc(it.sku)} — ${esc(it.name)}</option>`).join('')}</select></label></div>`;
+  c.appendChild(sel);
+  const out=el('div');c.appendChild(out);
+  const draw=()=>{out.innerHTML='';if(!INV_LEDGER_ITEM)return;const it=INV.items.find(x=>x.id===INV_LEDGER_ITEM);if(!it)return;
+    const ms=invItemMoves(it.id);let qty=0,val=0;
+    const p=el('div','panel');p.innerHTML=`<div class="phd"><h3>${esc(it.sku)} — ${esc(it.name)}</h3><div class="meta">${esc(it.category||'')} · ${esc(it.uom||'ea')}</div></div>`;
+    const tbl=el('table');tbl.innerHTML=`<thead><tr><th>Date</th><th>Ref</th><th>Type</th><th class="r">In</th><th class="r">Out</th><th class="r">Unit cost</th><th class="r">Bal qty</th><th class="r">Bal value</th><th class="r">Avg cost</th></tr></thead>`;
+    const tb=el('tbody');ms.forEach(m=>{let uc=m.unitCost;if(m.qtyIn){uc=(m.unitCost!=null&&m.unitCost!=='')?+m.unitCost:(qty>0?val/qty:0);qty+=+m.qtyIn;val+=(+m.qtyIn)*uc;}if(m.qtyOut){const avg=qty>0?val/qty:0;uc=avg;qty-=+m.qtyOut;val-=(+m.qtyOut)*avg;}
+      tb.innerHTML+=`<tr><td class="mono">${m.date}</td><td class="mono" style="font-size:12px">${esc(m.ref||'')}</td><td>${INV_MOVE_LABEL[m.type]||m.type}</td>
+        <td class="r mono">${m.qtyIn||''}</td><td class="r mono">${m.qtyOut||''}</td><td class="r mono">${fmt(uc||0)}</td>
+        <td class="r mono">${qty}</td><td class="r mono">${fmt(Math.max(0,val))}</td><td class="r mono">${fmt(qty>0?val/qty:0)}</td></tr>`;});
+    tbl.appendChild(tb);p.appendChild(tbl);out.appendChild(p);};
+  $('#invLedSel').onchange=e=>{INV_LEDGER_ITEM=e.target.value;draw();};
+  draw();
+}
+function invTurnTab(c){
+  // COGS = value of issues; average inventory approx current value
+  let cogs=0;const byItem={};INV.items.forEach(it=>byItem[it.id]=it);
+  // recompute issues at moving avg
+  INV.items.forEach(it=>{const ms=invItemMoves(it.id);let qty=0,val=0;ms.forEach(m=>{if(m.qtyIn){const uc=(m.unitCost!=null&&m.unitCost!=='')?+m.unitCost:(qty>0?val/qty:0);qty+=+m.qtyIn;val+=(+m.qtyIn)*uc;}if(m.qtyOut){const avg=qty>0?val/qty:0;cogs+=(+m.qtyOut)*avg;qty-=+m.qtyOut;val-=(+m.qtyOut)*avg;}});});
+  const invVal=invTotals().val;
+  const turn=invVal>0?cogs/invVal:0;const days=turn>0?365/turn:0;
+  const kp=el('div','kpis');kp.innerHTML=kpi('x','Cost of Goods Issued',cogs,'Total issues at avg cost')+
+    kpi('a','Inventory Value',invVal,'Current, weighted-average')+
+    `<div class="kpi r"><span class="bar"></span><div class="lb">Inventory Turnover</div><div class="vl">${turn.toFixed(2)}x</div><div class="sub">COGS ÷ inventory value</div></div>`+
+    `<div class="kpi e"><span class="bar"></span><div class="lb">Days Inventory (DOH)</div><div class="vl">${days?Math.round(days):'—'}</div><div class="sub">365 ÷ turnover</div></div>`;
+  c.appendChild(kp);
+  c.appendChild(noteBox('Turnover uses total cost of goods issued against current inventory value. With dated issues over a full year this becomes an annualised ratio; load more movement history for period-accurate turnover.'));
+}
+function invWhTab(c){
+  const wh={};INV.items.forEach(it=>{const s=invState(it.id);Object.entries(s.byWh).forEach(([w,q])=>{wh[w]=wh[w]||{qty:0,val:0,items:0};wh[w].qty+=q;wh[w].val+=q*s.avg;if(q>0)wh[w].items++;});});
+  const p=el('div','panel');p.innerHTML=`<div class="phd"><h3>Warehouse Summary</h3><div class="meta">${Object.keys(wh).length} locations</div></div>`;
+  const tbl=el('table');tbl.innerHTML=`<thead><tr><th>Warehouse</th><th class="r">Distinct items</th><th class="r">Units</th><th class="r">Value</th></tr></thead>`;
+  const tb=el('tbody');Object.entries(wh).forEach(([w,d])=>tb.innerHTML+=`<tr><td>${esc(w)}</td><td class="r mono">${d.items}</td><td class="r mono">${Math.round(d.qty)}</td><td class="r mono">${fmt(d.val)}</td></tr>`);
+  tbl.appendChild(tb);p.appendChild(tbl);c.appendChild(p);
+}
+function invItemModal(existing){
+  const editing=!!existing;$('#modalTitle').textContent=editing?'Edit Item':'Add Item';
+  $('#modalBody').innerHTML=`<div class="jgrid">
+    <label class="fld">SKU<input class="f" id="itSku" value="${esc(editing?existing.sku:nextSKU())}" style="max-width:none"></label>
+    <label class="fld">Item name<input class="f" id="itName" value="${esc(editing?existing.name:'')}" style="max-width:none"></label>
+    <label class="fld">Category<input class="f" id="itCat" value="${esc(editing?existing.category||'':'')}" style="max-width:none"></label>
+    <label class="fld">Unit of measure<input class="f" id="itUom" value="${esc(editing?existing.uom||'ea':'ea')}" style="max-width:none"></label>
+    <label class="fld">Reorder point<input class="f r" id="itRop" inputmode="numeric" value="${editing?existing.reorderPoint||0:0}" style="max-width:none"></label>
+    <label class="fld">Reorder qty<input class="f r" id="itRoq" inputmode="numeric" value="${editing?existing.reorderQty||0:0}" style="max-width:none"></label>
+    <label class="fld">Sell price<input class="f r" id="itPrice" inputmode="decimal" value="${editing?existing.price||'':''}" style="max-width:none"></label>
+    <label class="fld">Warehouse<input class="f" id="itWh" value="${esc(editing?existing.warehouse||'Main':'Main')}" style="max-width:none"></label>
+    ${editing?'':`<label class="fld">Opening qty<input class="f r" id="itQty" inputmode="numeric" value="0" style="max-width:none"></label>
+    <label class="fld">Opening unit cost<input class="f r" id="itCost" inputmode="decimal" value="0" style="max-width:none"></label>`}
+  </div>`;
+  $('#modalFoot').innerHTML=`<div style="margin-left:auto;display:flex;gap:10px">${editing?'<button class="btn danger" id="itDel">Delete</button>':''}<button class="btn" id="itCancel">Cancel</button><button class="btn primary" id="itSave">Save item</button></div>`;
+  $('#itCancel').onclick=closeModal;
+  $('#itSave').onclick=async()=>{const name=$('#itName').value.trim();if(!name){toast('Enter an item name.',true);return;}
+    const rec={sku:$('#itSku').value.trim()||nextSKU(),name,category:$('#itCat').value.trim(),uom:$('#itUom').value.trim()||'ea',
+      reorderPoint:+$('#itRop').value||0,reorderQty:+$('#itRoq').value||0,price:+$('#itPrice').value||0,warehouse:$('#itWh').value.trim()||'Main'};
+    if(editing){Object.assign(existing,rec);}
+    else{rec.id='it_'+Date.now()+'_'+Math.random().toString(36).slice(2,6);INV.items.push(rec);
+      const q=+$('#itQty').value||0,cst=+$('#itCost').value||0;
+      if(q>0)INV.moves.push({id:'mv_'+Date.now(),date:todayISO(),type:'GRN',itemId:rec.id,warehouse:rec.warehouse,qtyIn:q,qtyOut:0,unitCost:cst,ref:'OPEN',memo:'Opening balance'});}
+    await store.saveInv();closeModal();render();toast('Item saved');};
+  if(editing)$('#itDel').onclick=async()=>{if(confirm('Delete '+existing.sku+' and its movements?')){INV.items=INV.items.filter(x=>x.id!==existing.id);INV.moves=INV.moves.filter(m=>m.itemId!==existing.id);await store.saveInv();closeModal();render();toast('Item deleted');}};
+  openModal();
+}
+function invMoveModal(){
+  if(!INV.items.length){toast('Add an item first.',true);return;}
+  $('#modalTitle').textContent='Record Stock Movement';
+  const itemOpts=INV.items.map(it=>`<option value="${it.id}">${esc(it.sku)} — ${esc(it.name)}</option>`).join('');
+  const expAccs=ACC.filter(a=>a.class==='EXPENSE').map(a=>`<option value="${esc(a.name)}">${esc(a.name)}</option>`).join('');
+  const otherAccs=ACC.map(a=>`<option value="${esc(a.name)}">${esc(a.name)}</option>`).join('');
+  $('#modalBody').innerHTML=`<div class="jgrid">
+    <label class="fld">Type<select id="mvType" style="max-width:none"><option value="GRN">Goods Receipt (in)</option><option value="ISSUE">Stock Issue (out)</option><option value="ADJ">Adjustment</option><option value="XFER">Warehouse Transfer</option></select></label>
+    <label class="fld">Item<select id="mvItem" style="max-width:none">${itemOpts}</select></label>
+    <label class="fld">Date<input class="f" type="date" id="mvDate" value="${todayISO()}" style="max-width:none"></label>
+    <label class="fld">Reference<input class="f" id="mvRef" placeholder="GRN / issue no." style="max-width:none"></label>
+    <label class="fld">Quantity<input class="f r" id="mvQty" inputmode="decimal" value="" style="max-width:none"></label>
+    <label class="fld" id="mvCostWrap">Unit cost<input class="f r" id="mvCost" inputmode="decimal" value="" style="max-width:none"></label>
+    <label class="fld">Warehouse<input class="f" id="mvWh" value="Main" style="max-width:none"></label>
+    <label class="fld" id="mvWh2Wrap" style="display:none">To warehouse<input class="f" id="mvWh2" value="" style="max-width:none"></label>
+  </div>
+  <label class="fld" style="margin:8px 0">Memo<input class="f" id="mvMemo" style="max-width:none"></label>
+  <label class="fld" style="margin-top:6px"><input type="checkbox" id="mvGL" style="width:auto;display:inline;margin-right:6px">Also post to General Ledger</label>
+  <div id="mvGLbox" style="display:none">
+    <div class="jgrid"><label class="fld">Debit account<select id="mvDr" style="max-width:none">${otherAccs}</select></label>
+    <label class="fld">Credit account<select id="mvCr" style="max-width:none">${otherAccs}</select></label></div>
+    <div class="hint">Receipt: Dr Inventory control / Cr GRNI or cash. Issue: Dr COGS / Cr Inventory. Amount = qty × unit (avg) cost.</div>
+  </div>`;
+  const sync=()=>{const t=$('#mvType').value;$('#mvCostWrap').style.display=(t==='ISSUE')?'none':'';$('#mvWh2Wrap').style.display=(t==='XFER')?'':'none';};
+  $('#mvType').onchange=sync;sync();
+  $('#mvGL').onchange=e=>{$('#mvGLbox').style.display=e.target.checked?'':'none';};
+  $('#modalFoot').innerHTML=`<div style="margin-left:auto;display:flex;gap:10px"><button class="btn" id="mvCancel">Cancel</button><button class="btn primary" id="mvSave">Post movement</button></div>`;
+  $('#mvCancel').onclick=closeModal;
+  $('#mvSave').onclick=async()=>{
+    const type=$('#mvType').value,itemId=$('#mvItem').value,date=$('#mvDate').value,qty=+$('#mvQty').value||0;
+    const cost=$('#mvCost')?($('#mvCost').value):'';const wh=$('#mvWh').value.trim()||'Main',ref=$('#mvRef').value.trim(),memo=$('#mvMemo').value.trim();
+    if(qty<=0){toast('Enter a positive quantity.',true);return;}
+    const it=INV.items.find(x=>x.id===itemId);const st=invState(itemId);
+    if((type==='ISSUE'||type==='XFER')&&qty>st.qty){toast('Only '+st.qty+' on hand.',true);return;}
+    const base={id:'mv_'+Date.now()+'_'+Math.random().toString(36).slice(2,5),date,itemId,ref,memo};
+    if(type==='GRN')INV.moves.push({...base,type:'GRN',warehouse:wh,qtyIn:qty,qtyOut:0,unitCost:cost===''?st.avg:+cost});
+    else if(type==='ISSUE')INV.moves.push({...base,type:'ISSUE',warehouse:wh,qtyIn:0,qtyOut:qty});
+    else if(type==='ADJ')INV.moves.push({...base,type:'ADJ',warehouse:wh,qtyIn:qty,qtyOut:0,unitCost:cost===''?st.avg:+cost,memo:memo||'Adjustment'});
+    else if(type==='XFER'){const wh2=$('#mvWh2').value.trim()||'Transit';INV.moves.push({...base,type:'XFER',warehouse:wh,qtyIn:0,qtyOut:qty});INV.moves.push({id:base.id+'b',date,itemId,ref,memo:memo+' (in)',type:'XFER',warehouse:wh2,qtyIn:qty,qtyOut:0,unitCost:st.avg});}
+    await store.saveInv();
+    if($('#mvGL').checked){const amt=qty*(cost===''?st.avg:+cost);const dr=$('#mvDr').value,cr=$('#mvCr').value;
+      if(dr&&cr&&amt>0)await postSystemJE(date,nextSeq('inv','INV-',5),(INV_MOVE_LABEL[type]||type)+' — '+(it?it.name:''),[{accName:dr,desc:memo,party:'',dr:+amt.toFixed(2),cr:0},{accName:cr,desc:memo,party:'',dr:0,cr:+amt.toFixed(2)}],{doctype:'Inventory '+type});}
+    closeModal();render();toast('Movement posted');};
+  openModal();
+}
+function invSeed(){
+  const wh=['Main DC','Cairo Store','Alexandria Store'];
+  const cat=[['Beverages','ea'],['Snacks','ea'],['Dairy','ea'],['Household','ea'],['Personal Care','ea'],['Frozen','ea']];
+  const names=['Mineral Water 600ml','Cola 330ml','Potato Chips 150g','Chocolate Bar','UHT Milk 1L','Yogurt 150g','Dish Soap 500ml','Paper Towels 2pk','Shampoo 400ml','Hand Soap 250ml','Frozen Fries 1kg','Ice Cream 1L','Instant Coffee 200g','Tea Bags 100s','Cooking Oil 1L','Rice 5kg'];
+  let d0=new Date('2025-01-05');
+  names.forEach((nm,i)=>{const ci=i%cat.length;const id='it_seed_'+i;const cost=Math.round((5+Math.random()*90)*100)/100;
+    INV.items.push({id,sku:nextSKU(),name:nm,category:cat[ci][0],uom:cat[ci][1],reorderPoint:20+Math.floor(Math.random()*30),reorderQty:80,price:Math.round(cost*1.35*100)/100,warehouse:wh[i%wh.length]});
+    // opening receipt
+    const openQty=60+Math.floor(Math.random()*140);
+    INV.moves.push({id:'mv_s'+i+'_o',date:'2025-01-05',type:'GRN',itemId:id,warehouse:wh[i%wh.length],qtyIn:openQty,qtyOut:0,unitCost:cost,ref:'GRN-OPEN',memo:'Opening stock'});
+    // a couple of issues + a receipt over time
+    for(let k=0;k<3;k++){const dd=new Date('2025-0'+(2+k)+'-1'+(i%9));const iso=dd.toISOString().slice(0,10);
+      INV.moves.push({id:'mv_s'+i+'_i'+k,date:iso,type:'ISSUE',itemId:id,warehouse:wh[i%wh.length],qtyIn:0,qtyOut:5+Math.floor(Math.random()*25),ref:'ISS-'+(1000+i*10+k),memo:'Sales issue'});}
+    if(i%3===0)INV.moves.push({id:'mv_s'+i+'_r',date:'2025-03-20',type:'GRN',itemId:id,warehouse:wh[i%wh.length],qtyIn:50,qtyOut:0,unitCost:Math.round(cost*1.05*100)/100,ref:'GRN-'+(2000+i),memo:'Replenishment'});
+  });
+  // make a few items slow-moving (no recent issues) and one low stock — leave as is
+}
+
+/* ============================================================
+   ACCOUNTS PAYABLE — advanced workspace
+   ============================================================ */
+let AP_TAB='summary';
+function apAgingDetail(rootSet,mode){
+  const asOf=PERIOD.to||_maxDate();const byP={};
+  ROWS.forEach(r=>{if(!rootSet.has(r.acc.root))return;if(r.date>asOf)return;const p=r.party||'(No name)';(byP[p]??=(byP[p]=[])).push(r);});
+  const items=[];
+  for(const p in byP){const rows=byP[p].slice().sort((a,b)=>a.date<b.date?-1:1);const opens=[];
+    rows.forEach(r=>{const inc=mode==='AP'?r.cr:r.dr,dec=mode==='AP'?r.dr:r.cr;if(inc>0.005)opens.push({date:r.date,amt:inc,doc:r.doc,memo:r.memo});
+      let d=dec;while(d>0.005&&opens.length){if(opens[0].amt<=d+0.005){d-=opens[0].amt;opens.shift();}else{opens[0].amt-=d;d=0;}}});
+    opens.forEach(o=>{const age=daysBetween(o.date,asOf);items.push({party:p,date:o.date,amt:o.amt,age,doc:o.doc,memo:o.memo,bucket:age<=30?0:age<=60?1:age<=90?2:3});});}
+  return {items:items.sort((a,b)=>b.age-a.age),asOf};
+}
+function apWorkspace(v){
+  const head=el('div','viewhead');
+  head.innerHTML=`<div><h2>Accounts Payable</h2><div class="desc">Vendor liabilities, aging, cash requirements and payment history — full AP reporting suite.</div></div>`;
+  v.appendChild(head);
+  const tabs=[['summary','Aging Summary'],['detail','Aging Detail'],['vendors','Vendor Balances'],['cash','Cash Requirements'],
+    ['pay','Payment Register'],['top','Top Vendors'],['recon','GL Reconciliation'],['trend','AP Trend & DPO']].map(([id,label])=>({id,label}));
+  v.appendChild(subTabBar(tabs,AP_TAB,id=>{AP_TAB=id;render();}));
+  const c=el('div');c.id='apBody';v.appendChild(c);
+  const AProots=new Set(['Accounts Payable/s']);
+  ({summary:()=>apSummary(c,AProots),detail:()=>apDetail(c,AProots),vendors:()=>apVendors(c),cash:()=>apCash(c),
+    pay:()=>apPay(c),top:()=>apTop(c),recon:()=>apRecon(c,AProots),trend:()=>apTrend(c,AProots)}[AP_TAB]||(()=>apSummary(c,AProots)))();
+}
+function apSummary(c,roots){
+  const {res,asOf}=agingByParty(roots,'AP');
+  const parties=Object.entries(res).map(([name,d])=>({name,...d})).sort((a,b)=>b.total-a.total);
+  const tot=parties.reduce((s,p)=>s+p.total,0);const bTot=[0,0,0,0];parties.forEach(p=>p.buckets.forEach((x,i)=>bTot[i]+=x));
+  const kp=el('div','kpis');kp.innerHTML=kpi('l','Total Payable',tot,'Open as at '+asOf)+kpiCount('a','Vendors',parties.length,'With balance')+
+    kpi('x','Current (0–30)',bTot[0],(tot?(bTot[0]/tot*100).toFixed(0):0)+'%')+kpi('n','Overdue 60d+',bTot[2]+bTot[3],(tot?((bTot[2]+bTot[3])/tot*100).toFixed(0):0)+'%');
+  c.appendChild(kp);
+  const seg=[{name:'0–30',value:bTot[0],color:'#1E7A46'},{name:'31–60',value:bTot[1],color:'#B07515'},{name:'61–90',value:bTot[2],color:'#CB6D2C'},{name:'90+',value:bTot[3],color:'#C0392B'}];
+  const g=el('div','chartgrid');const dp=el('div','panel');dp.innerHTML=`<div class="phd"><h3>Aging Buckets</h3><div class="meta">${asOf}</div></div><div class="donutwrap">${chartDonut(seg,160)}${donutLegend(seg)}</div>`;g.appendChild(dp);
+  const S=buildSeries(DASH_BASIS);const bal=S.asat.map(a=>Math.abs(secBalOf(a,'Accounts Payable/s')));
+  g.appendChild(chartPanel('Payable Balance (period-end)',DATA.meta.currency,chartLine(S.keys,[{name:'AP',color:'var(--accent)',values:bal}],{area:true})));
+  c.appendChild(g);
+  const p=el('div','panel');p.innerHTML=`<div class="phd"><h3>Aging by Vendor</h3><div class="meta">${parties.length}</div><button class="btn sm" id="apExp" style="margin-left:auto">Export CSV</button></div>`;
+  const tbl=el('table');tbl.innerHTML=`<thead><tr><th>Vendor</th><th class="r">0–30</th><th class="r">31–60</th><th class="r">61–90</th><th class="r">90+</th><th class="r">Total</th><th></th></tr></thead>`;
+  const tb=el('tbody');parties.slice(0,300).forEach(p2=>tb.innerHTML+=`<tr class="click" data-party="${esc(p2.name)}"><td class="acctcell">${esc(p2.name)}</td>
+    <td class="r mono">${p2.buckets[0]?fmt(p2.buckets[0]):'·'}</td><td class="r mono">${p2.buckets[1]?fmt(p2.buckets[1]):'·'}</td>
+    <td class="r mono">${p2.buckets[2]?fmt(p2.buckets[2]):'·'}</td><td class="r mono ${p2.buckets[3]?'neg':''}">${p2.buckets[3]?fmt(p2.buckets[3]):'·'}</td>
+    <td class="r mono" style="font-weight:600">${fmt(p2.total)}</td><td class="r"><span class="lnk">Statement →</span></td></tr>`);
+  const tf=el('tfoot');tf.innerHTML=`<tr style="border-top:2px solid var(--header);font-weight:700;background:#f4f6f8"><td>Total</td><td class="r mono">${fmt(bTot[0])}</td><td class="r mono">${fmt(bTot[1])}</td><td class="r mono">${fmt(bTot[2])}</td><td class="r mono">${fmt(bTot[3])}</td><td class="r mono">${fmt(tot)}</td><td></td></tr>`;
+  tbl.appendChild(tb);tbl.appendChild(tf);p.appendChild(tbl);c.appendChild(p);
+  $$('#apBody tr[data-party]').forEach(tr=>tr.onclick=()=>go('soa',{party:tr.dataset.party}));
+  $('#apExp').onclick=()=>exportCSV('ap_aging_summary',['Vendor','0-30','31-60','61-90','90+','Total'],parties.map(p2=>[p2.name,...p2.buckets,p2.total]));
+}
+function apDetail(c,roots){
+  const {items,asOf}=apAgingDetail(roots,'AP');
+  const p=el('div','panel');p.innerHTML=`<div class="phd"><h3>Aging Detail — Open Items</h3><div class="meta">${items.length} open items as at ${asOf}</div><button class="btn sm" id="apExp" style="margin-left:auto">Export CSV</button></div>`;
+  if(!items.length)p.appendChild(el('div','empty','<div>No open payable items.</div>'));
+  else{const tbl=el('table');tbl.innerHTML=`<thead><tr><th>Vendor</th><th>Doc #</th><th>Date</th><th>Memo</th><th class="r">Amount</th><th class="r">Age (days)</th><th>Bucket</th></tr></thead>`;
+    const tb=el('tbody');const bl=['0–30','31–60','61–90','90+'];const bc=['st-approved','st-pending','st-pending','st-rejected'];
+    items.slice(0,600).forEach(o=>tb.innerHTML+=`<tr><td class="acctcell">${esc(o.party)}</td><td class="mono" style="font-size:12px">${esc(o.doc)||'—'}</td><td class="mono">${o.date}</td><td>${esc(o.memo||'')}</td>
+      <td class="r mono">${fmt(o.amt)}</td><td class="r mono ${o.bucket===3?'neg':''}">${o.age}</td><td><span class="st-tag ${bc[o.bucket]}">${bl[o.bucket]}</span></td></tr>`);
+    tbl.appendChild(tb);p.appendChild(tbl);}
+  c.appendChild(p);
+  $('#apExp')&&($('#apExp').onclick=()=>exportCSV('ap_aging_detail',['Vendor','Doc','Date','Memo','Amount','Age','Bucket'],items.map(o=>[o.party,o.doc,o.date,o.memo,o.amt.toFixed(2),o.age,o.bucket])));
+}
+function apVendors(c){
+  const list=Object.keys(PARTY).filter(p=>/^VEN-/i.test(p)).map(p=>({name:p,st:PARTY[p]})).sort((a,b)=>(b.st.cr-b.st.dr)-(a.st.cr-a.st.dr));
+  const p=el('div','panel');p.innerHTML=`<div class="phd"><h3>Vendor Balances</h3><div class="meta">${list.length} vendors</div></div>`;
+  const tbl=el('table');tbl.innerHTML=`<thead><tr><th>Vendor</th><th class="r">Billed (Cr)</th><th class="r">Paid (Dr)</th><th class="r">Balance</th><th class="r">Entries</th><th></th></tr></thead>`;
+  const tb=el('tbody');list.slice(0,400).forEach(x=>{const bal=x.st.cr-x.st.dr;tb.innerHTML+=`<tr class="click" data-party="${esc(x.name)}"><td class="acctcell">${esc(x.name)}</td>
+    <td class="r mono">${fmt(x.st.cr)}</td><td class="r mono">${fmt(x.st.dr)}</td><td class="r mono ${bal<0?'neg':''}" style="font-weight:600">${fmt(bal)}</td>
+    <td class="r mono">${x.st.count}</td><td class="r"><span class="lnk">Statement →</span></td></tr>`;});
+  tbl.appendChild(tb);p.appendChild(tbl);c.appendChild(p);
+  $$('#apBody tr[data-party]').forEach(tr=>tr.onclick=()=>go('soa',{party:tr.dataset.party}));
+}
+function apCash(c){
+  c.appendChild(noteBox('Cash requirements forecast open vendor bills by due date. Bills raised in Procurement use their document date + payment terms; imported GL payables are bucketed by open-item age as a proxy for due date.'));
+  // from procurement unpaid bills
+  const bills=PROC.filter(d=>d.type==='BILL'&&d.status!=='paid');
+  const {items}=apAgingDetail(new Set(['Accounts Payable/s']),'AP');
+  const today=todayISO();const buckets={'Overdue':0,'0–7 days':0,'8–30 days':0,'31–60 days':0,'60+ days':0};
+  bills.forEach(b=>{const due=addDays(b.date,30);const dd=daysBetween(today,due);const k=dd<0?'Overdue':dd<=7?'0–7 days':dd<=30?'8–30 days':dd<=60?'31–60 days':'60+ days';buckets[k]+=b.total;});
+  if(!bills.length){items.forEach(o=>{const k=o.age>30?'Overdue':o.age>23?'0–7 days':o.age>0?'8–30 days':'31–60 days';buckets[k]+=o.amt;});}
+  const tot=Object.values(buckets).reduce((a,b)=>a+b,0);
+  const kp=el('div','kpis');kp.innerHTML=kpi('x','Overdue',buckets['Overdue'],'Requires immediate payment')+kpi('l','Due ≤ 7 days',buckets['0–7 days'],'This week')+kpi('a','Due 8–30 days',buckets['8–30 days'],'This month')+kpi('n','Total Due',tot,'All open bills');
+  c.appendChild(kp);
+  const seg=Object.entries(buckets).map(([k,v],i)=>({name:k,value:v,color:['#C0392B','#CB6D2C','#B07515','#1668A8','#5D6D7E'][i]}));
+  const g=el('div','chartgrid');const dp=el('div','panel');dp.innerHTML=`<div class="phd"><h3>Payments Due by Window</h3></div><div class="donutwrap">${chartDonut(seg,160)}${donutLegend(seg)}</div>`;g.appendChild(dp);
+  const p=el('div','panel');p.innerHTML=`<div class="phd"><h3>Open Bills</h3></div>`;
+  const tbl=el('table');tbl.innerHTML=`<thead><tr><th>Document</th><th>Vendor</th><th>Bill date</th><th>Due date</th><th class="r">Amount</th></tr></thead>`;const tb=el('tbody');
+  if(bills.length)bills.forEach(b=>tb.innerHTML+=`<tr><td class="mono">${esc(b.num)}</td><td>${esc(b.vendor||'')}</td><td class="mono">${b.date}</td><td class="mono">${addDays(b.date,30)}</td><td class="r mono">${fmt(b.total)}</td></tr>`);
+  else tb.innerHTML=`<tr><td colspan="5" class="muted" style="padding:12px 14px">No procurement bills; forecast above uses open GL payables by age.</td></tr>`;
+  tbl.appendChild(tb);p.appendChild(tbl);g.appendChild(p);c.appendChild(g);
+}
+function apPay(c){
+  const pays=POSTED.filter(j=>/Payment/i.test(j.doctype||'')).map(j=>({date:j.date,doc:j.doc,party:(j.lines[0]||{}).party||'',amt:j.amount||j.lines.reduce((s,l)=>s+(+l.dr||0),0),status:j.status}))
+    .concat(PROC.filter(d=>d.type==='PMT').map(d=>({date:d.date,doc:d.num,party:d.vendor,amt:d.total,status:'paid'})));
+  pays.sort((a,b)=>a.date<b.date?1:-1);
+  const kp=el('div','kpis');kp.innerHTML=kpiCount('a','Payments',pays.length,'Recorded')+kpi('x','Total Paid',pays.reduce((s,p)=>s+p.amt,0),'All payment documents');
+  c.appendChild(kp);
+  const p=el('div','panel');p.innerHTML=`<div class="phd"><h3>Payment Register</h3><div class="meta">${pays.length}</div></div>`;
+  if(!pays.length)p.appendChild(el('div','empty','<div>No vendor payments recorded yet. Post one via New Transaction → Vendor Payment, or through the Procurement cycle.</div>'));
+  else{const tbl=el('table');tbl.innerHTML=`<thead><tr><th>Date</th><th>Document</th><th>Vendor</th><th class="r">Amount</th><th>Status</th></tr></thead>`;const tb=el('tbody');
+    pays.slice(0,300).forEach(p2=>tb.innerHTML+=`<tr><td class="mono">${p2.date}</td><td class="mono" style="font-size:12px">${esc(p2.doc)}</td><td>${esc(p2.party||'—')}</td><td class="r mono">${fmt(p2.amt)}</td><td><span class="st-tag st-${p2.status||'posted'}">${(p2.status||'posted').toUpperCase()}</span></td></tr>`);
+    tbl.appendChild(tb);p.appendChild(tbl);}
+  c.appendChild(p);
+}
+function apTop(c){
+  const spend={};ROWS.forEach(r=>{if(!/^VEN-/i.test(r.party||''))return;const net=r.dr-r.cr;if(net>0)spend[r.party]=(spend[r.party]||0)+net;});
+  const arr=Object.entries(spend).map(([name,v])=>({name,v})).sort((a,b)=>b.v-a.v);const total=arr.reduce((s,x)=>s+x.v,0);
+  const top=arr.slice(0,12);
+  const g=el('div','chartgrid');
+  g.appendChild(chartPanel('Top Vendors by Spend','all-time',chartBars(top.map(x=>x.name.replace(/^VEN-\S+\s/,'').slice(0,10)),[{name:'Spend',color:'#1668A8',values:top.map(x=>x.v)}],{cw:64,maxBw:34})));
+  const donut=top.slice(0,8).map((x,i)=>({name:x.name.replace(/^VEN-\S+\s/,'').slice(0,20),value:x.v,color:PALS[i%PALS.length]}));const other=arr.slice(8).reduce((s,x)=>s+x.v,0);if(other>0)donut.push({name:'Other',value:other,color:'#9AA7B2'});
+  const dp=el('div','panel');dp.innerHTML=`<div class="phd"><h3>Spend Concentration</h3></div><div class="donutwrap">${chartDonut(donut,160)}${donutLegend(donut)}</div>`;g.appendChild(dp);
+  c.appendChild(g);
+  const p=el('div','panel');p.innerHTML=`<div class="phd"><h3>Vendor Spend Ranking</h3><div class="meta">${arr.length}</div></div>`;
+  const tbl=el('table');tbl.innerHTML=`<thead><tr><th>#</th><th>Vendor</th><th class="r">Spend</th><th class="r">% of total</th><th></th></tr></thead>`;const tb=el('tbody');
+  arr.slice(0,200).forEach((x,i)=>tb.innerHTML+=`<tr class="click" data-party="${esc(x.name)}"><td class="mono">${i+1}</td><td class="acctcell">${esc(x.name)}</td><td class="r mono">${fmt(x.v)}</td><td class="r mono muted">${total?(x.v/total*100).toFixed(1):0}%</td><td class="r"><span class="lnk">Statement →</span></td></tr>`);
+  tbl.appendChild(tb);p.appendChild(tbl);c.appendChild(p);
+  $$('#apBody tr[data-party]').forEach(tr=>tr.onclick=()=>go('soa',{party:tr.dataset.party}));
+}
+function apRecon(c,roots){
+  const {res}=agingByParty(roots,'AP');const subTotal=Object.values(res).reduce((s,d)=>s+d.total,0);
+  const glBal=Math.abs(secBalOf(SNAP_ASAT,'Accounts Payable/s'));
+  const diff=glBal-subTotal;
+  const kp=el('div','kpis');kp.innerHTML=kpi('a','GL AP Control',glBal,'Accounts Payable balance')+kpi('l','Sub-ledger (aging)',subTotal,'Sum of open vendor items')+kpi(diff===0?'r':'x','Difference',diff,Math.abs(diff)<1?'Reconciled':'Investigate');
+  c.appendChild(kp);
+  const p=el('div','panel');p.innerHTML=`<div class="phd"><h3>AP Sub-ledger to GL Reconciliation</h3></div>
+    <table><tbody>
+      <tr><td>General ledger — Accounts Payable control</td><td class="r mono">${fmt(glBal)}</td></tr>
+      <tr><td>AP sub-ledger — open vendor items (FIFO)</td><td class="r mono">${fmt(subTotal)}</td></tr>
+      <tr style="border-top:2px solid var(--header);font-weight:700"><td>Difference</td><td class="r mono ${Math.abs(diff)<1?'pos':'neg'}">${fmt(diff)}</td></tr>
+    </tbody></table>`;
+  c.appendChild(p);
+  c.appendChild(noteBox(Math.abs(diff)<1?'The AP sub-ledger reconciles to the general-ledger control account.':'A difference indicates payments/bills applied on account or timing; drill vendor statements to investigate.'));
+}
+function apTrend(c,roots){
+  const S=buildSeries(DASH_BASIS),K=S.keys;
+  const ap=S.asat.map(a=>Math.abs(secBalOf(a,'Accounts Payable/s')));
+  const purch=S.flow.map(f=>classTotalsOf(f).exp);
+  const dpo=K.map((k,i)=>purch[i]>0?(ap[i]/purch[i])*(DASH_BASIS==='Q'?90:365):null);
+  const kp=el('div','kpis');const lastDpo=dpo.filter(x=>x!=null).slice(-1)[0];
+  kp.innerHTML=kpi('l','Current AP',ap[ap.length-1]||0,'Latest period-end')+
+    `<div class="kpi e"><span class="bar"></span><div class="lb">Days Payable (DPO)</div><div class="vl">${lastDpo?Math.round(lastDpo):'—'}</div><div class="sub">AP ÷ purchases × period days</div></div>`+
+    kpi('x','Purchases (latest)',purch[purch.length-1]||0,DASH_BASIS==='Q'?'Quarter':'Year');
+  c.appendChild(kp);
+  const g=el('div','chartgrid');
+  g.appendChild(chartPanel('Accounts Payable Balance',DATA.meta.currency,chartBars(K,[{name:'AP',color:'#B07515',values:ap}])));
+  g.appendChild(chartPanel('Days Payable Outstanding','days',chartLine(K,[{name:'DPO',color:'var(--accent)',values:dpo}])));
+  c.appendChild(g);
+}
+function addDays(iso,n){const d=new Date(iso);d.setDate(d.getDate()+n);return d.toISOString().slice(0,10);}
+
+/* ============================================================
+   ACCOUNTING CYCLES — SOP map (end to end)
+   ============================================================ */
+const CYCLES=[
+  {icon:'book',name:'Record to Report (R2R)',d:'General ledger accounting through to financial statements.',
+   steps:[['1','Journal Entry','JE / all doc types','Maker posts; balanced check'],['2','Post to GL','—','Approval if over limit'],['3','Trial Balance','—','Dr = Cr tie-out'],['4','Adjust & Accrue','Adjusting JE','Controller review'],['5','Financial Statements','BS / IS / CF','Period close'],['6','Period Close','—','Lock period']],
+   go:[['Make Journal Entry','_je'],['Trial Balance','trial'],['Balance Sheet','balance'],['Accounting Periods','periods']]},
+  {icon:'edit',name:'Procure to Pay (P2P)',d:'Requisition to supplier payment.',
+   steps:[['1','Requisition','PR','Budget owner raises'],['2','Purchase Order','PO','Approval by matrix'],['3','Goods/Service Receipt','GRN','Receiving confirms'],['4','Vendor Bill','BILL','3-way match, posts AP'],['5','Payment','PMT','Treasury settles AP']],
+   go:[['Procurement Cycle','proccycle'],['AP Aging','ap'],['Vendor Spend','procurement']]},
+  {icon:'trend',name:'Order to Cash (O2C)',d:'Customer invoice to cash collection.',
+   steps:[['1','Sales Invoice','INV','Bill customer, posts AR'],['2','Revenue Recognition','—','Recognise income'],['3','Customer Receipt','RCPT','Cash applied to AR'],['4','AR Aging','—','Collections follow-up']],
+   go:[['Revenue Analysis','sales'],['AR Aging','ar']]},
+  {icon:'asset',name:'Fixed Assets (Acquire to Retire)',d:'Capitalisation through disposal.',
+   steps:[['1','Acquisition','FA-ACQ / from PO','Capitalise cost'],['2','Register Asset','—','Code + barcode'],['3','Depreciation','DEP','Monthly straight-line'],['4','Transfer / Revalue','—','Optional'],['5','Disposal','DISP','Gain/loss to P&L']],
+   go:[['Asset Register','assetreg'],['Generate from Purchases','acquisitions'],['Depreciation','depreciation']]},
+  {icon:'asset',name:'Inventory / Stock',d:'Item lifecycle from receipt to issue.',
+   steps:[['1','Item Master','—','Create SKU'],['2','Goods Receipt','GRN','Stock in, value up'],['3','Issue / Sale','ISSUE','COGS, stock out'],['4','Adjust / Count','ADJ','Cycle count'],['5','Transfer','XFER','Between warehouses'],['6','Valuation & Reorder','—','WA cost, reorder']],
+   go:[['Inventory','inventory']]},
+  {icon:'scale',name:'Period Close & Controls',d:'Governance across all cycles.',
+   steps:[['1','Sub-ledger cut-off','—','AP/AR/Inv/FA'],['2','Reconciliations','—','Sub-ledger ↔ GL'],['3','Approvals cleared','—','Empty queue'],['4','Close period','—','Lock postings'],['5','Reporting','—','Statements issued']],
+   go:[['Approvals Queue','approvals'],['Accounting Periods','periods'],['Reports & Inquiries','reports_hub']]},
+];
+function renderCycles(v){
+  const head=el('div','viewhead');
+  head.innerHTML=`<div><h2>Accounting Cycles — Standard Operating Procedures</h2><div class="desc">End-to-end process maps with the document types and controls at each step. Click any step target to jump into that module.</div></div>`;
+  v.appendChild(head);
+  CYCLES.forEach(cy=>{const box=el('div','cyc');
+    box.innerHTML=`<div class="ch"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">${ICONS[cy.icon]||''}</svg></div>
+      <div><h3>${cy.name}</h3><div class="d">${cy.d}</div></div></div>
+      <div class="steps">${cy.steps.map(s=>`<div class="step"><div class="n">STEP ${s[0]}</div><div class="t">${s[1]}</div>${s[2]!=='—'?`<div class="doc"><span class="minibadge">${s[2]}</span></div>`:''}<div class="ctl">${s[3]}</div></div>`).join('')}</div>
+      <div class="go">${cy.go.map(g=>`<button class="btn sm" data-go="${g[1]}">${g[0]} →</button>`).join('')}</div>`;
+    v.appendChild(box);});
+  $$('#view [data-go]').forEach(b=>b.onclick=()=>{const t=b.dataset.go;if(t==='_je'){openJE();}else go(t);});
 }
 
 (async function boot(){
@@ -2739,11 +3392,13 @@ function buildUserSwitcher(){
   $('#entLabel').textContent=DATA.meta.currency+' · '+ent;
   await store.load();
   seedUsers();
+  migrateUsers();
   if(!USERS.find(u=>u.id===CURRENT_USER))CURRENT_USER=USERS[0].id;
   await store.saveUsers();
   rebuild();
-  buildMenu();
-  buildUserSwitcher();
-  render();
+  wireLogin();
+  const ok=await checkSession();
+  if(ok){enterApp();}
+  else{showLogin();}
 })();
 </script>
