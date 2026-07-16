@@ -2820,6 +2820,7 @@ function renderProcCycle(v){
 }
 function procDocModal(doc){
   const editing=!!doc;
+  let PROC_ATTACH = editing&&doc.attachments ? doc.attachments.map(a=>({...a})) : [];
   const isPR=!editing||doc.type==='PR';
   $('#modalTitle').textContent=editing?(PROC_LABEL[doc.type]+' '+doc.num):'New Purchase Requisition';
   const lines=editing?doc.lines.map(l=>({...l})):[{desc:'',accName:'',amount:'',capitalize:false}];
@@ -2845,12 +2846,32 @@ function procDocModal(doc){
     <div class="jerows" id="prLines" style="border-top:none">${linesHtml()}</div>
     ${readOnly?'':`<button class="btn sm ghost" id="prAdd" style="margin-top:10px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>Add line</button>`}
     <div class="jetot" style="margin-top:12px"><div><span class="b">Total</span> <span class="v" id="prTotal">0.00</span></div></div>
+    <div class="attachbox" id="prAttachBox" style="margin-top:12px">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <span style="font-size:12px;font-weight:600;color:var(--txt-soft)">Attachments (quote, invoice, approval)</span>
+        <label class="attachbtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>Upload file<input type="file" id="prFile" multiple style="display:none"></label>
+      </div>
+      <div id="prAttachList"></div>
+    </div>
     ${editing&&doc.jelinks&&doc.jelinks.length?`<div class="note" style="margin-top:12px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/></svg><div>Linked GL entries: ${doc.jelinks.map(j=>esc(j)).join(', ')}</div></div>`:''}`;
   function readLines(){$$('#prLines [data-i]').forEach(inp=>{const i=+inp.dataset.i,k=inp.dataset.k;lines[i][k]=k==='capitalize'?inp.checked:inp.value;});}
   function recalc(){readLines();const t=lines.reduce((s,l)=>s+(+l.amount||0),0);$('#prTotal').textContent=fmt(t);return t;}
   function bind(){$$('#prLines [data-i]').forEach(inp=>inp.oninput=recalc);
     $$('#prLines .del').forEach(b=>b.onclick=()=>{readLines();lines.splice(+b.dataset.del,1);if(!lines.length)lines.push({desc:'',accName:'',amount:'',capitalize:false});$('#prLines').innerHTML=linesHtml();bind();recalc();});}
   bind();recalc();
+  function drawProcAttach(){const box=$('#prAttachList');if(!box)return;box.innerHTML='';
+    if(!PROC_ATTACH.length){box.innerHTML='<div class="hint" style="margin-top:6px">No files attached.</div>';return;}
+    PROC_ATTACH.forEach((a,i)=>{const d=el('div','att');
+      d.innerHTML=`<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="var(--accent)" stroke-width="2"><path d="M14 2v6h6M6 2h9l5 5v13a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1z"/></svg>
+        <a href="${a.data}" download="${esc(a.name)}" target="_blank">${esc(a.name)}</a><span class="muted" style="font-size:11px">${(a.size/1024).toFixed(0)} KB</span>
+        <button data-rm="${i}" title="Remove">×</button>`;
+      box.appendChild(d);});
+    $$('#prAttachList [data-rm]').forEach(b=>b.onclick=async()=>{PROC_ATTACH.splice(+b.dataset.rm,1);await persistProcAttach();drawProcAttach();});
+  }
+  async function persistProcAttach(){ if(editing){ doc.attachments=PROC_ATTACH.map(a=>({...a})); await store.saveProc(); } }
+  function handleProcAttach(files){ [...files].forEach(f=>{ if(f.size>1600000){toast('“'+f.name+'” exceeds 1.5 MB and was skipped.',true);return;} const rd=new FileReader(); rd.onload=async()=>{ PROC_ATTACH.push({name:f.name,size:f.size,type:f.type,data:rd.result}); await persistProcAttach(); drawProcAttach(); }; rd.readAsDataURL(f); }); }
+  drawProcAttach();
+  { const pf=$('#prFile'); if(pf) pf.onchange=e=>handleProcAttach(e.target.files); }
   if(!readOnly)$('#prAdd')&&($('#prAdd').onclick=()=>{readLines();lines.push({desc:'',accName:'',amount:'',capitalize:false});$('#prLines').innerHTML=linesHtml();bind();recalc();});
   // footer actions depend on status/type
   const foot=$('#modalFoot');const acts=[];
@@ -2878,9 +2899,10 @@ function procDocModal(doc){
     if(!cl.length){toast('Add at least one line with an account and amount.',true);return;}
     const total=cl.reduce((s,l)=>s+l.amount,0);
     if(existing){existing.date=date;existing.vendor=vendor;existing.memo=memo;existing.lines=cl;existing.total=total;
+      existing.attachments=PROC_ATTACH.map(a=>({...a}));
       existing.status=needsApproval(total)?'pending':'approved';}
     else{PROC.push({id:'pc_'+Date.now()+'_'+Math.random().toString(36).slice(2,6),type:'PR',num:nextSeq('pr','PR-',5),
-      date,vendor,memo,lines:cl,total,status:needsApproval(total)?'pending':'approved',by:CURRENT_USER,jelinks:[]});}
+      date,vendor,memo,lines:cl,total,attachments:PROC_ATTACH.map(a=>({...a})),status:needsApproval(total)?'pending':'approved',by:CURRENT_USER,jelinks:[]});}
     await store.saveProc();closeModal();render();
     toast(needsApproval(total)?'Requisition submitted for approval.':'Requisition saved & approved.');
   }
@@ -4563,13 +4585,13 @@ function importBackupFile(file){
 const GDRIVE_CLIENT_ID = '225352670320-f0lp4ud1okvbovha5ej3bii2mf67334u.apps.googleusercontent.com';
 /* ▲▲▲ e.g. '123456789-abcxyz.apps.googleusercontent.com' ▲▲▲ */
 
-const GD={clientId:'',token:null,tokenClient:null,fileId:null,FILE:'elmatager_erp_data.json',auto:false,autoconnect:true,autoload:true,_cid:''};
+const GD={clientId:'',token:null,tokenClient:null,fileId:null,FILE:'elmatager_erp_data.json',auto:false,autoconnect:false,autoload:false,_cid:''};
 (function gdInit(){try{
   const saved=localStorage.getItem('elmatager_gdrive_clientid')||'';
   GD.clientId=(GDRIVE_CLIENT_ID&&GDRIVE_CLIENT_ID.trim())?GDRIVE_CLIENT_ID.trim():saved;   // baked-in wins
   if(GD.clientId&&GD.clientId!==saved){try{localStorage.setItem('elmatager_gdrive_clientid',GD.clientId);}catch(e){}}
   GD.auto=localStorage.getItem('elmatager_gdrive_auto')==='1';
-  GD.autoconnect=localStorage.getItem('elmatager_gdrive_autoconnect')!=='0';   // default ON
+  GD.autoconnect=localStorage.getItem('elmatager_gdrive_autoconnect')==='1';   // default OFF (JSONBin is primary; no Google popup)
   GD.autoload=localStorage.getItem('elmatager_gdrive_autoload')!=='0';         // default ON
 }catch(e){}})();
 
@@ -4756,7 +4778,7 @@ function renderCloud(v){
 (function hookAutoSync(){
   try{Object.keys(store).forEach(k=>{ if(k.indexOf('save')===0 && typeof store[k]==='function'){ const orig=store[k].bind(store); store[k]=async function(){ const r=await orig.apply(null,arguments); try{bumpStamp();}catch(e){} gdScheduleAuto(); try{csSchedule();}catch(e){} return r; }; } });}catch(e){}
   if(typeof saveEnt==='function'){ const _se=saveEnt; saveEnt=async function(){ const r=await _se.apply(this,arguments); try{bumpStamp();}catch(e){} gdScheduleAuto(); try{csSchedule();}catch(e){} return r; }; }
-  if(typeof enterApp==='function'){ const _ea=enterApp; enterApp=function(){ const o=_ea.apply(this,arguments); try{ setTimeout(()=>{ if(typeof gdAutoConnect==='function') gdAutoConnect(); }, 900); }catch(e){} return o; }; }
+  if(typeof enterApp==='function'){ const _ea=enterApp; enterApp=function(){ const o=_ea.apply(this,arguments); return o; }; }
 })();
 
 /* ============================================================
@@ -4781,23 +4803,30 @@ function csSet(id,key){CS.id=(id||'').trim();CS.key=(key||'').trim();try{localSt
 async function csGet(){
   const r=await fetch('https://api.jsonbin.io/v3/b/'+CS.id+'/latest',{headers:{'X-Master-Key':CS.key,'X-Bin-Meta':'false'}});
   if(!r.ok)throw new Error('HTTP '+r.status);
-  return await r.json();      // stored backup object (X-Bin-Meta:false → record only)
+  let j=await r.json();
+  if(j && typeof j==='object' && j.record!==undefined) j=j.record;   // tolerate {record,metadata} shape
+  return j;
 }
 async function csPut(obj){
-  const r=await fetch('https://api.jsonbin.io/v3/b/'+CS.id,{method:'PUT',
+  const r=await fetch('https://api.jsonbin.io/v3/b/'+CS.id,{method:'PUT',keepalive:true,
     headers:{'X-Master-Key':CS.key,'Content-Type':'application/json','X-Bin-Versioning':'false'},body:JSON.stringify(obj)});
-  if(!r.ok)throw new Error('HTTP '+r.status);
+  if(!r.ok){let t='';try{t=await r.text();}catch(e){} throw new Error('HTTP '+r.status+(t?(' — '+t.slice(0,120)):''));}
   return true;
 }
 async function csPush(){
   if(!csConfigured())throw new Error('Cloud not configured');
   const obj=collectBackup(); await csPut(obj);
   const now=new Date().toISOString(); bumpStamp(now);
-  try{localStorage.setItem('elmatager_cs_lastsave',now);}catch(e){}
+  try{localStorage.setItem('elmatager_cs_lastsave',now);localStorage.removeItem('elmatager_cs_lasterr');}catch(e){}
   return true;
 }
 let _csT=null;
-function csSchedule(){ if(!CS.auto||!csConfigured())return; clearTimeout(_csT); _csT=setTimeout(()=>{csPush().catch(()=>{});},3000); }
+function csSchedule(){ if(!CS.auto||!csConfigured())return; clearTimeout(_csT); _csT=setTimeout(()=>{csPush().catch(e=>{try{localStorage.setItem('elmatager_cs_lasterr',(e&&e.message)||'sync failed');}catch(x){}});},2500); }
+/* flush any pending save when the tab is hidden/closed (keepalive lets it finish) */
+if(typeof window!=='undefined'){
+  window.addEventListener('pagehide',()=>{ if(CS.auto&&csConfigured())csPush().catch(()=>{}); });
+  document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='hidden'&&CS.auto&&csConfigured())csPush().catch(()=>{}); });
+}
 /* pull shared data at startup (before login) so synced accounts work on any device */
 async function csHydrate(){
   if(!csConfigured())return false;
@@ -4807,23 +4836,45 @@ async function csHydrate(){
       const cloud=obj.savedAt||''; const local=localStamp();
       if(!local || (cloud && cloud>local)){ await applyBackup(obj); return true; }
     }
-  }catch(e){ /* offline / not created yet / bad creds → keep local */ }
+  }catch(e){ try{localStorage.setItem('elmatager_cs_lasterr',(e&&e.message)||'hydrate failed');}catch(x){} }
   return false;
 }
 async function csPullNow(){
   if(!csConfigured()){toast('Enter your Bin ID and Key first.',true);return;}
-  try{const obj=await csGet(); if(obj&&obj.data){await applyBackup(obj);render();toast('Synced latest data from cloud');} else toast('Cloud is empty — Save first.',true);}
-  catch(e){toast('Cloud load failed: '+e.message+' (check Bin ID / Key)',true);}
+  try{const obj=await csGet(); if(obj&&obj.data){await applyBackup(obj);render();toast('Synced latest data from cloud');} else toast('Cloud has no data yet — Save from your main device first.',true);}
+  catch(e){toast('Cloud load failed: '+e.message,true);}
 }
 async function csSaveNow(){
   if(!csConfigured()){toast('Enter your Bin ID and Key first.',true);return;}
   try{await csPush();toast('Saved to cloud — available on all your devices');if(CURRENT==='cloud')render();}
-  catch(e){toast('Cloud save failed: '+e.message+' (check Bin ID / Key)',true);}
+  catch(e){toast('Cloud save failed: '+e.message,true);}
+}
+/* On-device diagnostic: proves whether this browser can talk to JSONBin */
+async function csTest(){
+  const out=$('#csStatus'); const say=(h)=>{ if(out)out.innerHTML=h; };
+  if(!csConfigured()){say('<b style="color:var(--neg)">Not configured</b> — Bin ID / Key missing.');return;}
+  say('Testing connection…');
+  let report='';
+  try{
+    const t0=Date.now();
+    const obj=await csGet();
+    report+=`<div style="color:var(--pos)">✓ READ ok (${Date.now()-t0} ms)</div>`;
+    report+=`<div class="muted" style="font-size:11px">Cloud currently has ${obj&&obj.data?('data · saved '+(obj.savedAt||'?')):'no app data yet (just the placeholder)'}.</div>`;
+  }catch(e){ report+=`<div style="color:var(--neg)">✗ READ failed: ${esc(e.message)}</div>`; }
+  try{
+    const t1=Date.now();
+    await csPush();
+    report+=`<div style="color:var(--pos)">✓ WRITE ok (${Date.now()-t1} ms) — your current data is now in the cloud</div>`;
+  }catch(e){ report+=`<div style="color:var(--neg)">✗ WRITE failed: ${esc(e.message)}</div>`; }
+  report+='<div class="muted" style="font-size:11px;margin-top:6px">If both show ✓, open the app on another device and sign in — it will load this data at startup.</div>';
+  say(report);
+  if(CURRENT==='cloud')setTimeout(()=>{const o=$('#csStatus');if(o)o.innerHTML=report;},50);
 }
 
 /* Cloud page section (prepended into renderCloud) */
 function csPanel(v){
   let last='';try{last=localStorage.getItem('elmatager_cs_lastsave')||'';}catch(e){}
+  let lastErr='';try{lastErr=localStorage.getItem('elmatager_cs_lasterr')||'';}catch(e){}
   const p=el('div','panel');
   p.style.borderTop='3px solid var(--accent)';
   p.innerHTML=`<div class="phd"><h3>☁ Instant Cloud Sync — recommended</h3>${csConfigured()?'<span class="st-tag st-approved" style="margin-left:auto">ACTIVE</span>':'<span class="st-tag st-draft" style="margin-left:auto">NOT SET</span>'}</div>
@@ -4836,8 +4887,10 @@ function csPanel(v){
       <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px">
         <button class="btn primary" id="csSaveBtn">Save to cloud</button>
         <button class="btn" id="csLoadBtn">Load from cloud</button>
+        <button class="btn" id="csTestBtn">Test connection</button>
         <label class="userpick" style="font-size:12.5px;color:var(--txt-soft);align-self:center"><input type="checkbox" id="csAuto" ${CS.auto?'checked':''} style="width:auto"> Auto-sync after changes</label>
       </div>
+      <div id="csStatus" style="margin-top:12px;font-size:12.5px;line-height:1.6;background:var(--canvas);border:1px solid var(--line);border-radius:8px;padding:10px 12px">${lastErr?('<div style="color:var(--neg)">Last sync error: '+esc(lastErr)+'</div>'):'Tap <b>Test connection</b> to check this device can reach the cloud.'}</div>
       <div class="hint" style="margin-top:8px">${last?('Last cloud save: '+new Date(last).toLocaleString()):'Not saved to cloud yet.'}</div>
       <div class="note" style="margin-top:14px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01M11 12h1v4h1"/></svg>
         <div><b>Setup (2 minutes, free):</b>
@@ -4854,6 +4907,7 @@ function csPanel(v){
   $('#csKey').onchange=e=>{csSet($('#csId').value,e.target.value);};
   $('#csSaveBtn').onclick=()=>{csSet($('#csId').value,$('#csKey').value);csSaveNow();};
   $('#csLoadBtn').onclick=()=>{csSet($('#csId').value,$('#csKey').value);csPullNow();};
+  $('#csTestBtn').onclick=()=>{csSet($('#csId').value,$('#csKey').value);csTest();};
   $('#csAuto').onchange=e=>{CS.auto=e.target.checked;try{localStorage.setItem('elmatager_cs_auto',CS.auto?'1':'0');}catch(x){}toast('Auto-sync '+(CS.auto?'enabled':'disabled'));};
 }
 
