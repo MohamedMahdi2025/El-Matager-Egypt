@@ -572,9 +572,9 @@ tr.click:hover{box-shadow:inset 3px 0 0 var(--accent)}
       <div class="sub">Use your El Matager account to continue.</div>
       <div class="login-err" id="loginErr"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg><span id="loginErrTxt"></span></div>
       <div class="field">
-        <label>Email address</label>
+        <label>Email or username</label>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>
-        <input type="text" id="loginEmail" autocomplete="username" placeholder="you@elmatager.com">
+        <input type="text" id="loginEmail" autocomplete="username" placeholder="email or username">
       </div>
       <div class="field">
         <label>Password</label>
@@ -3104,11 +3104,11 @@ function showLogin(){
 }
 function loginError(msg){const e=$('#loginErr');$('#loginErrTxt').textContent=msg;e.classList.add('show');}
 async function doLogin(){
-  const email=($('#loginEmail').value||'').trim().toLowerCase();
+  const id=($('#loginEmail').value||'').trim().toLowerCase();
   const pass=$('#loginPass').value||'';
-  if(!email||!pass){loginError('Enter your email and password.');return;}
-  const u=USERS.find(x=>(x.email||'').toLowerCase()===email);
-  if(!u||u.password!==pass){loginError('Incorrect email or password. Please try again.');return;}
+  if(!id||!pass){loginError('Enter your email/username and password.');return;}
+  const u=USERS.find(x=>(x.email||'').toLowerCase()===id || (x.name||'').toLowerCase()===id);
+  if(!u||u.password!==pass){loginError('Incorrect email/username or password. Please try again.');return;}
   if(u.active===false){loginError('This account is inactive. Contact an administrator.');return;}
   CURRENT_USER=u.id;AUTHED=true;
   await store.saveCfg();
