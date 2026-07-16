@@ -381,6 +381,93 @@ a.lnk:hover,.click:hover .lnk{text-decoration:underline}
 mark{background:#FCEFB4;color:inherit;padding:0 1px;border-radius:2px}
 .dim{opacity:.55}
 @media(max-width:820px){#app{grid-template-columns:1fr}.side{display:none}.search{width:180px}}
+/* ============================================================
+   MOTION LAYER — transitions, entrances, ripples, celebration
+   ============================================================ */
+@keyframes riseIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes popIn{0%{opacity:0;transform:scale(.9) translateY(10px)}60%{transform:scale(1.02)}100%{opacity:1;transform:none}}
+@keyframes barGrow{from{transform:scaleY(0)}to{transform:scaleY(1)}}
+@keyframes rippleGo{from{width:0;height:0;opacity:.40}to{width:220px;height:220px;opacity:0}}
+@keyframes sparkGo{0%{transform:translate(-50%,-50%) scale(.4);opacity:1}100%{transform:translate(-50%,-50%) scale(1.6);opacity:0}}
+@keyframes beamSweep{0%{left:-40%}100%{left:100%}}
+@keyframes checkPop{0%{transform:scale(0) rotate(-25deg);opacity:0}55%{transform:scale(1.15) rotate(0);opacity:1}100%{transform:scale(1)}}
+@keyframes ringPulse{0%{transform:scale(.6);opacity:.8}100%{transform:scale(2.4);opacity:0}}
+@keyframes floatUp{from{opacity:0;transform:translateY(18px) scale(.96)}to{opacity:1;transform:none}}
+@keyframes glowPulse{0%,100%{box-shadow:0 0 0 0 rgba(47,136,208,.0)}50%{box-shadow:0 0 0 4px rgba(47,136,208,.18)}}
+@keyframes badgeShine{0%{background-position:-120% 0}100%{background-position:220% 0}}
+
+.anim-rise{animation:riseIn .5s cubic-bezier(.2,.75,.3,1) both}
+.anim-pop{animation:popIn .5s cubic-bezier(.2,.8,.3,1) both}
+#view.swap{animation:fadeIn .28s ease both}
+
+/* stagger children of a rendered view */
+#view>*{animation:riseIn .5s cubic-bezier(.2,.75,.3,1) both}
+#view>*:nth-child(1){animation-delay:.02s}
+#view>*:nth-child(2){animation-delay:.07s}
+#view>*:nth-child(3){animation-delay:.12s}
+#view>*:nth-child(4){animation-delay:.17s}
+#view>*:nth-child(5){animation-delay:.22s}
+#view>*:nth-child(6){animation-delay:.27s}
+#view>*:nth-child(n+7){animation-delay:.30s}
+.kpis .kpi{animation:popIn .5s cubic-bezier(.2,.8,.3,1) both}
+.kpis .kpi:nth-child(1){animation-delay:.05s}
+.kpis .kpi:nth-child(2){animation-delay:.12s}
+.kpis .kpi:nth-child(3){animation-delay:.19s}
+.kpis .kpi:nth-child(4){animation-delay:.26s}
+.kpis .kpi:nth-child(5){animation-delay:.33s}
+
+/* charts grow in */
+.anim-bar{transform-box:fill-box;transform-origin:center bottom;animation:barGrow .65s cubic-bezier(.2,.8,.25,1) both}
+
+/* interactive micro-motion */
+.btn{transition:transform .12s ease, box-shadow .15s ease, filter .15s ease}
+.btn:hover{transform:translateY(-1px)}
+.btn:active{transform:translateY(0) scale(.97)}
+.kpi{transition:transform .18s cubic-bezier(.2,.8,.3,1), box-shadow .2s ease}
+.kpi:hover{transform:translateY(-3px);box-shadow:0 10px 26px rgba(16,30,43,.12)}
+.panel{transition:box-shadow .2s ease, transform .2s ease}
+.panel:hover{box-shadow:0 6px 22px rgba(16,30,43,.09)}
+tr.click{transition:background .12s ease, transform .08s ease}
+tr.click:hover{background:var(--accent-soft) !important}
+.mtab>button{transition:color .15s ease, background .15s ease}
+.subtabs button{transition:color .15s ease, border-color .2s ease}
+.lnk{transition:color .12s ease, letter-spacing .12s ease}
+.lnk:hover{letter-spacing:.3px}
+
+/* click ripple + sparkle (global) */
+.fx-ripple{position:fixed;border-radius:50%;pointer-events:none;transform:translate(-50%,-50%);
+  background:radial-gradient(circle, rgba(47,136,208,.55) 0%, rgba(47,136,208,.15) 45%, transparent 70%);
+  z-index:9998;animation:rippleGo .6s ease-out forwards}
+.fx-spark{position:fixed;pointer-events:none;border-radius:50%;z-index:9999;animation:sparkGo .55s ease-out forwards}
+
+/* navigation beam */
+#navbeam{position:fixed;top:0;left:-40%;width:40%;height:3px;z-index:9997;pointer-events:none;opacity:0;
+  background:linear-gradient(90deg,transparent,var(--accent),#7fd0ff,var(--accent),transparent)}
+#navbeam.go{opacity:1;animation:beamSweep .6s ease-in-out}
+
+/* confetti / celebration canvas */
+#fxLayer{position:fixed;inset:0;pointer-events:none;z-index:9990}
+
+/* welcome overlay */
+#welcome{position:fixed;inset:0;z-index:12000;display:grid;place-items:center;
+  background:radial-gradient(circle at 50% 38%, #22344a, #0d1c2b 75%);animation:fadeIn .4s both}
+#welcome.out{animation:fadeIn .5s reverse both;pointer-events:none}
+#welcome .wcard{text-align:center;color:#fff;position:relative;z-index:2}
+#welcome .wcheck{width:96px;height:96px;margin:0 auto 22px;border-radius:50%;
+  background:linear-gradient(150deg,#3a97e0,#0e4e80);display:grid;place-items:center;
+  box-shadow:0 14px 40px rgba(20,90,150,.55);animation:checkPop .7s cubic-bezier(.2,.9,.3,1.2) both;position:relative}
+#welcome .wcheck:before{content:"";position:absolute;inset:-8px;border-radius:50%;border:2px solid rgba(125,208,255,.6);animation:ringPulse 1s ease-out .2s both}
+#welcome .wcheck svg{width:48px;height:48px;stroke:#fff;stroke-width:3;fill:none}
+#welcome h1{font-size:30px;font-weight:700;letter-spacing:-.4px;margin:0;animation:floatUp .6s .15s both}
+#welcome p{font-size:15px;color:#a9c2d8;margin:8px 0 0;animation:floatUp .6s .3s both}
+#welcome .wbadge{display:inline-block;margin-top:18px;font-size:12px;font-weight:700;letter-spacing:.5px;
+  color:#cfe6f8;padding:6px 16px;border-radius:20px;border:1px solid rgba(255,255,255,.2);
+  background:linear-gradient(90deg,rgba(255,255,255,.05),rgba(125,208,255,.25),rgba(255,255,255,.05));
+  background-size:220% 100%;animation:floatUp .6s .45s both, badgeShine 2.2s linear .6s infinite}
+@media (prefers-reduced-motion: reduce){
+  #view>*,.kpis .kpi,.anim-bar,.anim-rise,.anim-pop{animation:none !important}
+}
 </style>
 
 <div id="login" class="hide">
@@ -505,7 +592,42 @@ function baseRow(r){
 }
 const BASE = DATA.rows.map(baseRow);
 
-/* posted entries persistence via artifact storage (fallback to memory) */
+/* ============================================================
+   DURABLE STORAGE ADAPTER
+   The Claude preview sandbox injects window.storage. When this file
+   is opened on its own (downloaded / hosted), that object doesn't
+   exist — so we back it with the browser's localStorage so that
+   every transaction, password change and setting PERSISTS across
+   reloads. Falls back to IndexedDB, then to in-memory as a last resort.
+   ============================================================ */
+(function installDurableStorage(){
+  const sandbox = window.storage && typeof window.storage.get === 'function' && !window.__forceLocal;
+  if (sandbox) { window.__storageMode='sandbox'; return; }        // keep the real one when present
+  const PFX = 'elmatager::';
+  // Try localStorage first
+  function lsOk(){ try{ const t=PFX+'__t'; localStorage.setItem(t,'1'); localStorage.removeItem(t); return true; }catch(e){ return false; } }
+  if (lsOk()){
+    window.__storageMode='localStorage';
+    window.storage = {
+      async get(k){ const v=localStorage.getItem(PFX+k); return v===null?null:{key:k,value:v}; },
+      async set(k,v){ localStorage.setItem(PFX+k, String(v)); return {key:k,value:String(v)}; },
+      async delete(k){ localStorage.removeItem(PFX+k); return {key:k,deleted:true}; },
+      async list(prefix){ const keys=[]; for(let i=0;i<localStorage.length;i++){ const kk=localStorage.key(i); if(kk&&kk.indexOf(PFX)===0){ const bare=kk.slice(PFX.length); if(!prefix||bare.indexOf(prefix)===0) keys.push(bare);} } return {keys}; }
+    };
+    return;
+  }
+  // Last resort: in-memory (no persistence, e.g. Safari file:// private mode)
+  window.__storageMode='memory';
+  const M={};
+  window.storage = {
+    async get(k){ return (k in M)?{key:k,value:M[k]}:null; },
+    async set(k,v){ M[k]=String(v); return {key:k,value:String(v)}; },
+    async delete(k){ delete M[k]; return {key:k,deleted:true}; },
+    async list(prefix){ return {keys:Object.keys(M).filter(x=>!prefix||x.indexOf(prefix)===0)}; }
+  };
+})();
+
+/* posted entries persistence via durable storage */
 const STORE_KEY='elmatager_posted_v1';
 const PERIOD_KEY='elmatager_periods_v1';
 const ASSET_KEY='elmatager_assets_v1';
@@ -733,7 +855,9 @@ const MODULES=[
   {id:'admin',label:'Administration',pages:[
     {id:'users',t:'Users & Approval Matrix',icon:'users'},
     {id:'approvals',t:'Approvals Queue',icon:'edit'},
-    {id:'periods',t:'Accounting Periods',icon:'scale'}]},
+    {id:'periods',t:'Accounting Periods',icon:'scale'},
+    {sep:1},
+    {id:'cloud',t:'Cloud Backup & Sync',icon:'bank'}]},
   {id:'search',label:'Search',pages:[
     {id:'search',t:'Search Everything',icon:'search'}]},
 ];
@@ -836,7 +960,7 @@ function render(){
     ap:renderAP,ar:renderAR,cashflow:renderCashFlow,depreciation:renderDepreciation,
     sales:renderSales,purchases:renderPurchases,procurement:renderProcurement,inventory:renderInventory,
     periods:renderPeriods,acquisitions:renderAcquisitions,proccycle:renderProcCycle,cycles:renderCycles,
-    users:renderUsers,approvals:renderApprovals,reports_hub:renderReportsHub,crm:renderCRM,hr:renderHR,mfg:renderMfg,psa:renderProjects,eam:renderMaint,qms:renderQuality,tms:renderFleet,fsm:renderFieldSvc,grc:renderGRC}[CURRENT]||renderDashboard)(v);
+    users:renderUsers,approvals:renderApprovals,reports_hub:renderReportsHub,crm:renderCRM,hr:renderHR,mfg:renderMfg,psa:renderProjects,eam:renderMaint,qms:renderQuality,tms:renderFleet,fsm:renderFieldSvc,grc:renderGRC,cloud:renderCloud}[CURRENT]||renderDashboard)(v);
   updateBalChip();
 }
 function updateBalChip(){
@@ -2890,7 +3014,7 @@ function showLogin(){
   $('#login').classList.remove('hide');
   $('#app').style.display='none';
   const d=$('#loginDemo');
-  if(d)d.innerHTML=`<b>Administrator credentials</b><br>Email: <code>admin@elmatager.com</code><br>Password: <code>ElMatager@2025</code>`;
+  if(d){d.innerHTML='';d.style.display='none';}
   $('#loginErr').classList.remove('show');
   $('#loginPass').value='';
   setTimeout(()=>$('#loginEmail').focus(),50);
@@ -4194,6 +4318,309 @@ function entSeed(){
   for(let i=0;i<14;i++){const st=ost[i%ost.length];ENT.crm.opps.push({id:eid('op'),name:['Annual Supply','Store Fitout','POS Bundle','Cold Chain','Fleet Deal','Bulk Order','Franchise Kit','Service Plan'][i%8]+' #'+(i+1),customer:['Nile Foods','Delta Retail','Cairo Mart','Giza Wholesale'][i%4],stage:st,amount:80000+i*45000,prob:st==='WON'?100:st==='LOST'?0:[20,40,60,80][i%4],owner:['A. Sales','B. Sales'][i%2],close:addDaysISO(T,(i%6)*20-30)});}
   ENT.seeded=true;
 }
+
+/* ============================================================
+   MOTION / VISUAL EFFECTS LAYER  ✨
+   confetti · click ripples · nav beam · count-up KPIs ·
+   chart grow-in · login welcome overlay
+   ============================================================ */
+const FX={ctx:null,parts:[],raf:0};
+function fxConfetti(x,y,n,power){
+  const c=document.getElementById('fxLayer'); if(!c)return;
+  c.width=innerWidth; c.height=innerHeight; FX.ctx=c.getContext('2d');
+  const cols=['#2f88d0','#7fd0ff','#1E7A46','#F0B45D','#C0392B','#8e6fd0','#ffffff','#39d98a'];
+  power=power||10;
+  for(let i=0;i<n;i++){const a=Math.random()*Math.PI*2, sp=power*(0.35+Math.random());
+    FX.parts.push({x,y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp-power*0.7,g:0.30,life:1,drag:0.985,
+      size:4+Math.random()*6,rot:Math.random()*6,vr:(Math.random()-.5)*0.45,col:cols[i%cols.length],shape:Math.random()<.5?'r':'c'});}
+  if(!FX.raf)FX.raf=requestAnimationFrame(fxStep);
+}
+function fxStep(){const ctx=FX.ctx; if(!ctx){FX.raf=0;return;}
+  ctx.clearRect(0,0,ctx.canvas.width,ctx.canvas.height);
+  FX.parts=FX.parts.filter(p=>p.life>0);
+  FX.parts.forEach(p=>{p.vx*=p.drag;p.vy=p.vy*p.drag+p.g;p.x+=p.vx;p.y+=p.vy;p.rot+=p.vr;p.life-=0.012;
+    ctx.save();ctx.globalAlpha=Math.max(0,p.life);ctx.translate(p.x,p.y);ctx.rotate(p.rot);ctx.fillStyle=p.col;
+    if(p.shape==='r')ctx.fillRect(-p.size/2,-p.size/2,p.size,p.size*0.62);
+    else{ctx.beginPath();ctx.arc(0,0,p.size/2,0,6.3);ctx.fill();}
+    ctx.restore();});
+  if(FX.parts.length)FX.raf=requestAnimationFrame(fxStep);
+  else{ctx.clearRect(0,0,ctx.canvas.width,ctx.canvas.height);FX.raf=0;}
+}
+function celebrate(){
+  fxConfetti(innerWidth*0.5, innerHeight*0.62, 90, 12);
+  setTimeout(()=>fxConfetti(innerWidth*0.22, innerHeight*0.55, 48, 10), 110);
+  setTimeout(()=>fxConfetti(innerWidth*0.78, innerHeight*0.55, 48, 10), 210);
+}
+/* click ripple + sparks — fires on every pointer press */
+function fxRipple(x,y){
+  const r=document.createElement('div');r.className='fx-ripple';r.style.left=x+'px';r.style.top=y+'px';
+  document.body.appendChild(r);setTimeout(()=>r.remove(),620);
+  const sc=['#2f88d0','#7fd0ff','#F0B45D','#1E7A46','#8e6fd0'];
+  for(let i=0;i<5;i++){const s=document.createElement('div');s.className='fx-spark';
+    const ang=Math.random()*6.28,d=8+Math.random()*24;
+    s.style.left=(x+Math.cos(ang)*d)+'px';s.style.top=(y+Math.sin(ang)*d)+'px';
+    const sz=4+Math.random()*5;s.style.width=sz+'px';s.style.height=sz+'px';s.style.background=sc[i%sc.length];
+    document.body.appendChild(s);setTimeout(()=>s.remove(),560);}
+}
+function navBeam(){const b=document.getElementById('navbeam');if(!b)return;b.classList.remove('go');void b.offsetWidth;b.classList.add('go');setTimeout(()=>b.classList.remove('go'),640);}
+
+/* animate KPI numbers + grow chart bars after each render */
+function fxCountUp(elm){
+  if(elm.__cu)return; const txt=elm.textContent;
+  const m=txt.match(/-?[\d,]+(\.\d+)?/); if(!m)return;
+  const raw=m[0], target=parseFloat(raw.replace(/,/g,'')); if(!isFinite(target)||Math.abs(target)<1)return;
+  const dec=(raw.split('.')[1]||'').length, hasComma=raw.indexOf(',')>=0;
+  const pre=txt.slice(0,m.index), post=txt.slice(m.index+raw.length);
+  const dur=650, t0=performance.now(); elm.__cu=1;
+  function nfmt(v){let s=dec?v.toFixed(dec):Math.round(v).toString();
+    if(hasComma)s=(+v).toLocaleString('en-US',{minimumFractionDigits:dec,maximumFractionDigits:dec});return s;}
+  function step(t){const p=Math.min(1,(t-t0)/dur),e=1-Math.pow(1-p,3);
+    elm.textContent=pre+nfmt(target*e)+post; if(p<1)requestAnimationFrame(step); else {elm.textContent=pre+nfmt(target)+post; elm.__cu=0;}}
+  requestAnimationFrame(step);
+}
+function animateView(){
+  const v=document.getElementById('view'); if(!v)return;
+  v.querySelectorAll('.panel svg rect, .chartgrid svg rect').forEach((r,i)=>{
+    const h=parseFloat(r.getAttribute('height')||'0');
+    if(h>2){r.style.animationDelay=(i*16)+'ms';r.classList.remove('anim-bar');void r.offsetWidth;r.classList.add('anim-bar');}});
+  v.querySelectorAll('.kpi .vl').forEach(fxCountUp);
+}
+
+/* login welcome overlay */
+function showWelcome(name){
+  const old=document.getElementById('welcome'); if(old)old.remove();
+  const first=(String(name||'').trim().split(/\s+/)[0])||'there';
+  const w=document.createElement('div'); w.id='welcome';
+  w.innerHTML=`<div class="wcard">
+    <div class="wcheck"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></div>
+    <h1>Welcome back, ${esc(first)}</h1>
+    <p>El Matager ERP — your workspace is ready.</p>
+    <div class="wbadge">SIGNED IN SECURELY</div>
+  </div>`;
+  document.body.appendChild(w);
+  setTimeout(()=>{fxConfetti(innerWidth*0.5, innerHeight*0.40, 130, 13);
+    setTimeout(()=>fxConfetti(innerWidth*0.28, innerHeight*0.5, 60, 11),140);
+    setTimeout(()=>fxConfetti(innerWidth*0.72, innerHeight*0.5, 60, 11),260);},220);
+  setTimeout(()=>{w.classList.add('out');setTimeout(()=>w.remove(),480);},2200);
+}
+
+function installMotion(){
+  if(!document.getElementById('fxLayer')){
+    const c=document.createElement('canvas');c.id='fxLayer';c.width=innerWidth;c.height=innerHeight;document.body.appendChild(c);
+    const b=document.createElement('div');b.id='navbeam';document.body.appendChild(b);
+    addEventListener('resize',()=>{c.width=innerWidth;c.height=innerHeight;});
+    document.addEventListener('pointerdown',e=>{ if(e.target&&e.target.closest&&e.target.closest('#welcome'))return; fxRipple(e.clientX,e.clientY); },true);
+  }
+}
+
+/* ---- patch existing functions to add motion (non-invasive) ---- */
+(function patchMotion(){
+  if(typeof render==='function'){const _r=render; render=function(){const o=_r.apply(this,arguments); try{animateView();}catch(e){} return o;};}
+  if(typeof go==='function'){const _g=go; go=function(){try{navBeam();}catch(e){} return _g.apply(this,arguments);};}
+  if(typeof toast==='function'){const _t=toast; toast=function(msg,bad){_t(msg,bad);
+    try{if(!bad&&/post|creat|sav|approv|paid|welcome|deprecia|dispos|generat|loaded|complete|calculat|updated|issued|received|deleted|removed/i.test(String(msg)))celebrate();}catch(e){}};}
+  if(typeof showLogin==='function'){const _s=showLogin; showLogin=function(){window.__welcome=false; return _s.apply(this,arguments);};}
+  if(typeof enterApp==='function'){const _e=enterApp; enterApp=function(){const o=_e.apply(this,arguments);
+    try{if(window.__welcome){window.__welcome=false; const nm=(typeof currentUser==='function'&&currentUser())?currentUser().name:''; showWelcome(nm);}}catch(e){} return o;};}
+  if(typeof doLogin==='function'){const _d=doLogin; doLogin=function(){window.__welcome=true; return _d.apply(this,arguments);};}
+})();
+installMotion();
+
+/* ============================================================
+   CLOUD BACKUP & GOOGLE DRIVE SYNC
+   - Export / Import a JSON backup (works anywhere, no setup)
+   - Google Drive sync (needs the user's OAuth Client ID + https host)
+   ============================================================ */
+const BACKUP_VERSION=1;
+function collectBackup(){
+  return {app:'ElMatager-ERP',version:BACKUP_VERSION,savedAt:new Date().toISOString(),
+    data:{posted:POSTED,periods:PERIOD_STATUS,assets:ASSETS,seq:SEQ,proc:PROC,users:USERS,
+      cfg:{currentUser:CURRENT_USER,approvalsOn:APPROVALS_ON},inv:INV,ent:ENT}};
+}
+async function applyBackup(obj){
+  const d=(obj&&obj.data)?obj.data:obj;
+  if(!d||typeof d!=='object')throw new Error('Not a valid El Matager backup file');
+  if(Array.isArray(d.posted))POSTED=d.posted;
+  if(d.periods)PERIOD_STATUS=d.periods;
+  if(Array.isArray(d.assets))ASSETS=d.assets;
+  if(d.seq)SEQ=Object.assign(SEQ,d.seq);
+  if(Array.isArray(d.proc))PROC=d.proc;
+  if(Array.isArray(d.users)&&d.users.length)USERS=d.users;
+  if(d.cfg){if(d.cfg.currentUser)CURRENT_USER=d.cfg.currentUser;APPROVALS_ON=d.cfg.approvalsOn!==false;}
+  if(d.inv)INV=Object.assign({items:[],warehouses:[],moves:[]},d.inv);
+  if(d.ent)ENT=Object.assign(blankEnt(),d.ent);
+  if(typeof migrateUsers==='function')migrateUsers();
+  await store.save();await store.savePeriods();await store.saveAssets();
+  await store.saveProc();await store.saveUsers();await store.saveInv();await saveEnt();
+  rebuild();
+}
+function exportBackup(){
+  const blob=new Blob([JSON.stringify(collectBackup(),null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download='ElMatager-ERP-backup-'+todayISO()+'.json';document.body.appendChild(a);a.click();
+  setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},1200);
+  try{localStorage.setItem('elmatager_lastexport',new Date().toISOString());}catch(e){}
+  toast('Backup file downloaded');
+}
+function importBackupFile(file){
+  const rd=new FileReader();
+  rd.onload=async()=>{try{const obj=JSON.parse(rd.result);await applyBackup(obj);render();toast('Backup restored — all modules updated');}
+    catch(e){toast('Could not read backup: '+e.message,true);}};
+  rd.onerror=()=>toast('Could not read the file.',true);
+  rd.readAsText(file);
+}
+
+/* ---------- Google Drive (appDataFolder) ---------- */
+const GD={clientId:'',token:null,tokenClient:null,fileId:null,FILE:'elmatager_erp_data.json',auto:false};
+(function gdInit(){try{GD.clientId=localStorage.getItem('elmatager_gdrive_clientid')||'';GD.auto=localStorage.getItem('elmatager_gdrive_auto')==='1';}catch(e){}})();
+function gdSetClientId(id){GD.clientId=(id||'').trim();try{localStorage.setItem('elmatager_gdrive_clientid',GD.clientId);}catch(e){}}
+function gdLoadGIS(cb){
+  if(window.google&&google.accounts&&google.accounts.oauth2){cb();return;}
+  const existing=document.getElementById('gis-script');
+  if(existing){const t=setInterval(()=>{if(window.google&&google.accounts&&google.accounts.oauth2){clearInterval(t);cb();}},150);setTimeout(()=>clearInterval(t),8000);return;}
+  const s=document.createElement('script');s.id='gis-script';s.src='https://accounts.google.com/gsi/client';s.async=true;s.defer=true;
+  s.onload=()=>cb();
+  s.onerror=()=>toast('Could not load Google sign-in. You must be online and the app must be hosted on https (not a local file).',true);
+  document.head.appendChild(s);
+}
+function gdConnect(then){
+  if(!GD.clientId){toast('Enter your Google OAuth Client ID first (see the setup steps).',true);return;}
+  gdLoadGIS(()=>{try{
+    if(!GD.tokenClient || GD._cid!==GD.clientId){
+      GD._cid=GD.clientId;
+      GD.tokenClient=google.accounts.oauth2.initTokenClient({
+        client_id:GD.clientId,scope:'https://www.googleapis.com/auth/drive.appdata',
+        callback:(resp)=>{ if(resp&&resp.access_token){GD.token=resp.access_token;toast('Google Drive connected');if(then)then();if(CURRENT==='cloud')render();}
+          else{toast('Google authorization was cancelled or failed.',true);} },
+        error_callback:(err)=>{ toast('Google sign-in blocked: '+((err&&err.type)||'check popups / authorized origin'),true); }
+      });
+    }
+    GD.tokenClient.requestAccessToken({prompt:GD.token?'':'consent'});
+  }catch(e){toast('Google sign-in error: '+e.message,true);}});
+}
+async function gdFindFile(){
+  const q=encodeURIComponent("name='"+GD.FILE+"'");
+  const r=await fetch('https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&fields=files(id,name,modifiedTime)&q='+q,{headers:{Authorization:'Bearer '+GD.token}});
+  if(r.status===401){GD.token=null;throw new Error('401');}
+  const j=await r.json();
+  if(j.files&&j.files.length){GD.fileId=j.files[0].id;return j.files[0];}
+  GD.fileId=null;return null;
+}
+async function gdSave(){
+  if(!GD.token){gdConnect(()=>gdSave());return;}
+  try{
+    await gdFindFile();
+    const body=JSON.stringify(collectBackup());
+    const boundary='elmbnd'+Date.now();
+    const meta=GD.fileId?{name:GD.FILE}:{name:GD.FILE,parents:['appDataFolder']};
+    const multipart='--'+boundary+'\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n'+JSON.stringify(meta)+
+      '\r\n--'+boundary+'\r\nContent-Type: application/json\r\n\r\n'+body+'\r\n--'+boundary+'--';
+    const url=GD.fileId?('https://www.googleapis.com/upload/drive/v3/files/'+GD.fileId+'?uploadType=multipart')
+                       :'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart';
+    const r=await fetch(url,{method:GD.fileId?'PATCH':'POST',
+      headers:{Authorization:'Bearer '+GD.token,'Content-Type':'multipart/related; boundary='+boundary},body:multipart});
+    if(r.status===401){GD.token=null;gdConnect(()=>gdSave());return;}
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    const j=await r.json();GD.fileId=j.id||GD.fileId;
+    try{localStorage.setItem('elmatager_gdrive_lastsave',new Date().toISOString());}catch(e){}
+    toast('Saved to Google Drive');if(CURRENT==='cloud')render();
+  }catch(e){toast('Drive save failed: '+e.message,true);}
+}
+async function gdLoad(){
+  if(!GD.token){gdConnect(()=>gdLoad());return;}
+  try{
+    const f=await gdFindFile();
+    if(!f){toast('No backup found in your Drive yet — use “Save to Drive” first.',true);return;}
+    const r=await fetch('https://www.googleapis.com/drive/v3/files/'+GD.fileId+'?alt=media',{headers:{Authorization:'Bearer '+GD.token}});
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    const obj=await r.json();await applyBackup(obj);
+    toast('Loaded from Google Drive — data synced');render();
+  }catch(e){ if(String(e.message)==='401'){gdConnect(()=>gdLoad());return;} toast('Drive load failed: '+e.message,true); }
+}
+let _gdTimer=null;
+function gdScheduleAuto(){
+  if(!GD.auto||!GD.token)return;
+  clearTimeout(_gdTimer);_gdTimer=setTimeout(()=>{gdSave();},4000);
+}
+
+/* ---------- Cloud page ---------- */
+function fmtTime(iso){if(!iso)return 'never';try{return new Date(iso).toLocaleString();}catch(e){return iso;}}
+function renderCloud(v){
+  const head=el('div','viewhead');
+  head.innerHTML=`<div><h2>Cloud Backup &amp; Sync</h2><div class="desc">Keep your data safe and reach it from any device. Use a one-file backup (no setup) or connect Google Drive for cloud sync.</div></div>`;
+  v.appendChild(head);
+
+  let lastExport='',lastDrive='';try{lastExport=localStorage.getItem('elmatager_lastexport')||'';lastDrive=localStorage.getItem('elmatager_gdrive_lastsave')||'';}catch(e){}
+  const mode=window.__storageMode||'localStorage';
+  v.appendChild(kpisRow([
+    kpiTxt('a','This Device',mode==='localStorage'?'Saved locally':(mode==='sandbox'?'Preview storage':'Memory only'),mode==='memory'?'Not persisting — use backup':'Auto-saves on this device'),
+    kpiTxt('e','Last File Backup',lastExport?'✓':'—',fmtTime(lastExport)),
+    kpiTxt('r','Last Drive Sync',(lastDrive&&GD.clientId)?'✓':'—',GD.clientId?fmtTime(lastDrive):'Not configured')]));
+
+  // Section 1 — File backup
+  const p1=el('div','panel');
+  p1.innerHTML=`<div class="phd"><h3>Option A · Backup File (works anywhere, no setup)</h3></div>
+    <div style="padding:16px 18px;font-size:13.5px;line-height:1.7;color:var(--txt-soft)">
+      Download a single file with <b>all</b> your data (transactions, users, inventory, every module). Save it to Google Drive, email, or a USB — then open the app on any other device and <b>Restore</b> it.
+      <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap">
+        <button class="btn primary" id="cbExport"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg> Download backup</button>
+        <button class="btn" id="cbImport"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9V5a2 2 0 0 1 2-2h4M7 14l5-5 5 5M12 9v12"/></svg> Restore from file</button>
+        <input type="file" id="cbFile" accept="application/json,.json" style="display:none">
+      </div>
+    </div>`;
+  v.appendChild(p1);
+
+  // Section 2 — Google Drive
+  const p2=el('div','panel');
+  p2.innerHTML=`<div class="phd"><h3>Option B · Google Drive Sync</h3>${GD.token?'<span class="st-tag st-approved" style="margin-left:auto">CONNECTED</span>':'<span class="st-tag st-draft" style="margin-left:auto">NOT CONNECTED</span>'}</div>
+    <div style="padding:16px 18px">
+      <label class="fld" style="max-width:none;margin-bottom:10px">Google OAuth Client ID
+        <input class="f" id="cbClientId" placeholder="xxxxxxxx.apps.googleusercontent.com" value="${esc(GD.clientId)}" style="max-width:none"></label>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:6px">
+        <button class="btn" id="cbConnect">${GD.token?'Reconnect':'Connect Google Drive'}</button>
+        <button class="btn primary" id="cbDriveSave"${GD.clientId?'':' disabled'}>Save to Drive</button>
+        <button class="btn" id="cbDriveLoad"${GD.clientId?'':' disabled'}>Load from Drive</button>
+        <label class="userpick" style="font-size:12.5px;color:var(--txt-soft);align-self:center"><input type="checkbox" id="cbAuto" ${GD.auto?'checked':''} style="width:auto"> Auto-save to Drive after changes</label>
+      </div>
+      <div class="hint">Data is stored privately in your Drive's hidden app folder as <code>${GD.FILE}</code> (only this app can see it). Access tokens last about an hour; reconnect if a sync fails.</div>
+    </div>`;
+  v.appendChild(p2);
+
+  // Setup steps
+  const p3=el('div','panel');
+  p3.innerHTML=`<div class="phd"><h3>One-time Google setup (≈5 minutes)</h3></div>
+    <div style="padding:16px 18px;font-size:13px;line-height:1.85;color:var(--txt-soft)">
+      <div class="note" style="margin:0 0 14px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01M11 12h1v4h1"/></svg>
+        <div>Google only allows Drive access from an <b>https website you register</b> — not from a file opened directly. So first host this file (free): e.g. drop it into <b>Netlify Drop</b> (app.netlify.com/drop) or a <b>GitHub Pages</b> repo, then use that https link.</div></div>
+      <b>Then create your Client ID:</b>
+      <ol style="margin:8px 0 0 18px;padding:0">
+        <li>Go to <b>console.cloud.google.com</b> → create a project.</li>
+        <li><b>APIs &amp; Services → Library</b> → enable <b>Google Drive API</b>.</li>
+        <li><b>OAuth consent screen</b> → External → add yourself as a Test user.</li>
+        <li><b>Credentials → Create Credentials → OAuth client ID → Web application</b>.</li>
+        <li>Under <b>Authorized JavaScript origins</b>, add your hosting URL (e.g. <code>https://your-site.netlify.app</code>).</li>
+        <li>Copy the <b>Client ID</b> and paste it in the box above, then click <b>Connect Google Drive</b>.</li>
+      </ol>
+      <div style="margin-top:10px">Once connected: <b>Save to Drive</b> on one device, then <b>Load from Drive</b> on any other device to sync.</div>
+    </div>`;
+  v.appendChild(p3);
+
+  // wire
+  $('#cbExport').onclick=exportBackup;
+  $('#cbImport').onclick=()=>$('#cbFile').click();
+  $('#cbFile').onchange=e=>{if(e.target.files&&e.target.files[0])importBackupFile(e.target.files[0]);};
+  $('#cbClientId').onchange=e=>{gdSetClientId(e.target.value);render();};
+  $('#cbConnect').onclick=()=>{gdSetClientId($('#cbClientId').value);gdConnect();};
+  $('#cbDriveSave').onclick=()=>{gdSetClientId($('#cbClientId').value);gdSave();};
+  $('#cbDriveLoad').onclick=()=>{gdSetClientId($('#cbClientId').value);gdLoad();};
+  $('#cbAuto').onchange=e=>{GD.auto=e.target.checked;try{localStorage.setItem('elmatager_gdrive_auto',GD.auto?'1':'0');}catch(x){}toast('Auto-save to Drive '+(GD.auto?'enabled':'disabled'));};
+}
+
+/* auto-save to Drive after any persisted change (debounced) */
+(function hookAutoSync(){
+  try{Object.keys(store).forEach(k=>{ if(k.indexOf('save')===0 && typeof store[k]==='function'){ const orig=store[k].bind(store); store[k]=async function(){ const r=await orig.apply(null,arguments); gdScheduleAuto(); return r; }; } });}catch(e){}
+  if(typeof saveEnt==='function'){ const _se=saveEnt; saveEnt=async function(){ const r=await _se.apply(this,arguments); gdScheduleAuto(); return r; }; }
+})();
 
 (async function boot(){
   const ent=DATA.meta.entity.replace(/^El Matager\s*/i,'').replace(/[()]/g,'').trim()||DATA.meta.entity;
