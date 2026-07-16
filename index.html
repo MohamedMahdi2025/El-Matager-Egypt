@@ -704,6 +704,24 @@ const MODULES=[
     {id:'procurement',t:'Vendor Spend & Sourcing',icon:'users'}]},
   {id:'inventory',label:'Inventory',pages:[
     {id:'inventory',t:'Inventory',icon:'asset'}]},
+  {id:'crm',label:'CRM',pages:[
+    {id:'crm',t:'CRM & Pipeline',icon:'users'}]},
+  {id:'hr',label:'Human Resources',pages:[
+    {id:'hr',t:'HR & Payroll',icon:'users'}]},
+  {id:'mfg',label:'Manufacturing',pages:[
+    {id:'mfg',t:'Production',icon:'grid'}]},
+  {id:'psa',label:'Projects',pages:[
+    {id:'psa',t:'Project Management',icon:'layers'}]},
+  {id:'eam',label:'Maintenance',pages:[
+    {id:'eam',t:'Asset Maintenance',icon:'asset'}]},
+  {id:'qms',label:'Quality',pages:[
+    {id:'qms',t:'Quality Management',icon:'scale'}]},
+  {id:'tms',label:'Fleet',pages:[
+    {id:'tms',t:'Fleet & Logistics',icon:'bank'}]},
+  {id:'fsm',label:'Field Service',pages:[
+    {id:'fsm',t:'Field Service',icon:'edit'}]},
+  {id:'grc',label:'Risk & Compliance',pages:[
+    {id:'grc',t:'Governance, Risk & Compliance',icon:'scale'}]},
   {id:'reports',label:'Reports',pages:[
     {id:'reports_hub',t:'Reports & Inquiries',icon:'list'},
     {id:'cycles',t:'Accounting Cycles (SOP)',icon:'layers'},
@@ -818,7 +836,7 @@ function render(){
     ap:renderAP,ar:renderAR,cashflow:renderCashFlow,depreciation:renderDepreciation,
     sales:renderSales,purchases:renderPurchases,procurement:renderProcurement,inventory:renderInventory,
     periods:renderPeriods,acquisitions:renderAcquisitions,proccycle:renderProcCycle,cycles:renderCycles,
-    users:renderUsers,approvals:renderApprovals,reports_hub:renderReportsHub}[CURRENT]||renderDashboard)(v);
+    users:renderUsers,approvals:renderApprovals,reports_hub:renderReportsHub,crm:renderCRM,hr:renderHR,mfg:renderMfg,psa:renderProjects,eam:renderMaint,qms:renderQuality,tms:renderFleet,fsm:renderFieldSvc,grc:renderGRC}[CURRENT]||renderDashboard)(v);
   updateBalChip();
 }
 function updateBalChip(){
@@ -3387,10 +3405,801 @@ function renderCycles(v){
   $$('#view [data-go]').forEach(b=>b.onclick=()=>{const t=b.dataset.go;if(t==='_je'){openJE();}else go(t);});
 }
 
+/* ============================================================
+   ENTERPRISE OPERATIONAL MODULES
+   HR/Payroll · Manufacturing · Projects · Maintenance ·
+   Quality · Fleet · Field Service · GRC · CRM
+   (sub-ledgers persisted in window.storage; seedable)
+   ============================================================ */
+const ENT_KEY='elmatager_ent_v1';
+let ENT=null; const ENT_TAB={};
+function blankEnt(){return {
+  hr:{employees:[],leave:[],runs:[]},
+  mfg:{workcenters:[],boms:[],orders:[]},
+  psa:{projects:[],tasks:[],timesheets:[]},
+  eam:{assets:[],workorders:[]},
+  qms:{inspections:[],ncrs:[],capas:[]},
+  tms:{vehicles:[],trips:[],fuel:[]},
+  fsm:{contracts:[],wos:[]},
+  grc:{risks:[],policies:[],findings:[]},
+  crm:{leads:[],opps:[]},
+  seeded:false };}
+async function loadEnt(){try{const r=await window.storage.get(ENT_KEY);ENT=r&&r.value?Object.assign(blankEnt(),JSON.parse(r.value)):blankEnt();}catch(e){ENT=blankEnt();}}
+async function saveEnt(){try{await window.storage.set(ENT_KEY,JSON.stringify(ENT));}catch(e){}}
+function eid(p){return p+'_'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
+
+/* ---- shared UI helpers ---- */
+function kpiTxt(cls,label,val,sub){return `<div class="kpi ${cls}"><span class="bar"></span><div class="lb">${label}</div><div class="vl">${val}</div><div class="sub">${esc(sub||'')}</div></div>`;}
+function kpisRow(arr){const d=el('div','kpis');d.innerHTML=arr.join('');return d;}
+function panelTable(title,meta,cols,rows,empty){
+  const p=el('div','panel');
+  p.innerHTML=`<div class="phd"><h3>${title}</h3>${meta?`<div class="meta">${meta}</div>`:''}</div>`;
+  if(!rows||!rows.length){p.appendChild(el('div','empty','<div>'+(empty||'No records yet.')+'</div>'));return p;}
+  const t=el('table');
+  t.innerHTML=`<thead><tr>${cols.map(c=>`<th class="${c.r?'r':''}">${c.h}</th>`).join('')}</tr></thead>`;
+  const tb=el('tbody');
+  rows.forEach(row=>{tb.innerHTML+=`<tr>${cols.map(c=>`<td class="${c.r?'r mono':''}">${c.cell(row)}</td>`).join('')}</tr>`;});
+  t.appendChild(tb);p.appendChild(t);return p;
+}
+function stTag(status){const s=String(status||'').toLowerCase();
+  const cls=/approv|active|done|closed|paid|pass|complete|operational|delivered|resolved|won|effective/.test(s)?'st-approved'
+    :/pending|progress|hold|submit|open|planned|investigat|assigned|traveling|shortlist|partial/.test(s)?'st-pending'
+    :/reject|fail|overdue|cancel|breach|lost|critical|ineffective|scrap|disposed/.test(s)?'st-rejected':'st-draft';
+  return `<span class="st-tag ${cls}">${esc(String(status).toUpperCase())}</span>`;}
+function chartCard(title,meta,inner,legend){return chartPanel(title,meta,inner,legend);}
+function entWorkspace(v,cfg){
+  const head=el('div','viewhead');
+  head.innerHTML=`<div><h2>${cfg.title}</h2><div class="desc">${cfg.desc}</div></div>`+(cfg.actionsHtml?`<div class="tools">${cfg.actionsHtml}</div>`:'');
+  v.appendChild(head);
+  if(!ENT_TAB[cfg.key])ENT_TAB[cfg.key]=cfg.tabs[0].id;
+  v.appendChild(subTabBar(cfg.tabs.map(t=>({id:t.id,label:t.label})),ENT_TAB[cfg.key],id=>{ENT_TAB[cfg.key]=id;render();}));
+  const c=el('div');c.id='entBody';v.appendChild(c);
+  if(cfg.wire)cfg.wire();
+  (cfg.tabs.find(t=>t.id===ENT_TAB[cfg.key])||cfg.tabs[0]).fn(c);
+}
+function seedBar(c){
+  if(ENT.seeded)return;
+  c.appendChild(noteBox('Operational modules start empty (a General Ledger holds no HR, production, maintenance, quality, fleet or CRM records). Load a sample dataset to populate every module with realistic data and see all reports working.'));
+  const d=el('div');d.style.margin='0 0 18px';
+  d.innerHTML='<button class="btn primary" id="entSeed"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg> Load sample data (all modules)</button>';
+  c.appendChild(d);
+  $('#entSeed').onclick=async()=>{entSeed();await saveEnt();render();toast('Sample data loaded across all operational modules');};
+}
+function daysBetweenISO(a,b){return Math.round((Date.parse(b)-Date.parse(a))/86400000);}
+function addDaysISO(iso,n){const d=new Date(iso);d.setDate(d.getDate()+n);return d.toISOString().slice(0,10);}
+
+/* =========================================================
+   1) CRM & SALES PIPELINE
+   ========================================================= */
+const CRM_STAGES=['PROSPECTING','QUALIFICATION','PROPOSAL','NEGOTIATION','WON','LOST'];
+function renderCRM(v){
+  entWorkspace(v,{title:'CRM & Sales Pipeline',key:'crm',
+    desc:'Leads, opportunities, weighted pipeline and win-rate analytics.',
+    actionsHtml:'<button class="btn sm primary" id="crmAddOpp">+ Opportunity</button>',
+    wire:()=>{const b=$('#crmAddOpp');if(b)b.onclick=()=>crmOppModal();},
+    tabs:[
+      {id:'pipe',label:'Pipeline',fn:crmPipe},
+      {id:'opps',label:'Opportunities',fn:crmOpps},
+      {id:'leads',label:'Leads',fn:crmLeads},
+      {id:'rep',label:'Reports',fn:crmReports}]});
+}
+function crmPipe(c){seedBar(c);const opps=ENT.crm.opps;
+  const open=opps.filter(o=>!['WON','LOST'].includes(o.stage));
+  const pipe=open.reduce((s,o)=>s+o.amount,0), weighted=open.reduce((s,o)=>s+o.amount*o.prob/100,0);
+  const won=opps.filter(o=>o.stage==='WON'); const closed=opps.filter(o=>['WON','LOST'].includes(o.stage));
+  const winRate=closed.length?100*won.length/closed.length:0;
+  c.appendChild(kpisRow([
+    kpi('a','Open Pipeline',pipe,open.length+' open deals'),
+    kpi('e','Weighted Pipeline',weighted,'Probability-adjusted'),
+    kpi('r','Won (value)',won.reduce((s,o)=>s+o.amount,0),won.length+' deals won'),
+    kpiTxt('n','Win Rate',winRate.toFixed(0)+'%','Won ÷ closed')]));
+  const byStage=CRM_STAGES.slice(0,4).map(st=>open.filter(o=>o.stage===st).reduce((s,o)=>s+o.amount,0));
+  const g=el('div','chartgrid');
+  g.appendChild(chartCard('Pipeline by Stage',CUR,chartBars(CRM_STAGES.slice(0,4),[{name:'Value',color:'#1668A8',values:byStage}],{cw:110,maxBw:60})));
+  const owners={};open.forEach(o=>owners[o.owner||'Unassigned']=(owners[o.owner||'Unassigned']||0)+o.amount);
+  const donut=Object.entries(owners).map(([k,v2],i)=>({name:k,value:v2,color:PALS[i%PALS.length]}));
+  const dp=el('div','panel');dp.innerHTML=`<div class="phd"><h3>Pipeline by Owner</h3></div><div class="donutwrap">${chartDonut(donut,160)}${donutLegend(donut)}</div>`;
+  g.appendChild(dp);c.appendChild(g);
+}
+function crmOpps(c){
+  const rows=ENT.crm.opps.slice().sort((a,b)=>b.amount-a.amount);
+  c.appendChild(panelTable('Opportunities',rows.length+' deals',[
+    {h:'Opportunity',cell:o=>esc(o.name)},{h:'Customer',cell:o=>esc(o.customer||'—')},
+    {h:'Stage',cell:o=>stTag(o.stage)},{h:'Amount',r:1,cell:o=>fmt(o.amount)},
+    {h:'Prob %',r:1,cell:o=>o.prob+'%'},{h:'Weighted',r:1,cell:o=>fmt(o.amount*o.prob/100)},
+    {h:'Owner',cell:o=>esc(o.owner||'—')},{h:'Close',cell:o=>o.close||'—'},
+    {h:'',r:1,cell:o=>`<span class="lnk" data-op="${o.id}">Edit →</span>`}],rows,'No opportunities.'));
+  $$('#entBody [data-op]').forEach(x=>x.onclick=()=>crmOppModal(ENT.crm.opps.find(o=>o.id===x.dataset.op)));
+}
+function crmLeads(c){
+  const rows=ENT.crm.leads;
+  c.appendChild(panelTable('Leads',rows.length+' leads',[
+    {h:'Lead',cell:l=>esc(l.name)},{h:'Source',cell:l=>esc(l.source||'—')},
+    {h:'Est. Value',r:1,cell:l=>fmt(l.value||0)},{h:'Owner',cell:l=>esc(l.owner||'—')},
+    {h:'Status',cell:l=>stTag(l.status)}],rows,'No leads.'));
+}
+function crmReports(c){
+  const opps=ENT.crm.opps;
+  // Win rate by stage-exit + funnel conversion
+  const funnel=CRM_STAGES.slice(0,4).map(st=>({st,count:opps.filter(o=>o.stage===st).length,value:opps.filter(o=>o.stage===st).reduce((s,o)=>s+o.amount,0)}));
+  c.appendChild(panelTable('Pipeline Funnel',null,[
+    {h:'Stage',cell:r=>r.st},{h:'Deals',r:1,cell:r=>r.count},{h:'Value',r:1,cell:r=>fmt(r.value)}],funnel));
+  // CLV: sum won by customer
+  const clv={};opps.filter(o=>o.stage==='WON').forEach(o=>{const k=o.customer||'—';clv[k]=(clv[k]||0)+o.amount;});
+  const clvRows=Object.entries(clv).map(([k,v2])=>({k,v:v2})).sort((a,b)=>b.v-a.v);
+  c.appendChild(panelTable('Customer Value (won business)',null,[
+    {h:'Customer',cell:r=>esc(r.k)},{h:'Realised Value',r:1,cell:r=>fmt(r.v)}],clvRows,'No won deals yet.'));
+}
+function crmOppModal(o){
+  const ed=!!o;$('#modalTitle').textContent=ed?'Edit Opportunity':'New Opportunity';
+  $('#modalBody').innerHTML=`<div class="jgrid">
+    <label class="fld">Name<input class="f" id="opName" value="${esc(ed?o.name:'')}" style="max-width:none"></label>
+    <label class="fld">Customer<input class="f" id="opCust" value="${esc(ed?o.customer||'':'')}" style="max-width:none"></label>
+    <label class="fld">Stage<select id="opStage" style="max-width:none">${CRM_STAGES.map(s=>`<option${ed&&o.stage===s?' selected':''}>${s}</option>`).join('')}</select></label>
+    <label class="fld">Amount<input class="f r" id="opAmt" inputmode="decimal" value="${ed?o.amount:''}" style="max-width:none"></label>
+    <label class="fld">Probability %<input class="f r" id="opProb" inputmode="numeric" value="${ed?o.prob:50}" style="max-width:none"></label>
+    <label class="fld">Owner<input class="f" id="opOwner" value="${esc(ed?o.owner||'':'')}" style="max-width:none"></label>
+    <label class="fld">Expected close<input class="f" type="date" id="opClose" value="${ed?o.close||'':todayISO()}" style="max-width:none"></label>
+  </div>`;
+  $('#modalFoot').innerHTML=`<div style="margin-left:auto;display:flex;gap:10px">${ed?'<button class="btn danger" id="opDel">Delete</button>':''}<button class="btn" id="opCancel">Cancel</button><button class="btn primary" id="opSave">Save</button></div>`;
+  $('#opCancel').onclick=closeModal;
+  $('#opSave').onclick=async()=>{const rec={name:$('#opName').value.trim()||'Untitled',customer:$('#opCust').value.trim(),stage:$('#opStage').value,amount:+$('#opAmt').value||0,prob:+$('#opProb').value||0,owner:$('#opOwner').value.trim(),close:$('#opClose').value};
+    if(ed)Object.assign(o,rec);else ENT.crm.opps.push(Object.assign({id:eid('op')},rec));await saveEnt();closeModal();render();toast('Opportunity saved');};
+  if(ed)$('#opDel').onclick=async()=>{ENT.crm.opps=ENT.crm.opps.filter(x=>x.id!==o.id);await saveEnt();closeModal();render();toast('Deleted');};
+  openModal();
+}
+
+/* =========================================================
+   2) HUMAN RESOURCES & PAYROLL
+   ========================================================= */
+function renderHR(v){
+  entWorkspace(v,{title:'Human Resources & Payroll',key:'hr',
+    desc:'Employee master, leave management, payroll runs and workforce analytics.',
+    actionsHtml:'<button class="btn sm" id="hrRun">Run Payroll</button> <button class="btn sm primary" id="hrAdd">+ Employee</button>',
+    wire:()=>{const a=$('#hrAdd');if(a)a.onclick=()=>hrEmpModal();const r=$('#hrRun');if(r)r.onclick=()=>hrPayrollRun();},
+    tabs:[{id:'dash',label:'Dashboard',fn:hrDash},{id:'emp',label:'Employees',fn:hrEmps},
+      {id:'leave',label:'Leave',fn:hrLeave},{id:'pay',label:'Payroll',fn:hrPay},{id:'rep',label:'Reports',fn:hrReports}]});
+}
+function hrActive(){return ENT.hr.employees.filter(e=>e.status!=='TERMINATED');}
+function hrDash(c){seedBar(c);const emps=ENT.hr.employees;const active=hrActive();
+  const payroll=active.reduce((s,e)=>s+(e.salary||0),0);
+  const byDept={};active.forEach(e=>byDept[e.dept||'—']=(byDept[e.dept||'—']||0)+1);
+  c.appendChild(kpisRow([
+    kpiCount('a','Headcount',active.length,emps.length-active.length+' terminated'),
+    kpi('l','Monthly Payroll',payroll,'Sum of base salaries'),
+    kpiCount('e','Departments',Object.keys(byDept).length,'With staff'),
+    kpiCount('r','On Leave',ENT.hr.leave.filter(l=>l.status==='APPROVED'&&l.start<=todayISO()&&l.end>=todayISO()).length,'Today')]));
+  const cats=Object.keys(byDept), vals=cats.map(k=>byDept[k]);
+  c.appendChild(chartCard('Headcount by Department','active staff',chartBars(cats,[{name:'Headcount',color:'#1668A8',values:vals}],{cw:Math.max(70,700/Math.max(1,cats.length)),maxBw:46})));
+}
+function hrEmps(c){
+  const rows=ENT.hr.employees;
+  c.appendChild(panelTable('Employee Directory',rows.length+' employees',[
+    {h:'Emp No',cell:e=>esc(e.no)},{h:'Name',cell:e=>esc(e.name)},{h:'Department',cell:e=>esc(e.dept||'—')},
+    {h:'Position',cell:e=>esc(e.position||'—')},{h:'Hire Date',cell:e=>e.hire||'—'},
+    {h:'Salary',r:1,cell:e=>fmt(e.salary||0)},{h:'Status',cell:e=>stTag(e.status)},
+    {h:'',r:1,cell:e=>`<span class="lnk" data-emp="${e.id}">Edit →</span>`}],rows,'No employees. Load sample data or add one.'));
+  $$('#entBody [data-emp]').forEach(x=>x.onclick=()=>hrEmpModal(ENT.hr.employees.find(e=>e.id===x.dataset.emp)));
+}
+function hrLeave(c){
+  const rows=ENT.hr.leave.slice().sort((a,b)=>a.start<b.start?1:-1);
+  const empName=id=>{const e=ENT.hr.employees.find(x=>x.id===id);return e?e.name:'—';};
+  c.appendChild(panelTable('Leave Requests',rows.length+' requests',[
+    {h:'Employee',cell:l=>esc(empName(l.empId))},{h:'Type',cell:l=>esc(l.type)},
+    {h:'From',cell:l=>l.start},{h:'To',cell:l=>l.end},{h:'Days',r:1,cell:l=>l.days},
+    {h:'Status',cell:l=>stTag(l.status)},
+    {h:'',r:1,cell:l=>l.status==='SUBMITTED'?`<button class="btn sm" data-appr="${l.id}">Approve</button>`:''}],rows,'No leave requests.'));
+  $$('#entBody [data-appr]').forEach(x=>x.onclick=async()=>{const l=ENT.hr.leave.find(y=>y.id===x.dataset.appr);l.status='APPROVED';await saveEnt();render();toast('Leave approved');});
+}
+function hrPay(c){
+  const rows=ENT.hr.runs.slice().reverse();
+  c.appendChild(panelTable('Payroll Runs',rows.length+' runs',[
+    {h:'Period',cell:r=>r.period},{h:'Pay Date',cell:r=>r.payDate},{h:'Employees',r:1,cell:r=>r.count},
+    {h:'Gross',r:1,cell:r=>fmt(r.gross)},{h:'Deductions',r:1,cell:r=>fmt(r.gross-r.net)},
+    {h:'Net',r:1,cell:r=>fmt(r.net)},{h:'Status',cell:r=>stTag(r.status)}],rows,'No payroll runs. Use “Run Payroll”.'));
+}
+function hrReports(c){
+  const active=hrActive();
+  // Payroll cost by department
+  const byDept={};active.forEach(e=>{const k=e.dept||'—';byDept[k]=byDept[k]||{n:0,cost:0};byDept[k].n++;byDept[k].cost+=e.salary||0;});
+  c.appendChild(panelTable('Payroll Cost by Department',null,[
+    {h:'Department',cell:r=>esc(r.k)},{h:'Headcount',r:1,cell:r=>r.n},{h:'Monthly Cost',r:1,cell:r=>fmt(r.cost)},
+    {h:'Avg Salary',r:1,cell:r=>fmt(r.cost/Math.max(1,r.n))}],
+    Object.entries(byDept).map(([k,d])=>({k,...d})).sort((a,b)=>b.cost-a.cost)));
+  // Turnover
+  const leavers=ENT.hr.employees.filter(e=>e.status==='TERMINATED').length;
+  const turnover=ENT.hr.employees.length?100*leavers/ENT.hr.employees.length:0;
+  c.appendChild(kpisRow([kpiTxt('n','Annual Turnover',turnover.toFixed(1)+'%',leavers+' leavers'),
+    kpi('a','Avg Salary',active.length?active.reduce((s,e)=>s+(e.salary||0),0)/active.length:0,'Active staff'),
+    kpiCount('e','Leave Days Booked',ENT.hr.leave.filter(l=>l.status==='APPROVED').reduce((s,l)=>s+l.days,0),'Approved YTD')]));
+}
+function hrEmpModal(e){
+  const ed=!!e;$('#modalTitle').textContent=ed?'Edit Employee':'Add Employee';
+  $('#modalBody').innerHTML=`<div class="jgrid">
+    <label class="fld">Employee No<input class="f" id="emNo" value="${esc(ed?e.no:'E-'+(1000+ENT.hr.employees.length+1))}" style="max-width:none"></label>
+    <label class="fld">Name<input class="f" id="emName" value="${esc(ed?e.name:'')}" style="max-width:none"></label>
+    <label class="fld">Department<input class="f" id="emDept" value="${esc(ed?e.dept||'':'')}" style="max-width:none"></label>
+    <label class="fld">Position<input class="f" id="emPos" value="${esc(ed?e.position||'':'')}" style="max-width:none"></label>
+    <label class="fld">Hire date<input class="f" type="date" id="emHire" value="${ed?e.hire||'':todayISO()}" style="max-width:none"></label>
+    <label class="fld">Base salary (monthly)<input class="f r" id="emSal" inputmode="decimal" value="${ed?e.salary:''}" style="max-width:none"></label>
+    <label class="fld">Status<select id="emStatus" style="max-width:none">${['ACTIVE','ON_LEAVE','TERMINATED'].map(s=>`<option${ed&&e.status===s?' selected':''}>${s}</option>`).join('')}</select></label>
+  </div>`;
+  $('#modalFoot').innerHTML=`<div style="margin-left:auto;display:flex;gap:10px">${ed?'<button class="btn danger" id="emDel">Delete</button>':''}<button class="btn" id="emCancel">Cancel</button><button class="btn primary" id="emSave">Save</button></div>`;
+  $('#emCancel').onclick=closeModal;
+  $('#emSave').onclick=async()=>{const rec={no:$('#emNo').value.trim(),name:$('#emName').value.trim()||'Unnamed',dept:$('#emDept').value.trim(),position:$('#emPos').value.trim(),hire:$('#emHire').value,salary:+$('#emSal').value||0,status:$('#emStatus').value};
+    if(ed)Object.assign(e,rec);else ENT.hr.employees.push(Object.assign({id:eid('emp')},rec));await saveEnt();closeModal();render();toast('Employee saved');};
+  if(ed)$('#emDel').onclick=async()=>{ENT.hr.employees=ENT.hr.employees.filter(x=>x.id!==e.id);await saveEnt();closeModal();render();toast('Deleted');};
+  openModal();
+}
+async function hrPayrollRun(){
+  const active=hrActive();if(!active.length){toast('No active employees.',true);return;}
+  let gross=0,net=0;
+  active.forEach(e=>{const g=e.salary||0;const tax=g*0.10, ss=g*0.11;gross+=g;net+=g-tax-ss;});
+  const period=todayISO().slice(0,7);
+  ENT.hr.runs.push({id:eid('run'),period,payDate:todayISO(),count:active.length,gross:+gross.toFixed(2),net:+net.toFixed(2),status:'CALCULATED'});
+  await saveEnt();render();toast('Payroll calculated: gross '+fmt(gross)+', net '+fmt(net));
+}
+
+/* =========================================================
+   3) MANUFACTURING
+   ========================================================= */
+function renderMfg(v){
+  entWorkspace(v,{title:'Manufacturing & Production',key:'mfg',
+    desc:'Bills of material, production orders, work-center capacity and shop-floor analytics.',
+    actionsHtml:'<button class="btn sm primary" id="mfgAdd">+ Production Order</button>',
+    wire:()=>{const b=$('#mfgAdd');if(b)b.onclick=()=>mfgOrderModal();},
+    tabs:[{id:'dash',label:'Dashboard',fn:mfgDash},{id:'orders',label:'Production Orders',fn:mfgOrders},
+      {id:'bom',label:'Bills of Material',fn:mfgBOMs},{id:'wc',label:'Work Centers',fn:mfgWC},{id:'rep',label:'Reports',fn:mfgReports}]});
+}
+function mfgDash(c){seedBar(c);const o=ENT.mfg.orders;
+  const wip=o.filter(x=>x.status==='IN_PROGRESS'),done=o.filter(x=>x.status==='DONE');
+  const planned=o.reduce((s,x)=>s+x.qtyPlanned,0),produced=o.reduce((s,x)=>s+(x.qtyProduced||0),0),scrap=o.reduce((s,x)=>s+(x.qtyScrap||0),0);
+  c.appendChild(kpisRow([
+    kpiCount('a','Open Orders',o.filter(x=>!['DONE','CLOSED'].includes(x.status)).length,wip.length+' in progress'),
+    kpiCount('r','Units Produced',Math.round(produced),'All orders'),
+    kpiTxt('x','Scrap Rate',(planned?100*scrap/planned:0).toFixed(1)+'%',Math.round(scrap)+' units scrapped'),
+    kpiCount('e','Work Centers',ENT.mfg.workcenters.length,'Configured')]));
+  const statuses=['PLANNED','RELEASED','IN_PROGRESS','DONE'];
+  c.appendChild(chartCard('Production Orders by Status',null,chartBars(statuses,[{name:'Orders',color:'#1668A8',values:statuses.map(s=>o.filter(x=>x.status===s).length)}],{cw:110,maxBw:56})));
+}
+function mfgOrders(c){
+  const rows=ENT.mfg.orders.slice().reverse();
+  c.appendChild(panelTable('Production Orders',rows.length,[
+    {h:'Order',cell:o=>esc(o.no)},{h:'Item',cell:o=>esc(o.item)},{h:'Planned',r:1,cell:o=>o.qtyPlanned},
+    {h:'Produced',r:1,cell:o=>o.qtyProduced||0},{h:'Scrap',r:1,cell:o=>o.qtyScrap||0},
+    {h:'% Complete',r:1,cell:o=>Math.round(100*(o.qtyProduced||0)/Math.max(1,o.qtyPlanned))+'%'},
+    {h:'Work Center',cell:o=>esc(o.wc||'—')},{h:'Status',cell:o=>stTag(o.status)},
+    {h:'',r:1,cell:o=>`<span class="lnk" data-mo="${o.id}">Update →</span>`}],rows,'No production orders.'));
+  $$('#entBody [data-mo]').forEach(x=>x.onclick=()=>mfgOrderModal(ENT.mfg.orders.find(o=>o.id===x.dataset.mo)));
+}
+function mfgBOMs(c){
+  const rows=ENT.mfg.boms;
+  c.appendChild(panelTable('Bills of Material',rows.length,[
+    {h:'Product',cell:b=>esc(b.item)},{h:'Version',cell:b=>esc(b.version)},
+    {h:'Components',r:1,cell:b=>b.lines.length},
+    {h:'Material Cost',r:1,cell:b=>fmt(b.lines.reduce((s,l)=>s+l.qty*l.cost,0))}],rows,'No BOMs.'));
+}
+function mfgWC(c){
+  const rows=ENT.mfg.workcenters;
+  c.appendChild(panelTable('Work Centers',rows.length,[
+    {h:'Code',cell:w=>esc(w.code)},{h:'Name',cell:w=>esc(w.name)},
+    {h:'Capacity (min/day)',r:1,cell:w=>w.capacity},{h:'Cost/hr',r:1,cell:w=>fmt(w.costHr||0)}],rows,'No work centers.'));
+}
+function mfgReports(c){
+  // Work center utilization
+  const rows=ENT.mfg.workcenters.map(w=>{const loaded=ENT.mfg.orders.filter(o=>o.wc===w.code).reduce((s,o)=>s+(o.runMin||0),0);
+    const avail=w.capacity*20;return {w,loaded,avail,util:avail?100*loaded/avail:0};});
+  c.appendChild(panelTable('Work Center Utilization','20 working days',[
+    {h:'Work Center',cell:r=>esc(r.w.name)},{h:'Loaded (min)',r:1,cell:r=>Math.round(r.loaded).toLocaleString()},
+    {h:'Available (min)',r:1,cell:r=>r.avail.toLocaleString()},
+    {h:'Utilization',r:1,cell:r=>`<span class="${r.util>90?'neg':(r.util>60?'':'muted')}">${r.util.toFixed(1)}%</span>`}],rows,'No work centers.'));
+  // Scrap & variance
+  c.appendChild(panelTable('Scrap Analysis',null,[
+    {h:'Order',cell:o=>esc(o.no)},{h:'Item',cell:o=>esc(o.item)},{h:'Planned',r:1,cell:o=>o.qtyPlanned},
+    {h:'Scrap',r:1,cell:o=>o.qtyScrap||0},{h:'Scrap %',r:1,cell:o=>((o.qtyScrap||0)/Math.max(1,o.qtyPlanned)*100).toFixed(1)+'%'}],
+    ENT.mfg.orders.filter(o=>['DONE','CLOSED'].includes(o.status))));
+}
+function mfgOrderModal(o){
+  const ed=!!o;$('#modalTitle').textContent=ed?'Update Production Order':'New Production Order';
+  const wcOpts=ENT.mfg.workcenters.map(w=>`<option value="${esc(w.code)}"${ed&&o.wc===w.code?' selected':''}>${esc(w.name)}</option>`).join('');
+  $('#modalBody').innerHTML=`<div class="jgrid">
+    <label class="fld">Order No<input class="f" id="moNo" value="${esc(ed?o.no:'MO-'+(1000+ENT.mfg.orders.length+1))}" style="max-width:none"></label>
+    <label class="fld">Item<input class="f" id="moItem" value="${esc(ed?o.item:'')}" style="max-width:none"></label>
+    <label class="fld">Qty planned<input class="f r" id="moQty" inputmode="decimal" value="${ed?o.qtyPlanned:''}" style="max-width:none"></label>
+    <label class="fld">Qty produced<input class="f r" id="moProd" inputmode="decimal" value="${ed?o.qtyProduced||0:0}" style="max-width:none"></label>
+    <label class="fld">Qty scrapped<input class="f r" id="moScrap" inputmode="decimal" value="${ed?o.qtyScrap||0:0}" style="max-width:none"></label>
+    <label class="fld">Work center<select id="moWC" style="max-width:none"><option value="">—</option>${wcOpts}</select></label>
+    <label class="fld">Status<select id="moStatus" style="max-width:none">${['PLANNED','RELEASED','IN_PROGRESS','DONE','CLOSED'].map(s=>`<option${ed&&o.status===s?' selected':''}>${s}</option>`).join('')}</select></label>
+  </div>`;
+  $('#modalFoot').innerHTML=`<div style="margin-left:auto;display:flex;gap:10px">${ed?'<button class="btn danger" id="moDel">Delete</button>':''}<button class="btn" id="moCancel">Cancel</button><button class="btn primary" id="moSave">Save</button></div>`;
+  $('#moCancel').onclick=closeModal;
+  $('#moSave').onclick=async()=>{const rec={no:$('#moNo').value.trim(),item:$('#moItem').value.trim(),qtyPlanned:+$('#moQty').value||0,qtyProduced:+$('#moProd').value||0,qtyScrap:+$('#moScrap').value||0,wc:$('#moWC').value,status:$('#moStatus').value,runMin:(+$('#moQty').value||0)*5};
+    if(ed)Object.assign(o,rec);else ENT.mfg.orders.push(Object.assign({id:eid('mo')},rec));await saveEnt();closeModal();render();toast('Production order saved');};
+  if(ed)$('#moDel').onclick=async()=>{ENT.mfg.orders=ENT.mfg.orders.filter(x=>x.id!==o.id);await saveEnt();closeModal();render();toast('Deleted');};
+  openModal();
+}
+
+/* =========================================================
+   4) PROJECT MANAGEMENT / PSA
+   ========================================================= */
+function renderProjects(v){
+  entWorkspace(v,{title:'Project Management & PSA',key:'psa',
+    desc:'Projects, WBS tasks, timesheets, and profitability & utilization analytics.',
+    actionsHtml:'<button class="btn sm primary" id="psaAdd">+ Project</button>',
+    wire:()=>{const b=$('#psaAdd');if(b)b.onclick=()=>psaProjModal();},
+    tabs:[{id:'dash',label:'Dashboard',fn:psaDash},{id:'proj',label:'Projects',fn:psaProjects},
+      {id:'tasks',label:'Tasks (WBS)',fn:psaTasks},{id:'rep',label:'Reports',fn:psaReports}]});
+}
+function psaDash(c){seedBar(c);const p=ENT.psa.projects;
+  const active=p.filter(x=>x.status==='ACTIVE');
+  const budget=p.reduce((s,x)=>s+(x.budget||0),0), billed=p.reduce((s,x)=>s+(x.billed||0),0), cost=p.reduce((s,x)=>s+(x.cost||0),0);
+  c.appendChild(kpisRow([
+    kpiCount('a','Active Projects',active.length,p.length+' total'),
+    kpi('e','Total Budget',budget,'Contracted value'),
+    kpi('r','Billed to Date',billed,'Revenue recognised'),
+    kpi(cost>billed?'x':'n','Margin',billed-cost,(billed?((billed-cost)/billed*100).toFixed(0):0)+'% margin')]));
+  c.appendChild(chartCard('Budget vs Billed vs Cost',CUR,chartBars(p.slice(0,8).map(x=>x.code),[
+    {name:'Budget',color:'#1668A8',values:p.slice(0,8).map(x=>x.budget||0)},
+    {name:'Billed',color:'#1E7A46',values:p.slice(0,8).map(x=>x.billed||0)},
+    {name:'Cost',color:'#C0392B',values:p.slice(0,8).map(x=>x.cost||0)}],{cw:110,maxBw:26}),
+    `<div class="legend"><span><i style="background:#1668A8"></i>Budget</span><span><i style="background:#1E7A46"></i>Billed</span><span><i style="background:#C0392B"></i>Cost</span></div>`));
+}
+function psaProjects(c){
+  const rows=ENT.psa.projects;
+  c.appendChild(panelTable('Projects',rows.length,[
+    {h:'Code',cell:p=>esc(p.code)},{h:'Name',cell:p=>esc(p.name)},{h:'Type',cell:p=>esc(p.billingType)},
+    {h:'Budget',r:1,cell:p=>fmt(p.budget||0)},{h:'Billed',r:1,cell:p=>fmt(p.billed||0)},{h:'Cost',r:1,cell:p=>fmt(p.cost||0)},
+    {h:'Margin',r:1,cell:p=>`<span class="${(p.billed||0)-(p.cost||0)<0?'neg':'pos'}">${fmt((p.billed||0)-(p.cost||0))}</span>`},
+    {h:'Status',cell:p=>stTag(p.status)},
+    {h:'',r:1,cell:p=>`<span class="lnk" data-pr="${p.id}">Edit →</span>`}],rows,'No projects.'));
+  $$('#entBody [data-pr]').forEach(x=>x.onclick=()=>psaProjModal(ENT.psa.projects.find(p=>p.id===x.dataset.pr)));
+}
+function psaTasks(c){
+  const rows=ENT.psa.tasks;const projName=id=>{const p=ENT.psa.projects.find(x=>x.id===id);return p?p.code:'—';};
+  c.appendChild(panelTable('WBS Tasks',rows.length,[
+    {h:'Project',cell:t=>esc(projName(t.projId))},{h:'WBS',cell:t=>esc(t.wbs)},{h:'Task',cell:t=>esc(t.name)},
+    {h:'Planned hrs',r:1,cell:t=>t.planned},{h:'Actual hrs',r:1,cell:t=>t.actual||0},
+    {h:'% Complete',r:1,cell:t=>Math.round(t.pct||0)+'%'},{h:'Milestone',cell:t=>t.milestone?'★':''}],rows,'No tasks.'));
+}
+function psaReports(c){
+  const rows=ENT.psa.projects.map(p=>({p,margin:(p.billed||0)-(p.cost||0),marginPct:p.billed?((p.billed||0)-(p.cost||0))/p.billed*100:0}));
+  c.appendChild(panelTable('Project Profitability',null,[
+    {h:'Project',cell:r=>esc(r.p.name)},{h:'Budget',r:1,cell:r=>fmt(r.p.budget||0)},{h:'Billed',r:1,cell:r=>fmt(r.p.billed||0)},
+    {h:'Cost',r:1,cell:r=>fmt(r.p.cost||0)},{h:'Margin',r:1,cell:r=>fmt(r.margin)},
+    {h:'Margin %',r:1,cell:r=>`<span class="${r.marginPct<0?'neg':'pos'}">${r.marginPct.toFixed(1)}%</span>`}],rows));
+  // utilization from tasks
+  const totPlanned=ENT.psa.tasks.reduce((s,t)=>s+(t.planned||0),0),totActual=ENT.psa.tasks.reduce((s,t)=>s+(t.actual||0),0);
+  c.appendChild(kpisRow([kpiCount('a','Planned Hours',Math.round(totPlanned),'All tasks'),
+    kpiCount('e','Actual Hours',Math.round(totActual),'Logged'),
+    kpiTxt('n','Effort Variance',(totPlanned?((totActual-totPlanned)/totPlanned*100):0).toFixed(1)+'%','Actual vs planned')]));
+}
+function psaProjModal(p){
+  const ed=!!p;$('#modalTitle').textContent=ed?'Edit Project':'New Project';
+  $('#modalBody').innerHTML=`<div class="jgrid">
+    <label class="fld">Code<input class="f" id="prCode" value="${esc(ed?p.code:'PRJ-'+(100+ENT.psa.projects.length+1))}" style="max-width:none"></label>
+    <label class="fld">Name<input class="f" id="prName" value="${esc(ed?p.name:'')}" style="max-width:none"></label>
+    <label class="fld">Billing type<select id="prType" style="max-width:none">${['FIXED','MILESTONE','T_AND_M'].map(s=>`<option${ed&&p.billingType===s?' selected':''}>${s}</option>`).join('')}</select></label>
+    <label class="fld">Budget<input class="f r" id="prBudget" inputmode="decimal" value="${ed?p.budget||0:''}" style="max-width:none"></label>
+    <label class="fld">Billed to date<input class="f r" id="prBilled" inputmode="decimal" value="${ed?p.billed||0:0}" style="max-width:none"></label>
+    <label class="fld">Cost to date<input class="f r" id="prCost" inputmode="decimal" value="${ed?p.cost||0:0}" style="max-width:none"></label>
+    <label class="fld">Status<select id="prStatus" style="max-width:none">${['ACTIVE','ON_HOLD','CLOSED'].map(s=>`<option${ed&&p.status===s?' selected':''}>${s}</option>`).join('')}</select></label>
+  </div>`;
+  $('#modalFoot').innerHTML=`<div style="margin-left:auto;display:flex;gap:10px">${ed?'<button class="btn danger" id="prDel">Delete</button>':''}<button class="btn" id="prCancel">Cancel</button><button class="btn primary" id="prSave">Save</button></div>`;
+  $('#prCancel').onclick=closeModal;
+  $('#prSave').onclick=async()=>{const rec={code:$('#prCode').value.trim(),name:$('#prName').value.trim()||'Untitled',billingType:$('#prType').value,budget:+$('#prBudget').value||0,billed:+$('#prBilled').value||0,cost:+$('#prCost').value||0,status:$('#prStatus').value};
+    if(ed)Object.assign(p,rec);else ENT.psa.projects.push(Object.assign({id:eid('pr')},rec));await saveEnt();closeModal();render();toast('Project saved');};
+  if(ed)$('#prDel').onclick=async()=>{ENT.psa.projects=ENT.psa.projects.filter(x=>x.id!==p.id);await saveEnt();closeModal();render();toast('Deleted');};
+  openModal();
+}
+
+/* =========================================================
+   5) ENTERPRISE ASSET MANAGEMENT / MAINTENANCE
+   ========================================================= */
+function renderMaint(v){
+  entWorkspace(v,{title:'Enterprise Asset Management (Maintenance)',key:'eam',
+    desc:'Asset registry, preventative & corrective work orders, reliability (MTBF/MTTR) and TCO.',
+    actionsHtml:'<button class="btn sm primary" id="eamWO">+ Work Order</button>',
+    wire:()=>{const b=$('#eamWO');if(b)b.onclick=()=>eamWOModal();},
+    tabs:[{id:'dash',label:'Dashboard',fn:eamDash},{id:'assets',label:'Assets',fn:eamAssets},
+      {id:'wo',label:'Work Orders',fn:eamWOs},{id:'rep',label:'Reliability & Cost',fn:eamReports}]});
+}
+function eamDash(c){seedBar(c);const wo=ENT.eam.workorders;
+  const open=wo.filter(w=>!['COMPLETED','CLOSED'].includes(w.status));
+  const downtime=wo.reduce((s,w)=>s+(w.downtimeMin||0),0);
+  c.appendChild(kpisRow([
+    kpiCount('a','Assets',ENT.eam.assets.length,ENT.eam.assets.filter(a=>a.status==='OPERATIONAL').length+' operational'),
+    kpiCount('x','Open Work Orders',open.length,wo.filter(w=>w.type==='PREVENTATIVE').length+' PM'),
+    kpiTxt('n','Total Downtime',(downtime/60).toFixed(0)+' hrs','Recorded'),
+    kpi('l','Maintenance Cost',wo.reduce((s,w)=>s+(w.partsCost||0)+(w.laborCost||0),0),'Parts + labor')]));
+  const types=['PREVENTATIVE','CORRECTIVE','INSPECTION'];
+  c.appendChild(chartCard('Work Orders by Type',null,chartBars(types,[{name:'Count',color:'#1668A8',values:types.map(t=>wo.filter(w=>w.type===t).length)}],{cw:120,maxBw:56})));
+}
+function eamAssets(c){
+  const rows=ENT.eam.assets;
+  c.appendChild(panelTable('Asset Registry',rows.length,[
+    {h:'Asset No',cell:a=>esc(a.no)},{h:'Name',cell:a=>esc(a.name)},{h:'Location',cell:a=>esc(a.location||'—')},
+    {h:'Criticality',cell:a=>stTag(a.criticality)},{h:'Acq. Cost',r:1,cell:a=>fmt(a.cost||0)},{h:'Status',cell:a=>stTag(a.status)}],rows,'No assets.'));
+}
+function eamWOs(c){
+  const rows=ENT.eam.workorders.slice().reverse();const an=id=>{const a=ENT.eam.assets.find(x=>x.id===id);return a?a.name:'—';};
+  c.appendChild(panelTable('Work Orders',rows.length,[
+    {h:'WO No',cell:w=>esc(w.no)},{h:'Asset',cell:w=>esc(an(w.assetId))},{h:'Type',cell:w=>esc(w.type)},
+    {h:'Priority',cell:w=>esc(w.priority||'—')},{h:'Downtime (min)',r:1,cell:w=>w.downtimeMin||0},
+    {h:'Cost',r:1,cell:w=>fmt((w.partsCost||0)+(w.laborCost||0))},{h:'Status',cell:w=>stTag(w.status)},
+    {h:'',r:1,cell:w=>`<span class="lnk" data-wo="${w.id}">Edit →</span>`}],rows,'No work orders.'));
+  $$('#entBody [data-wo]').forEach(x=>x.onclick=()=>eamWOModal(ENT.eam.workorders.find(w=>w.id===x.dataset.wo)));
+}
+function eamReports(c){
+  const rows=ENT.eam.assets.map(a=>{const wos=ENT.eam.workorders.filter(w=>w.assetId===a.id&&w.type==='CORRECTIVE');
+    const failures=wos.length;const dt=wos.reduce((s,w)=>s+(w.downtimeMin||0),0);
+    const mttr=failures?dt/failures/60:0;const uptime=30*24 - dt/60;const mtbf=failures?uptime/failures:0;
+    const tco=(a.cost||0)+ENT.eam.workorders.filter(w=>w.assetId===a.id).reduce((s,w)=>s+(w.partsCost||0)+(w.laborCost||0),0);
+    return {a,failures,mttr,mtbf,tco};});
+  c.appendChild(panelTable('Reliability — MTBF / MTTR','30-day window',[
+    {h:'Asset',cell:r=>esc(r.a.name)},{h:'Failures',r:1,cell:r=>r.failures},
+    {h:'MTTR (hrs)',r:1,cell:r=>r.mttr.toFixed(1)},{h:'MTBF (hrs)',r:1,cell:r=>r.mtbf.toFixed(1)}],rows));
+  c.appendChild(panelTable('Total Cost of Ownership',null,[
+    {h:'Asset',cell:r=>esc(r.a.name)},{h:'Acquisition',r:1,cell:r=>fmt(r.a.cost||0)},
+    {h:'Maintenance',r:1,cell:r=>fmt(r.tco-(r.a.cost||0))},{h:'TCO',r:1,cell:r=>fmt(r.tco)}],rows.sort((a,b)=>b.tco-a.tco)));
+}
+function eamWOModal(w){
+  const ed=!!w;$('#modalTitle').textContent=ed?'Edit Work Order':'New Work Order';
+  const aOpts=ENT.eam.assets.map(a=>`<option value="${a.id}"${ed&&w.assetId===a.id?' selected':''}>${esc(a.name)}</option>`).join('');
+  $('#modalBody').innerHTML=`<div class="jgrid">
+    <label class="fld">WO No<input class="f" id="woNo" value="${esc(ed?w.no:'WO-'+(1000+ENT.eam.workorders.length+1))}" style="max-width:none"></label>
+    <label class="fld">Asset<select id="woAsset" style="max-width:none">${aOpts}</select></label>
+    <label class="fld">Type<select id="woType" style="max-width:none">${['PREVENTATIVE','CORRECTIVE','INSPECTION'].map(s=>`<option${ed&&w.type===s?' selected':''}>${s}</option>`).join('')}</select></label>
+    <label class="fld">Priority<select id="woPri" style="max-width:none">${['LOW','MEDIUM','HIGH','CRITICAL'].map(s=>`<option${ed&&w.priority===s?' selected':''}>${s}</option>`).join('')}</select></label>
+    <label class="fld">Downtime (min)<input class="f r" id="woDt" inputmode="numeric" value="${ed?w.downtimeMin||0:0}" style="max-width:none"></label>
+    <label class="fld">Parts cost<input class="f r" id="woParts" inputmode="decimal" value="${ed?w.partsCost||0:0}" style="max-width:none"></label>
+    <label class="fld">Labor cost<input class="f r" id="woLabor" inputmode="decimal" value="${ed?w.laborCost||0:0}" style="max-width:none"></label>
+    <label class="fld">Status<select id="woStatus" style="max-width:none">${['OPEN','ASSIGNED','IN_PROGRESS','ON_HOLD','COMPLETED','CLOSED'].map(s=>`<option${ed&&w.status===s?' selected':''}>${s}</option>`).join('')}</select></label>
+  </div>`;
+  $('#modalFoot').innerHTML=`<div style="margin-left:auto;display:flex;gap:10px">${ed?'<button class="btn danger" id="woDel">Delete</button>':''}<button class="btn" id="woCancel">Cancel</button><button class="btn primary" id="woSave">Save</button></div>`;
+  $('#woCancel').onclick=closeModal;
+  $('#woSave').onclick=async()=>{const rec={no:$('#woNo').value.trim(),assetId:$('#woAsset').value,type:$('#woType').value,priority:$('#woPri').value,downtimeMin:+$('#woDt').value||0,partsCost:+$('#woParts').value||0,laborCost:+$('#woLabor').value||0,status:$('#woStatus').value};
+    if(ed)Object.assign(w,rec);else ENT.eam.workorders.push(Object.assign({id:eid('wo')},rec));await saveEnt();closeModal();render();toast('Work order saved');};
+  if(ed)$('#woDel').onclick=async()=>{ENT.eam.workorders=ENT.eam.workorders.filter(x=>x.id!==w.id);await saveEnt();closeModal();render();toast('Deleted');};
+  openModal();
+}
+
+/* =========================================================
+   6) QUALITY MANAGEMENT
+   ========================================================= */
+function renderQuality(v){
+  entWorkspace(v,{title:'Quality Management (QMS)',key:'qms',
+    desc:'Inspections, non-conformance (NCR), CAPA and first-pass-yield analytics.',
+    actionsHtml:'<button class="btn sm primary" id="qAdd">+ Inspection</button>',
+    wire:()=>{const b=$('#qAdd');if(b)b.onclick=()=>qmsInspModal();},
+    tabs:[{id:'dash',label:'Dashboard',fn:qmsDash},{id:'insp',label:'Inspections',fn:qmsInsp},
+      {id:'ncr',label:'NCRs',fn:qmsNCR},{id:'rep',label:'Reports',fn:qmsReports}]});
+}
+function qmsDash(c){seedBar(c);const ins=ENT.qms.inspections;
+  const done=ins.filter(i=>i.result!=='PENDING');const pass=done.filter(i=>i.result==='PASS').length;
+  const fpy=done.length?100*pass/done.length:0;
+  c.appendChild(kpisRow([
+    kpiCount('a','Inspections',ins.length,done.length+' completed'),
+    kpiTxt('r','First-Pass Yield',fpy.toFixed(1)+'%',pass+' passed'),
+    kpiCount('x','Open NCRs',ENT.qms.ncrs.filter(n=>n.status!=='CLOSED').length,'Non-conformances'),
+    kpiCount('n','Critical NCRs',ENT.qms.ncrs.filter(n=>n.severity==='CRITICAL').length,'Require CAPA')]));
+  c.appendChild(chartCard('Inspection Results',null,chartBars(['PASS','FAIL','PENDING'],[{name:'Count',color:'#1668A8',values:['PASS','FAIL','PENDING'].map(r=>ins.filter(i=>i.result===r).length)}],{cw:120,maxBw:56})));
+}
+function qmsInsp(c){
+  const rows=ENT.qms.inspections.slice().reverse();
+  c.appendChild(panelTable('Inspections',rows.length,[
+    {h:'Inspection',cell:i=>esc(i.no)},{h:'Item',cell:i=>esc(i.item)},{h:'Stage',cell:i=>esc(i.stage)},
+    {h:'Vendor',cell:i=>esc(i.vendor||'—')},{h:'Sample',r:1,cell:i=>i.sample||0},{h:'Result',cell:i=>stTag(i.result)},
+    {h:'',r:1,cell:i=>`<span class="lnk" data-in="${i.id}">Edit →</span>`}],rows,'No inspections.'));
+  $$('#entBody [data-in]').forEach(x=>x.onclick=()=>qmsInspModal(ENT.qms.inspections.find(i=>i.id===x.dataset.in)));
+}
+function qmsNCR(c){
+  const rows=ENT.qms.ncrs.slice().reverse();
+  c.appendChild(panelTable('Non-Conformance Reports',rows.length,[
+    {h:'NCR',cell:n=>esc(n.no)},{h:'Item',cell:n=>esc(n.item)},{h:'Vendor',cell:n=>esc(n.vendor||'—')},
+    {h:'Severity',cell:n=>stTag(n.severity)},{h:'Qty',r:1,cell:n=>n.qty||0},{h:'Status',cell:n=>stTag(n.status)}],rows,'No NCRs.'));
+}
+function qmsReports(c){
+  // FPY by stage
+  const stages=['INCOMING','IN_PROCESS','FINAL'];
+  c.appendChild(panelTable('First-Pass Yield by Stage',null,[
+    {h:'Stage',cell:s=>s.stage},{h:'Inspections',r:1,cell:s=>s.n},{h:'Passed',r:1,cell:s=>s.p},
+    {h:'FPY %',r:1,cell:s=>`<span class="${s.fpy<90?'neg':'pos'}">${s.fpy.toFixed(1)}%</span>`}],
+    stages.map(st=>{const q=ENT.qms.inspections.filter(i=>i.stage===st&&i.result!=='PENDING');const p=q.filter(i=>i.result==='PASS').length;return {stage:st,n:q.length,p,fpy:q.length?100*p/q.length:0};})));
+  // NCR aging by severity
+  c.appendChild(panelTable('NCR Aging (open)',null,[
+    {h:'Severity',cell:r=>r.sev},{h:'0–30d',r:1,cell:r=>r.a},{h:'31–60d',r:1,cell:r=>r.b},{h:'60d+',r:1,cell:r=>r.c}],
+    ['MINOR','MAJOR','CRITICAL'].map(sev=>{const ns=ENT.qms.ncrs.filter(n=>n.severity===sev&&n.status!=='CLOSED');
+      const age=n=>daysBetweenISO(n.opened||todayISO(),todayISO());
+      return {sev,a:ns.filter(n=>age(n)<=30).length,b:ns.filter(n=>age(n)>30&&age(n)<=60).length,c:ns.filter(n=>age(n)>60).length};})));
+}
+function qmsInspModal(i){
+  const ed=!!i;$('#modalTitle').textContent=ed?'Edit Inspection':'New Inspection';
+  $('#modalBody').innerHTML=`<div class="jgrid">
+    <label class="fld">No<input class="f" id="inNo" value="${esc(ed?i.no:'QC-'+(1000+ENT.qms.inspections.length+1))}" style="max-width:none"></label>
+    <label class="fld">Item<input class="f" id="inItem" value="${esc(ed?i.item:'')}" style="max-width:none"></label>
+    <label class="fld">Stage<select id="inStage" style="max-width:none">${['INCOMING','IN_PROCESS','FINAL'].map(s=>`<option${ed&&i.stage===s?' selected':''}>${s}</option>`).join('')}</select></label>
+    <label class="fld">Vendor<input class="f" id="inVendor" value="${esc(ed?i.vendor||'':'')}" style="max-width:none"></label>
+    <label class="fld">Sample size<input class="f r" id="inSample" inputmode="numeric" value="${ed?i.sample||0:0}" style="max-width:none"></label>
+    <label class="fld">Result<select id="inResult" style="max-width:none">${['PENDING','PASS','FAIL'].map(s=>`<option${ed&&i.result===s?' selected':''}>${s}</option>`).join('')}</select></label>
+  </div><div class="hint" style="margin-top:8px">A FAIL result auto-creates a Major NCR.</div>`;
+  $('#modalFoot').innerHTML=`<div style="margin-left:auto;display:flex;gap:10px">${ed?'<button class="btn danger" id="inDel">Delete</button>':''}<button class="btn" id="inCancel">Cancel</button><button class="btn primary" id="inSave">Save</button></div>`;
+  $('#inCancel').onclick=closeModal;
+  $('#inSave').onclick=async()=>{const rec={no:$('#inNo').value.trim(),item:$('#inItem').value.trim(),stage:$('#inStage').value,vendor:$('#inVendor').value.trim(),sample:+$('#inSample').value||0,result:$('#inResult').value};
+    if(ed)Object.assign(i,rec);else{i=Object.assign({id:eid('in')},rec);ENT.qms.inspections.push(i);}
+    if(rec.result==='FAIL'&&!ENT.qms.ncrs.some(n=>n.inspId===i.id)){ENT.qms.ncrs.push({id:eid('ncr'),inspId:i.id,no:'NCR-'+(1000+ENT.qms.ncrs.length+1),item:rec.item,vendor:rec.vendor,severity:'MAJOR',qty:rec.sample,status:'OPEN',opened:todayISO()});}
+    await saveEnt();closeModal();render();toast(rec.result==='FAIL'?'Inspection failed — NCR raised':'Inspection saved');};
+  if(ed)$('#inDel').onclick=async()=>{ENT.qms.inspections=ENT.qms.inspections.filter(x=>x.id!==i.id);await saveEnt();closeModal();render();toast('Deleted');};
+  openModal();
+}
+
+/* =========================================================
+   7) FLEET & LOGISTICS (TMS)
+   ========================================================= */
+function renderFleet(v){
+  entWorkspace(v,{title:'Fleet & Logistics (TMS)',key:'tms',
+    desc:'Vehicles, trips & shipments, fuel logs, on-time delivery and fuel-efficiency analytics.',
+    actionsHtml:'<button class="btn sm primary" id="tmsTrip">+ Trip</button>',
+    wire:()=>{const b=$('#tmsTrip');if(b)b.onclick=()=>tmsTripModal();},
+    tabs:[{id:'dash',label:'Dashboard',fn:tmsDash},{id:'veh',label:'Vehicles',fn:tmsVeh},
+      {id:'trips',label:'Trips & Shipments',fn:tmsTrips},{id:'rep',label:'Reports',fn:tmsReports}]});
+}
+function tmsDash(c){seedBar(c);const t=ENT.tms.trips;
+  const delivered=t.filter(x=>x.status==='DELIVERED');const otd=delivered.length?100*delivered.filter(x=>x.onTime).length/delivered.length:0;
+  const fuelCost=ENT.tms.fuel.reduce((s,f)=>s+(f.cost||0),0);
+  c.appendChild(kpisRow([
+    kpiCount('a','Vehicles',ENT.tms.vehicles.length,ENT.tms.vehicles.filter(v2=>v2.status==='AVAILABLE').length+' available'),
+    kpiCount('r','Trips',t.length,t.filter(x=>x.status==='IN_TRANSIT').length+' in transit'),
+    kpiTxt('n','On-Time Delivery',otd.toFixed(1)+'%',delivered.length+' delivered'),
+    kpi('x','Fuel Cost',fuelCost,'Total logged')]));
+  c.appendChild(chartCard('Trips by Status',null,chartBars(['PLANNED','IN_TRANSIT','DELIVERED','FAILED'],[{name:'Trips',color:'#1668A8',values:['PLANNED','IN_TRANSIT','DELIVERED','FAILED'].map(s=>t.filter(x=>x.status===s).length)}],{cw:110,maxBw:56})));
+}
+function tmsVeh(c){
+  const rows=ENT.tms.vehicles;
+  c.appendChild(panelTable('Vehicles',rows.length,[
+    {h:'Plate',cell:v2=>esc(v2.plate)},{h:'Type',cell:v2=>esc(v2.type||'—')},{h:'Capacity (kg)',r:1,cell:v2=>v2.capacity||0},
+    {h:'Odometer',r:1,cell:v2=>(v2.odo||0).toLocaleString()},{h:'Status',cell:v2=>stTag(v2.status)}],rows,'No vehicles.'));
+}
+function tmsTrips(c){
+  const rows=ENT.tms.trips.slice().reverse();const vp=id=>{const v2=ENT.tms.vehicles.find(x=>x.id===id);return v2?v2.plate:'—';};
+  c.appendChild(panelTable('Trips & Shipments',rows.length,[
+    {h:'Trip',cell:t=>esc(t.no)},{h:'Route',cell:t=>esc(t.route||'—')},{h:'Vehicle',cell:t=>esc(vp(t.vehId))},
+    {h:'Distance (km)',r:1,cell:t=>t.km||0},{h:'On time',cell:t=>t.status==='DELIVERED'?(t.onTime?'✓':'✗'):'—'},{h:'Status',cell:t=>stTag(t.status)},
+    {h:'',r:1,cell:t=>`<span class="lnk" data-tp="${t.id}">Edit →</span>`}],rows,'No trips.'));
+  $$('#entBody [data-tp]').forEach(x=>x.onclick=()=>tmsTripModal(ENT.tms.trips.find(t=>t.id===x.dataset.tp)));
+}
+function tmsReports(c){
+  const rows=ENT.tms.vehicles.map(v2=>{const fl=ENT.tms.fuel.filter(f=>f.vehId===v2.id);const liters=fl.reduce((s,f)=>s+(f.liters||0),0);
+    const cost=fl.reduce((s,f)=>s+(f.cost||0),0);const km=ENT.tms.trips.filter(t=>t.vehId===v2.id).reduce((s,t)=>s+(t.km||0),0);
+    return {v2,liters,cost,km,kmpl:liters?km/liters:0,cpk:km?cost/km:0};});
+  c.appendChild(panelTable('Fuel Efficiency',null,[
+    {h:'Vehicle',cell:r=>esc(r.v2.plate)},{h:'Distance (km)',r:1,cell:r=>r.km.toLocaleString()},
+    {h:'Fuel (L)',r:1,cell:r=>r.liters.toFixed(0)},{h:'km / L',r:1,cell:r=>r.kmpl.toFixed(2)},
+    {h:'Cost / km',r:1,cell:r=>fmt(r.cpk)}],rows));
+  const delivered=ENT.tms.trips.filter(x=>x.status==='DELIVERED');
+  c.appendChild(kpisRow([kpiTxt('r','On-Time Delivery',(delivered.length?100*delivered.filter(x=>x.onTime).length/delivered.length:0).toFixed(1)+'%',delivered.length+' deliveries'),
+    kpiCount('a','Total Distance',ENT.tms.trips.reduce((s,t)=>s+(t.km||0),0),'km driven'),
+    kpi('x','Total Fuel Cost',ENT.tms.fuel.reduce((s,f)=>s+(f.cost||0),0),'All vehicles')]));
+}
+function tmsTripModal(t){
+  const ed=!!t;$('#modalTitle').textContent=ed?'Edit Trip':'New Trip';
+  const vOpts=ENT.tms.vehicles.map(v2=>`<option value="${v2.id}"${ed&&t.vehId===v2.id?' selected':''}>${esc(v2.plate)}</option>`).join('');
+  $('#modalBody').innerHTML=`<div class="jgrid">
+    <label class="fld">Trip No<input class="f" id="tpNo" value="${esc(ed?t.no:'TR-'+(1000+ENT.tms.trips.length+1))}" style="max-width:none"></label>
+    <label class="fld">Route<input class="f" id="tpRoute" value="${esc(ed?t.route||'':'')}" style="max-width:none"></label>
+    <label class="fld">Vehicle<select id="tpVeh" style="max-width:none">${vOpts}</select></label>
+    <label class="fld">Distance (km)<input class="f r" id="tpKm" inputmode="decimal" value="${ed?t.km||0:0}" style="max-width:none"></label>
+    <label class="fld">Status<select id="tpStatus" style="max-width:none">${['PLANNED','IN_TRANSIT','DELIVERED','FAILED'].map(s=>`<option${ed&&t.status===s?' selected':''}>${s}</option>`).join('')}</select></label>
+    <label class="fld">On time?<select id="tpOnTime" style="max-width:none"><option value="1"${ed&&t.onTime?' selected':''}>Yes</option><option value="0"${ed&&!t.onTime?' selected':''}>No</option></select></label>
+  </div>`;
+  $('#modalFoot').innerHTML=`<div style="margin-left:auto;display:flex;gap:10px">${ed?'<button class="btn danger" id="tpDel">Delete</button>':''}<button class="btn" id="tpCancel">Cancel</button><button class="btn primary" id="tpSave">Save</button></div>`;
+  $('#tpCancel').onclick=closeModal;
+  $('#tpSave').onclick=async()=>{const rec={no:$('#tpNo').value.trim(),route:$('#tpRoute').value.trim(),vehId:$('#tpVeh').value,km:+$('#tpKm').value||0,status:$('#tpStatus').value,onTime:$('#tpOnTime').value==='1'};
+    if(ed)Object.assign(t,rec);else ENT.tms.trips.push(Object.assign({id:eid('tp')},rec));await saveEnt();closeModal();render();toast('Trip saved');};
+  if(ed)$('#tpDel').onclick=async()=>{ENT.tms.trips=ENT.tms.trips.filter(x=>x.id!==t.id);await saveEnt();closeModal();render();toast('Deleted');};
+  openModal();
+}
+
+/* =========================================================
+   8) FIELD SERVICE MANAGEMENT
+   ========================================================= */
+function renderFieldSvc(v){
+  entWorkspace(v,{title:'Field Service Management (FSM)',key:'fsm',
+    desc:'Service contracts, field work orders, SLA compliance and first-time-fix analytics.',
+    actionsHtml:'<button class="btn sm primary" id="fsmWO">+ Field Work Order</button>',
+    wire:()=>{const b=$('#fsmWO');if(b)b.onclick=()=>fsmWOModal();},
+    tabs:[{id:'dash',label:'Dashboard',fn:fsmDash},{id:'wo',label:'Work Orders',fn:fsmWOs},
+      {id:'sla',label:'SLA Board',fn:fsmSLA},{id:'rep',label:'Reports',fn:fsmReports}]});
+}
+function fsmDash(c){seedBar(c);const wo=ENT.fsm.wos;
+  const closed=wo.filter(w=>['SIGNED_OFF','CLOSED'].includes(w.status));
+  const ftf=closed.length?100*closed.filter(w=>w.firstTimeFix).length/closed.length:0;
+  const slaMet=closed.length?100*closed.filter(w=>w.slaMet).length/closed.length:0;
+  c.appendChild(kpisRow([
+    kpiCount('a','Work Orders',wo.length,wo.filter(w=>!['SIGNED_OFF','CLOSED'].includes(w.status)).length+' open'),
+    kpiTxt('r','First-Time Fix',ftf.toFixed(1)+'%',closed.length+' completed'),
+    kpiTxt('n','SLA Compliance',slaMet.toFixed(1)+'%','Resolution SLA'),
+    kpiCount('x','At Risk',wo.filter(w=>w.status!=='CLOSED'&&w.priority==='P1').length,'P1 open')]));
+  const pr=['P1','P2','P3','P4'];
+  c.appendChild(chartCard('Work Orders by Priority',null,chartBars(pr,[{name:'Count',color:'#1668A8',values:pr.map(p=>wo.filter(w=>w.priority===p).length)}],{cw:110,maxBw:56})));
+}
+function fsmWOs(c){
+  const rows=ENT.fsm.wos.slice().reverse();
+  c.appendChild(panelTable('Field Work Orders',rows.length,[
+    {h:'FWO',cell:w=>esc(w.no)},{h:'Customer',cell:w=>esc(w.customer||'—')},{h:'Priority',cell:w=>stTag(w.priority)},
+    {h:'Technician',cell:w=>esc(w.tech||'—')},{h:'FTF',cell:w=>w.firstTimeFix?'✓':'—'},{h:'SLA',cell:w=>w.slaMet?'✓':(['SIGNED_OFF','CLOSED'].includes(w.status)?'✗':'—')},{h:'Status',cell:w=>stTag(w.status)},
+    {h:'',r:1,cell:w=>`<span class="lnk" data-fw="${w.id}">Edit →</span>`}],rows,'No work orders.'));
+  $$('#entBody [data-fw]').forEach(x=>x.onclick=()=>fsmWOModal(ENT.fsm.wos.find(w=>w.id===x.dataset.fw)));
+}
+function fsmSLA(c){
+  const open=ENT.fsm.wos.filter(w=>!['SIGNED_OFF','CLOSED'].includes(w.status));
+  c.appendChild(panelTable('SLA Board — Open Work Orders',open.length,[
+    {h:'FWO',cell:w=>esc(w.no)},{h:'Customer',cell:w=>esc(w.customer||'—')},{h:'Priority',cell:w=>stTag(w.priority)},
+    {h:'Technician',cell:w=>esc(w.tech||'—')},{h:'Status',cell:w=>stTag(w.status)}],open,'No open work orders.'));
+}
+function fsmReports(c){
+  const closed=ENT.fsm.wos.filter(w=>['SIGNED_OFF','CLOSED'].includes(w.status));
+  const techs={};ENT.fsm.wos.forEach(w=>{if(!w.tech)return;techs[w.tech]=techs[w.tech]||{n:0,ftf:0};techs[w.tech].n++;if(w.firstTimeFix)techs[w.tech].ftf++;});
+  c.appendChild(panelTable('Technician Performance',null,[
+    {h:'Technician',cell:r=>esc(r.k)},{h:'Jobs',r:1,cell:r=>r.n},{h:'First-Time Fix',r:1,cell:r=>r.ftf},
+    {h:'FTF %',r:1,cell:r=>(r.n?100*r.ftf/r.n:0).toFixed(0)+'%'}],Object.entries(techs).map(([k,d])=>({k,...d}))));
+  c.appendChild(kpisRow([
+    kpiTxt('r','First-Time Fix',(closed.length?100*closed.filter(w=>w.firstTimeFix).length/closed.length:0).toFixed(1)+'%','Overall'),
+    kpiTxt('n','SLA Compliance',(closed.length?100*closed.filter(w=>w.slaMet).length/closed.length:0).toFixed(1)+'%','Resolution'),
+    kpiCount('a','Completed Jobs',closed.length,'Signed off / closed')]));
+}
+function fsmWOModal(w){
+  const ed=!!w;$('#modalTitle').textContent=ed?'Edit Field Work Order':'New Field Work Order';
+  $('#modalBody').innerHTML=`<div class="jgrid">
+    <label class="fld">FWO No<input class="f" id="fwNo" value="${esc(ed?w.no:'FWO-'+(1000+ENT.fsm.wos.length+1))}" style="max-width:none"></label>
+    <label class="fld">Customer<input class="f" id="fwCust" value="${esc(ed?w.customer||'':'')}" style="max-width:none"></label>
+    <label class="fld">Priority<select id="fwPri" style="max-width:none">${['P1','P2','P3','P4'].map(s=>`<option${ed&&w.priority===s?' selected':''}>${s}</option>`).join('')}</select></label>
+    <label class="fld">Technician<input class="f" id="fwTech" value="${esc(ed?w.tech||'':'')}" style="max-width:none"></label>
+    <label class="fld">First-time fix?<select id="fwFtf" style="max-width:none"><option value="1"${ed&&w.firstTimeFix?' selected':''}>Yes</option><option value="0"${ed&&!w.firstTimeFix?' selected':''}>No</option></select></label>
+    <label class="fld">SLA met?<select id="fwSla" style="max-width:none"><option value="1"${ed&&w.slaMet?' selected':''}>Yes</option><option value="0"${ed&&!w.slaMet?' selected':''}>No</option></select></label>
+    <label class="fld">Status<select id="fwStatus" style="max-width:none">${['NEW','ASSIGNED','ACCEPTED','ON_SITE','RESOLVED','SIGNED_OFF','CLOSED'].map(s=>`<option${ed&&w.status===s?' selected':''}>${s}</option>`).join('')}</select></label>
+  </div>`;
+  $('#modalFoot').innerHTML=`<div style="margin-left:auto;display:flex;gap:10px">${ed?'<button class="btn danger" id="fwDel">Delete</button>':''}<button class="btn" id="fwCancel">Cancel</button><button class="btn primary" id="fwSave">Save</button></div>`;
+  $('#fwCancel').onclick=closeModal;
+  $('#fwSave').onclick=async()=>{const rec={no:$('#fwNo').value.trim(),customer:$('#fwCust').value.trim(),priority:$('#fwPri').value,tech:$('#fwTech').value.trim(),firstTimeFix:$('#fwFtf').value==='1',slaMet:$('#fwSla').value==='1',status:$('#fwStatus').value};
+    if(ed)Object.assign(w,rec);else ENT.fsm.wos.push(Object.assign({id:eid('fw')},rec));await saveEnt();closeModal();render();toast('Field work order saved');};
+  if(ed)$('#fwDel').onclick=async()=>{ENT.fsm.wos=ENT.fsm.wos.filter(x=>x.id!==w.id);await saveEnt();closeModal();render();toast('Deleted');};
+  openModal();
+}
+
+/* =========================================================
+   9) GOVERNANCE, RISK & COMPLIANCE (GRC)
+   ========================================================= */
+function renderGRC(v){
+  entWorkspace(v,{title:'Governance, Risk & Compliance',key:'grc',
+    desc:'Risk register with heat map, policies & attestation, and audit findings.',
+    actionsHtml:'<button class="btn sm primary" id="grcAdd">+ Risk</button>',
+    wire:()=>{const b=$('#grcAdd');if(b)b.onclick=()=>grcRiskModal();},
+    tabs:[{id:'risk',label:'Risk Register',fn:grcRisk},{id:'heat',label:'Heat Map',fn:grcHeat},
+      {id:'policy',label:'Policies',fn:grcPolicy},{id:'find',label:'Audit Findings',fn:grcFindings}]});
+}
+function grcRisk(c){seedBar(c);const rows=ENT.grc.risks.slice().sort((a,b)=>(b.likelihood*b.impact)-(a.likelihood*a.impact));
+  const high=rows.filter(r=>r.likelihood*r.impact>=15).length;
+  c.appendChild(kpisRow([kpiCount('a','Risks',rows.length,'In register'),
+    kpiCount('x','High / Critical',high,'Score ≥ 15'),
+    kpiCount('e','Mitigating',rows.filter(r=>r.status==='MITIGATING').length,'In treatment'),
+    kpiCount('r','Accepted / Closed',rows.filter(r=>['ACCEPTED','CLOSED'].includes(r.status)).length,'Resolved')]));
+  c.appendChild(panelTable('Risk Register',rows.length,[
+    {h:'Code',cell:r=>esc(r.code)},{h:'Title',cell:r=>esc(r.title)},{h:'Category',cell:r=>esc(r.category||'—')},
+    {h:'Likelihood',r:1,cell:r=>r.likelihood},{h:'Impact',r:1,cell:r=>r.impact},
+    {h:'Score',r:1,cell:r=>`<span class="${r.likelihood*r.impact>=15?'neg':(r.likelihood*r.impact>=8?'':'muted')}">${r.likelihood*r.impact}</span>`},
+    {h:'Owner',cell:r=>esc(r.owner||'—')},{h:'Status',cell:r=>stTag(r.status)},
+    {h:'',r:1,cell:r=>`<span class="lnk" data-rk="${r.id}">Edit →</span>`}],rows,'No risks.'));
+  $$('#entBody [data-rk]').forEach(x=>x.onclick=()=>grcRiskModal(ENT.grc.risks.find(r=>r.id===x.dataset.rk)));
+}
+function grcHeat(c){
+  // 5x5 heat map: rows impact 5..1, cols likelihood 1..5
+  const cell=(l,im)=>ENT.grc.risks.filter(r=>r.likelihood===l&&r.impact===im&&r.status!=='CLOSED').length;
+  const color=(s)=>s>=15?'#C0392B':s>=8?'#B07515':s>=4?'#D6A21E':'#1E7A46';
+  let html='<div style="padding:16px 18px;overflow-x:auto"><table style="border-collapse:collapse"><thead><tr><th style="padding:6px 10px;font-size:11px;color:var(--txt-faint)">Impact ↓ / Likelihood →</th>';
+  for(let l=1;l<=5;l++)html+=`<th style="padding:6px 12px;font-size:12px">${l}</th>`;
+  html+='</tr></thead><tbody>';
+  for(let im=5;im>=1;im--){html+=`<tr><td style="padding:6px 10px;font-size:12px;font-weight:600">${im}</td>`;
+    for(let l=1;l<=5;l++){const s=l*im,n=cell(l,im);html+=`<td style="width:56px;height:44px;text-align:center;color:#fff;font-weight:700;background:${color(s)};border:2px solid #fff;border-radius:6px">${n||''}</td>`;}
+    html+='</tr>';}
+  html+='</tbody></table><div class="hint" style="margin-top:10px">Cell number = count of open risks at that likelihood × impact. Red = critical (≥15).</div></div>';
+  const p=el('div','panel');p.innerHTML=`<div class="phd"><h3>Enterprise Risk Heat Map</h3></div>`+html;c.appendChild(p);
+}
+function grcPolicy(c){
+  const rows=ENT.grc.policies;
+  c.appendChild(panelTable('Policies & Attestation',rows.length,[
+    {h:'Code',cell:p=>esc(p.code)},{h:'Title',cell:p=>esc(p.title)},{h:'Version',cell:p=>esc(p.version||'—')},
+    {h:'Assigned',r:1,cell:p=>p.assigned||0},{h:'Acknowledged',r:1,cell:p=>p.ack||0},
+    {h:'Compliance',r:1,cell:p=>`<span class="${(p.assigned&&p.ack/p.assigned<0.9)?'neg':'pos'}">${p.assigned?Math.round(100*p.ack/p.assigned):0}%</span>`}],rows,'No policies.'));
+}
+function grcFindings(c){
+  const rows=ENT.grc.findings;
+  c.appendChild(panelTable('Audit Findings',rows.length,[
+    {h:'Finding',cell:f=>esc(f.title)},{h:'Severity',cell:f=>stTag(f.severity)},{h:'Owner',cell:f=>esc(f.owner||'—')},
+    {h:'Due',cell:f=>f.due||'—'},{h:'Status',cell:f=>stTag(f.status)}],rows,'No findings.'));
+}
+function grcRiskModal(r){
+  const ed=!!r;$('#modalTitle').textContent=ed?'Edit Risk':'New Risk';
+  $('#modalBody').innerHTML=`<div class="jgrid">
+    <label class="fld">Code<input class="f" id="rkCode" value="${esc(ed?r.code:'R-'+(100+ENT.grc.risks.length+1))}" style="max-width:none"></label>
+    <label class="fld">Title<input class="f" id="rkTitle" value="${esc(ed?r.title:'')}" style="max-width:none"></label>
+    <label class="fld">Category<input class="f" id="rkCat" value="${esc(ed?r.category||'':'')}" style="max-width:none"></label>
+    <label class="fld">Owner<input class="f" id="rkOwner" value="${esc(ed?r.owner||'':'')}" style="max-width:none"></label>
+    <label class="fld">Likelihood (1-5)<input class="f r" id="rkL" inputmode="numeric" value="${ed?r.likelihood:3}" style="max-width:none"></label>
+    <label class="fld">Impact (1-5)<input class="f r" id="rkI" inputmode="numeric" value="${ed?r.impact:3}" style="max-width:none"></label>
+    <label class="fld">Status<select id="rkStatus" style="max-width:none">${['OPEN','MITIGATING','ACCEPTED','CLOSED'].map(s=>`<option${ed&&r.status===s?' selected':''}>${s}</option>`).join('')}</select></label>
+  </div>`;
+  $('#modalFoot').innerHTML=`<div style="margin-left:auto;display:flex;gap:10px">${ed?'<button class="btn danger" id="rkDel">Delete</button>':''}<button class="btn" id="rkCancel">Cancel</button><button class="btn primary" id="rkSave">Save</button></div>`;
+  $('#rkCancel').onclick=closeModal;
+  $('#rkSave').onclick=async()=>{const rec={code:$('#rkCode').value.trim(),title:$('#rkTitle').value.trim()||'Untitled',category:$('#rkCat').value.trim(),owner:$('#rkOwner').value.trim(),likelihood:Math.min(5,Math.max(1,+$('#rkL').value||1)),impact:Math.min(5,Math.max(1,+$('#rkI').value||1)),status:$('#rkStatus').value};
+    if(ed)Object.assign(r,rec);else ENT.grc.risks.push(Object.assign({id:eid('rk')},rec));await saveEnt();closeModal();render();toast('Risk saved');};
+  if(ed)$('#rkDel').onclick=async()=>{ENT.grc.risks=ENT.grc.risks.filter(x=>x.id!==r.id);await saveEnt();closeModal();render();toast('Deleted');};
+  openModal();
+}
+
+/* =========================================================
+   SAMPLE DATA SEED (all modules)
+   ========================================================= */
+function entSeed(){
+  const T=todayISO();
+  // HR
+  const depts=['Finance','Technology','Operations','Sales','HR','Logistics'];
+  const positions=['Manager','Analyst','Specialist','Coordinator','Director','Associate'];
+  ENT.hr.employees=[];
+  for(let i=0;i<24;i++){ENT.hr.employees.push({id:eid('emp'),no:'E-'+(1001+i),name:['Ahmed','Sara','Omar','Mona','Youssef','Nour','Karim','Hana','Tarek','Dina','Ali','Rana'][i%12]+' '+['Hassan','Fahmy','Said','Adel','Nabil','Salah','Zaki','Rashad'][i%8],dept:depts[i%depts.length],position:positions[i%positions.length],hire:'20'+(19+i%6)+'-0'+(1+i%9)+'-1'+(i%9),salary:8000+(i%10)*2500,status:i>=22?'TERMINATED':'ACTIVE'});}
+  ENT.hr.leave=[{id:eid('lv'),empId:ENT.hr.employees[0].id,type:'Annual',start:addDaysISO(T,3),end:addDaysISO(T,7),days:5,status:'SUBMITTED'},
+    {id:eid('lv'),empId:ENT.hr.employees[1].id,type:'Sick',start:addDaysISO(T,-2),end:addDaysISO(T,1),days:3,status:'APPROVED'}];
+  ENT.hr.runs=[{id:eid('run'),period:T.slice(0,7),payDate:T,count:22,gross:ENT.hr.employees.filter(e=>e.status==='ACTIVE').reduce((s,e)=>s+e.salary,0),net:ENT.hr.employees.filter(e=>e.status==='ACTIVE').reduce((s,e)=>s+e.salary*0.79,0),status:'POSTED'}];
+  // MFG
+  ENT.mfg.workcenters=[{id:eid('wc'),code:'ASSY',name:'Assembly Line',capacity:480,costHr:250},{id:eid('wc'),code:'PACK',name:'Packaging',capacity:480,costHr:150},{id:eid('wc'),code:'MACH',name:'Machining',capacity:420,costHr:380}];
+  ENT.mfg.boms=[{id:eid('bom'),item:'Finished Good A',version:'v1',lines:[{comp:'Component X',qty:2,cost:45},{comp:'Component Y',qty:1,cost:120},{comp:'Packaging',qty:1,cost:8}]},
+    {id:eid('bom'),item:'Finished Good B',version:'v2',lines:[{comp:'Component Z',qty:4,cost:22},{comp:'Label',qty:1,cost:2}]}];
+  ENT.mfg.orders=[];const mst=['PLANNED','RELEASED','IN_PROGRESS','DONE','DONE'];
+  for(let i=0;i<10;i++){const qty=100+i*40;const st=mst[i%mst.length];const prod=st==='DONE'?qty-(i%7):st==='IN_PROGRESS'?Math.round(qty*0.5):0;
+    ENT.mfg.orders.push({id:eid('mo'),no:'MO-'+(1001+i),item:i%2?'Finished Good B':'Finished Good A',qtyPlanned:qty,qtyProduced:prod,qtyScrap:st==='DONE'?(i%7):0,wc:['ASSY','PACK','MACH'][i%3],status:st,runMin:qty*5});}
+  // PSA
+  ENT.psa.projects=[];const pt=['FIXED','MILESTONE','T_AND_M'];
+  for(let i=0;i<7;i++){const budget=200000+i*150000;const billed=Math.round(budget*(0.3+0.1*(i%6)));const cost=Math.round(billed*(0.6+0.05*(i%5)));
+    ENT.psa.projects.push({id:eid('pr'),code:'PRJ-'+(101+i),name:['ERP Rollout','Warehouse Automation','Mobile App','Data Migration','Cloud Move','POS Upgrade','Network Refresh'][i],billingType:pt[i%3],budget,billed,cost,status:i>=6?'CLOSED':'ACTIVE'});}
+  ENT.psa.tasks=[];ENT.psa.projects.slice(0,4).forEach((p,pi)=>{for(let k=0;k<3;k++){const pl=40+k*20;ENT.psa.tasks.push({id:eid('tk'),projId:p.id,wbs:(pi+1)+'.'+(k+1),name:['Analysis','Build','Test'][k],planned:pl,actual:Math.round(pl*(0.7+0.2*k)),pct:[100,60,20][k],milestone:k===2});}});
+  // EAM
+  ENT.eam.assets=[];const crit=['LOW','MEDIUM','HIGH','CRITICAL'];
+  for(let i=0;i<8;i++)ENT.eam.assets.push({id:eid('as'),no:'AST-'+(101+i),name:['Forklift #1','HVAC Unit','Generator','Conveyor','Delivery Van','Packaging Machine','Cold Store','Compressor'][i],location:['Warehouse','HQ','Plant'][i%3],criticality:crit[i%4],cost:50000+i*40000,status:i===7?'DOWN':'OPERATIONAL'});
+  ENT.eam.workorders=[];const wtypes=['PREVENTATIVE','CORRECTIVE','CORRECTIVE','INSPECTION','PREVENTATIVE'];
+  for(let i=0;i<18;i++){const t=wtypes[i%wtypes.length];const asset=ENT.eam.assets[i%ENT.eam.assets.length];
+    ENT.eam.workorders.push({id:eid('wo'),no:'WO-'+(1001+i),assetId:asset.id,type:t,priority:crit[i%4],downtimeMin:t==='CORRECTIVE'?60+(i%6)*45:0,partsCost:t==='CORRECTIVE'?500+(i%5)*800:100,laborCost:300+(i%4)*250,status:i<12?'COMPLETED':'OPEN'});}
+  // QMS
+  ENT.qms.inspections=[];const stg=['INCOMING','IN_PROCESS','FINAL'];const res=['PASS','PASS','PASS','FAIL','PASS','PASS'];
+  for(let i=0;i<22;i++){const r=res[i%res.length];ENT.qms.inspections.push({id:eid('in'),no:'QC-'+(1001+i),item:'Item '+((i%9)+1),stage:stg[i%3],vendor:'VEN-'+(i%6+1),sample:20+(i%5)*10,result:i>=20?'PENDING':r});}
+  ENT.qms.ncrs=[];ENT.qms.inspections.filter(i=>i.result==='FAIL').forEach((i,k)=>ENT.qms.ncrs.push({id:eid('ncr'),inspId:i.id,no:'NCR-'+(1001+k),item:i.item,vendor:i.vendor,severity:['MINOR','MAJOR','CRITICAL'][k%3],qty:i.sample,status:k%2?'CLOSED':'OPEN',opened:addDaysISO(T,-(10+k*20))}));
+  // TMS
+  ENT.tms.vehicles=[];for(let i=0;i<6;i++)ENT.tms.vehicles.push({id:eid('vh'),plate:'EGY-'+(1000+i*111),type:['Van','Truck','Truck','Van','Refrigerated','Truck'][i],capacity:[1500,8000,12000,1200,6000,10000][i],odo:40000+i*15000,status:i===5?'MAINTENANCE':'AVAILABLE'});
+  ENT.tms.trips=[];ENT.tms.fuel=[];const tst=['DELIVERED','DELIVERED','IN_TRANSIT','DELIVERED','PLANNED','DELIVERED','FAILED'];
+  for(let i=0;i<20;i++){const v2=ENT.tms.vehicles[i%ENT.tms.vehicles.length];const km=80+(i%8)*60;const st=tst[i%tst.length];
+    ENT.tms.trips.push({id:eid('tp'),no:'TR-'+(1001+i),route:['Cairo → Alex','Giza → Cairo','Cairo → Suez','Alex → Cairo','Cairo → Mansoura'][i%5],vehId:v2.id,km,status:st,onTime:st==='DELIVERED'?(i%5!==0):false});
+    ENT.tms.fuel.push({id:eid('fu'),vehId:v2.id,date:addDaysISO(T,-(i%28)),liters:km*0.28,cost:km*0.28*15});}
+  // FSM
+  ENT.fsm.contracts=[{id:eid('sc'),no:'SC-1001',customer:'Alpha Retail',slaResp:60,slaRes:480}];
+  ENT.fsm.wos=[];const fst=['SIGNED_OFF','CLOSED','ASSIGNED','SIGNED_OFF','ON_SITE','CLOSED','NEW'];const techs=['T. Nabil','K. Adel','M. Sami','R. Fouad'];
+  for(let i=0;i<20;i++){const st=fst[i%fst.length];const closed=['SIGNED_OFF','CLOSED'].includes(st);
+    ENT.fsm.wos.push({id:eid('fw'),no:'FWO-'+(1001+i),customer:['Alpha Retail','Beta Foods','Gamma Mart','Delta Stores'][i%4],priority:['P1','P2','P3','P2'][i%4],tech:techs[i%techs.length],firstTimeFix:closed?(i%4!==0):false,slaMet:closed?(i%5!==0):false,status:st});}
+  // GRC
+  ENT.grc.risks=[];const cats=['Financial','Operational','Cyber','Compliance','Strategic'];
+  const rl=[[4,5],[3,4],[5,3],[2,2],[3,3],[4,4],[1,5],[2,4],[5,5],[3,2]];
+  for(let i=0;i<10;i++)ENT.grc.risks.push({id:eid('rk'),code:'R-'+(101+i),title:['Liquidity shortfall','Supply disruption','Data breach','Regulatory penalty','Market shift','Key-person loss','System outage','Fraud','Cyber ransomware','FX volatility'][i],category:cats[i%5],owner:['CFO','COO','CISO','Legal','CEO'][i%5],likelihood:rl[i][0],impact:rl[i][1],status:['OPEN','MITIGATING','ACCEPTED','MITIGATING','OPEN'][i%5]});
+  ENT.grc.policies=[{id:eid('po'),code:'POL-01',title:'Code of Conduct',version:'3.0',assigned:24,ack:22},{id:eid('po'),code:'POL-02',title:'Information Security',version:'2.1',assigned:24,ack:18},{id:eid('po'),code:'POL-03',title:'Anti-Bribery',version:'1.4',assigned:24,ack:24}];
+  ENT.grc.findings=[{id:eid('fd'),title:'Segregation of duties gap in AP',severity:'MAJOR',owner:'Controller',due:addDaysISO(T,20),status:'IN_REMEDIATION'},{id:eid('fd'),title:'Access review overdue',severity:'MINOR',owner:'IT',due:addDaysISO(T,-5),status:'OPEN'}];
+  // CRM
+  ENT.crm.leads=[];for(let i=0;i<8;i++)ENT.crm.leads.push({id:eid('ld'),name:['Nile Foods','Delta Retail','Cairo Mart','Giza Wholesale','Red Sea Traders','Luxor Supplies','Alex Distribution','Sinai Goods'][i],source:['Web','Referral','Event','Cold Call'][i%4],value:50000+i*30000,owner:['A. Sales','B. Sales'][i%2],status:['NEW','QUALIFIED','NEW','QUALIFIED'][i%4]});
+  ENT.crm.opps=[];const ost=['PROSPECTING','QUALIFICATION','PROPOSAL','NEGOTIATION','WON','LOST','WON','PROPOSAL'];
+  for(let i=0;i<14;i++){const st=ost[i%ost.length];ENT.crm.opps.push({id:eid('op'),name:['Annual Supply','Store Fitout','POS Bundle','Cold Chain','Fleet Deal','Bulk Order','Franchise Kit','Service Plan'][i%8]+' #'+(i+1),customer:['Nile Foods','Delta Retail','Cairo Mart','Giza Wholesale'][i%4],stage:st,amount:80000+i*45000,prob:st==='WON'?100:st==='LOST'?0:[20,40,60,80][i%4],owner:['A. Sales','B. Sales'][i%2],close:addDaysISO(T,(i%6)*20-30)});}
+  ENT.seeded=true;
+}
+
 (async function boot(){
   const ent=DATA.meta.entity.replace(/^El Matager\s*/i,'').replace(/[()]/g,'').trim()||DATA.meta.entity;
   $('#entLabel').textContent=DATA.meta.currency+' · '+ent;
   await store.load();
+  await loadEnt();
   seedUsers();
   migrateUsers();
   if(!USERS.find(u=>u.id===CURRENT_USER))CURRENT_USER=USERS[0].id;
