@@ -4682,6 +4682,7 @@ function renderCloud(v){
   const head=el('div','viewhead');
   head.innerHTML=`<div><h2>Cloud Backup &amp; Sync</h2><div class="desc">Keep your data safe and reach it from any device. Use a one-file backup (no setup) or connect Google Drive for cloud sync.</div></div>`;
   v.appendChild(head);
+  if(typeof csPanel==='function')csPanel(v);
 
   let lastExport='',lastDrive='';try{lastExport=localStorage.getItem('elmatager_lastexport')||'';lastDrive=localStorage.getItem('elmatager_gdrive_lastsave')||'';}catch(e){}
   const mode=window.__storageMode||'localStorage';
@@ -4753,10 +4754,108 @@ function renderCloud(v){
 
 /* auto-save to Drive after any persisted change (debounced) */
 (function hookAutoSync(){
-  try{Object.keys(store).forEach(k=>{ if(k.indexOf('save')===0 && typeof store[k]==='function'){ const orig=store[k].bind(store); store[k]=async function(){ const r=await orig.apply(null,arguments); try{bumpStamp();}catch(e){} gdScheduleAuto(); return r; }; } });}catch(e){}
-  if(typeof saveEnt==='function'){ const _se=saveEnt; saveEnt=async function(){ const r=await _se.apply(this,arguments); try{bumpStamp();}catch(e){} gdScheduleAuto(); return r; }; }
+  try{Object.keys(store).forEach(k=>{ if(k.indexOf('save')===0 && typeof store[k]==='function'){ const orig=store[k].bind(store); store[k]=async function(){ const r=await orig.apply(null,arguments); try{bumpStamp();}catch(e){} gdScheduleAuto(); try{csSchedule();}catch(e){} return r; }; } });}catch(e){}
+  if(typeof saveEnt==='function'){ const _se=saveEnt; saveEnt=async function(){ const r=await _se.apply(this,arguments); try{bumpStamp();}catch(e){} gdScheduleAuto(); try{csSchedule();}catch(e){} return r; }; }
   if(typeof enterApp==='function'){ const _ea=enterApp; enterApp=function(){ const o=_ea.apply(this,arguments); try{ setTimeout(()=>{ if(typeof gdAutoConnect==='function') gdAutoConnect(); }, 900); }catch(e){} return o; }; }
 })();
+
+/* ============================================================
+   INSTANT CLOUD SYNC  (JSONBin.io)
+   A tiny shared JSON store so all your data — including user
+   logins — syncs across every device. Loads BEFORE the login
+   screen so you can sign in with synced accounts anywhere.
+   ============================================================ */
+/* ▼ paste the two values from JSONBin here (or set them on the Cloud page) ▼ */
+const JSONBIN_ID  = '6a592234da38895dfe676145';
+const JSONBIN_KEY = '$2a$10$Mgycp9TYYlKeJMkmJ3gtV.usDgqotN34QivcORICAeijLglkuATRG';
+/* ▲ once set here, EVERY device auto-syncs with no typing ▲ */
+
+const CS={id:'',key:'',auto:true};
+(function csInit(){try{
+  CS.id =(JSONBIN_ID&&JSONBIN_ID.trim())  || localStorage.getItem('elmatager_cs_id')  || '';
+  CS.key=(JSONBIN_KEY&&JSONBIN_KEY.trim())|| localStorage.getItem('elmatager_cs_key') || '';
+  CS.auto=localStorage.getItem('elmatager_cs_auto')!=='0';
+}catch(e){}})();
+function csConfigured(){return !!(CS.id&&CS.key);}
+function csSet(id,key){CS.id=(id||'').trim();CS.key=(key||'').trim();try{localStorage.setItem('elmatager_cs_id',CS.id);localStorage.setItem('elmatager_cs_key',CS.key);}catch(e){}}
+async function csGet(){
+  const r=await fetch('https://api.jsonbin.io/v3/b/'+CS.id+'/latest',{headers:{'X-Master-Key':CS.key,'X-Bin-Meta':'false'}});
+  if(!r.ok)throw new Error('HTTP '+r.status);
+  return await r.json();      // stored backup object (X-Bin-Meta:false → record only)
+}
+async function csPut(obj){
+  const r=await fetch('https://api.jsonbin.io/v3/b/'+CS.id,{method:'PUT',
+    headers:{'X-Master-Key':CS.key,'Content-Type':'application/json','X-Bin-Versioning':'false'},body:JSON.stringify(obj)});
+  if(!r.ok)throw new Error('HTTP '+r.status);
+  return true;
+}
+async function csPush(){
+  if(!csConfigured())throw new Error('Cloud not configured');
+  const obj=collectBackup(); await csPut(obj);
+  const now=new Date().toISOString(); bumpStamp(now);
+  try{localStorage.setItem('elmatager_cs_lastsave',now);}catch(e){}
+  return true;
+}
+let _csT=null;
+function csSchedule(){ if(!CS.auto||!csConfigured())return; clearTimeout(_csT); _csT=setTimeout(()=>{csPush().catch(()=>{});},3000); }
+/* pull shared data at startup (before login) so synced accounts work on any device */
+async function csHydrate(){
+  if(!csConfigured())return false;
+  try{
+    const obj=await csGet();
+    if(obj&&obj.data){
+      const cloud=obj.savedAt||''; const local=localStamp();
+      if(!local || (cloud && cloud>local)){ await applyBackup(obj); return true; }
+    }
+  }catch(e){ /* offline / not created yet / bad creds → keep local */ }
+  return false;
+}
+async function csPullNow(){
+  if(!csConfigured()){toast('Enter your Bin ID and Key first.',true);return;}
+  try{const obj=await csGet(); if(obj&&obj.data){await applyBackup(obj);render();toast('Synced latest data from cloud');} else toast('Cloud is empty — Save first.',true);}
+  catch(e){toast('Cloud load failed: '+e.message+' (check Bin ID / Key)',true);}
+}
+async function csSaveNow(){
+  if(!csConfigured()){toast('Enter your Bin ID and Key first.',true);return;}
+  try{await csPush();toast('Saved to cloud — available on all your devices');if(CURRENT==='cloud')render();}
+  catch(e){toast('Cloud save failed: '+e.message+' (check Bin ID / Key)',true);}
+}
+
+/* Cloud page section (prepended into renderCloud) */
+function csPanel(v){
+  let last='';try{last=localStorage.getItem('elmatager_cs_lastsave')||'';}catch(e){}
+  const p=el('div','panel');
+  p.style.borderTop='3px solid var(--accent)';
+  p.innerHTML=`<div class="phd"><h3>☁ Instant Cloud Sync — recommended</h3>${csConfigured()?'<span class="st-tag st-approved" style="margin-left:auto">ACTIVE</span>':'<span class="st-tag st-draft" style="margin-left:auto">NOT SET</span>'}</div>
+    <div style="padding:16px 18px">
+      <div class="hint" style="margin:0 0 12px">Syncs <b>everything</b> — transactions, users &amp; logins — across all devices, and loads before the sign-in screen so your accounts work anywhere. Free via JSONBin.io.</div>
+      <div class="jgrid">
+        <label class="fld">Bin ID<input class="f" id="csId" value="${esc(CS.id)}" placeholder="from JSONBin" style="max-width:none"></label>
+        <label class="fld">X-Master-Key<input class="f" id="csKey" value="${esc(CS.key)}" placeholder="from JSONBin API keys" style="max-width:none"></label>
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px">
+        <button class="btn primary" id="csSaveBtn">Save to cloud</button>
+        <button class="btn" id="csLoadBtn">Load from cloud</button>
+        <label class="userpick" style="font-size:12.5px;color:var(--txt-soft);align-self:center"><input type="checkbox" id="csAuto" ${CS.auto?'checked':''} style="width:auto"> Auto-sync after changes</label>
+      </div>
+      <div class="hint" style="margin-top:8px">${last?('Last cloud save: '+new Date(last).toLocaleString()):'Not saved to cloud yet.'}</div>
+      <div class="note" style="margin-top:14px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01M11 12h1v4h1"/></svg>
+        <div><b>Setup (2 minutes, free):</b>
+        <ol style="margin:6px 0 0 18px;padding:0;line-height:1.9">
+          <li>Go to <b>jsonbin.io</b> → <b>Sign up</b> (free).</li>
+          <li>Click <b>Create Bin</b>, put <code>{}</code> as the content, <b>Create</b>. Copy the <b>Bin ID</b> from the URL/'id' field.</li>
+          <li>Open <b>API Keys</b> (left menu) → copy your <b>X-MASTER-KEY</b>.</li>
+          <li>Paste both above → <b>Save to cloud</b>. On any other device, just open the app and sign in — it loads automatically.</li>
+        </ol>
+        For fully automatic sync on brand-new devices, send me the Bin ID + Key and I'll bake them into the file so nothing needs typing.</div></div>
+    </div>`;
+  v.appendChild(p);
+  $('#csId').onchange=e=>{csSet(e.target.value,$('#csKey').value);};
+  $('#csKey').onchange=e=>{csSet($('#csId').value,e.target.value);};
+  $('#csSaveBtn').onclick=()=>{csSet($('#csId').value,$('#csKey').value);csSaveNow();};
+  $('#csLoadBtn').onclick=()=>{csSet($('#csId').value,$('#csKey').value);csPullNow();};
+  $('#csAuto').onchange=e=>{CS.auto=e.target.checked;try{localStorage.setItem('elmatager_cs_auto',CS.auto?'1':'0');}catch(x){}toast('Auto-sync '+(CS.auto?'enabled':'disabled'));};
+}
 
 (async function boot(){
   const ent=DATA.meta.entity.replace(/^El Matager\s*/i,'').replace(/[()]/g,'').trim()||DATA.meta.entity;
@@ -4764,6 +4863,9 @@ function renderCloud(v){
   await store.load();
   await loadEnt();
   seedUsers();
+  migrateUsers();
+  await csHydrate();                 // pull shared cloud data BEFORE login (cross-device accounts)
+  seedUsers();                        // re-ensure at least defaults exist if cloud was empty
   migrateUsers();
   if(!USERS.find(u=>u.id===CURRENT_USER))CURRENT_USER=USERS[0].id;
   await store.saveUsers();
