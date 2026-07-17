@@ -4787,20 +4787,31 @@ function renderCloud(v){
    logins — syncs across every device. Loads BEFORE the login
    screen so you can sign in with synced accounts anywhere.
    ============================================================ */
-/* ▼ paste the two values from JSONBin here (or set them on the Cloud page) ▼ */
+/* ▼ RECOMMENDED: Firebase Realtime Database URL (free, ~1GB, no 100KB limit, no key needed with open rules) ▼ */
+const FIREBASE_URL = 'https://el-matager-default-rtdb.firebaseio.com';   // El Matager RTDB (free, no size limit)
+/* JSONBin (legacy fallback — free tier caps writes at 100KB) */
 const JSONBIN_ID  = '6a592234da38895dfe676145';
 const JSONBIN_KEY = '$2a$10$Mgycp9TYYlKeJMkmJ3gtV.usDgqotN34QivcORICAeijLglkuATRG';
 /* ▲ once set here, EVERY device auto-syncs with no typing ▲ */
 
-const CS={id:'',key:'',auto:true};
+const CS={fb:'',id:'',key:'',auto:true};
 (function csInit(){try{
-  CS.id =(JSONBIN_ID&&JSONBIN_ID.trim())  || localStorage.getItem('elmatager_cs_id')  || '';
-  CS.key=(JSONBIN_KEY&&JSONBIN_KEY.trim())|| localStorage.getItem('elmatager_cs_key') || '';
+  CS.fb =(FIREBASE_URL&&FIREBASE_URL.trim()) || localStorage.getItem('elmatager_cs_fb')  || '';
+  CS.id =(JSONBIN_ID&&JSONBIN_ID.trim())     || localStorage.getItem('elmatager_cs_id')  || '';
+  CS.key=(JSONBIN_KEY&&JSONBIN_KEY.trim())   || localStorage.getItem('elmatager_cs_key') || '';
   CS.auto=localStorage.getItem('elmatager_cs_auto')!=='0';
 }catch(e){}})();
-function csConfigured(){return !!(CS.id&&CS.key);}
+function csConfigured(){return !!(CS.fb || (CS.id&&CS.key));}
+function csProvider(){return CS.fb?'Firebase (no size limit)':'JSONBin (100KB limit)';}
+function fbUrl(){ let u=(CS.fb||'').trim().replace(/\/+$/,''); if(!/^https?:\/\//.test(u))u='https://'+u; return u+'/elmatager_data.json'; }
 function csSet(id,key){CS.id=(id||'').trim();CS.key=(key||'').trim();try{localStorage.setItem('elmatager_cs_id',CS.id);localStorage.setItem('elmatager_cs_key',CS.key);}catch(e){}}
+function csSetFb(url){CS.fb=(url||'').trim();try{localStorage.setItem('elmatager_cs_fb',CS.fb);}catch(e){}}
 async function csGet(){
+  if(CS.fb){
+    const r=await fetch(fbUrl(),{cache:'no-store'});
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    return await r.json();                       // RTDB returns the object directly (or null)
+  }
   const r=await fetch('https://api.jsonbin.io/v3/b/'+CS.id+'/latest',{headers:{'X-Master-Key':CS.key,'X-Bin-Meta':'false'}});
   if(!r.ok)throw new Error('HTTP '+r.status);
   let j=await r.json();
@@ -4808,9 +4819,14 @@ async function csGet(){
   return j;
 }
 async function csPut(obj){
+  if(CS.fb){
+    const r=await fetch(fbUrl(),{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(obj)});
+    if(!r.ok){let t='';try{t=await r.text();}catch(e){} throw new Error('HTTP '+r.status+(t?(' — '+t.slice(0,140)):''));}
+    return true;
+  }
   const r=await fetch('https://api.jsonbin.io/v3/b/'+CS.id,{method:'PUT',
     headers:{'X-Master-Key':CS.key,'Content-Type':'application/json','X-Bin-Versioning':'false'},body:JSON.stringify(obj)});
-  if(!r.ok){let t='';try{t=await r.text();}catch(e){} throw new Error('HTTP '+r.status+(t?(' — '+t.slice(0,120)):''));}
+  if(!r.ok){let t='';try{t=await r.text();}catch(e){} throw new Error('HTTP '+r.status+(t?(' — '+t.slice(0,140)):''));}
   return true;
 }
 async function csPush(){
@@ -4912,13 +4928,17 @@ function csPanel(v){
   let lastErr='';try{lastErr=localStorage.getItem('elmatager_cs_lasterr')||'';}catch(e){}
   const p=el('div','panel');
   p.style.borderTop='3px solid var(--accent)';
-  p.innerHTML=`<div class="phd"><h3>☁ Instant Cloud Sync — recommended</h3>${csConfigured()?'<span class="st-tag st-approved" style="margin-left:auto">ACTIVE</span>':'<span class="st-tag st-draft" style="margin-left:auto">NOT SET</span>'}</div>
+  p.innerHTML=`<div class="phd"><h3>☁ Instant Cloud Sync — recommended</h3>${csConfigured()?'<span class="st-tag st-approved" style="margin-left:auto">ACTIVE · '+esc(csProvider())+'</span>':'<span class="st-tag st-draft" style="margin-left:auto">NOT SET</span>'}</div>
     <div style="padding:16px 18px">
-      <div class="hint" style="margin:0 0 12px">Syncs <b>everything</b> — transactions, users &amp; logins — across all devices, and loads before the sign-in screen so your accounts work anywhere. Free via JSONBin.io.</div>
-      <div class="jgrid">
-        <label class="fld">Bin ID<input class="f" id="csId" value="${esc(CS.id)}" placeholder="from JSONBin" style="max-width:none"></label>
-        <label class="fld">X-Master-Key<input class="f" id="csKey" value="${esc(CS.key)}" placeholder="from JSONBin API keys" style="max-width:none"></label>
-      </div>
+      <div class="hint" style="margin:0 0 12px">Syncs <b>everything</b> — transactions, users &amp; logins — across all devices, and loads before the sign-in screen so your accounts work anywhere.</div>
+      <label class="fld" style="display:block">Realtime Database URL <span style="color:var(--pos);font-weight:600">(recommended — free, no size limit)</span>
+        <input class="f" id="csFb" value="${esc(CS.fb)}" placeholder="https://your-project-default-rtdb.firebaseio.com" style="max-width:none;width:100%"></label>
+      <details style="margin-top:10px"><summary style="cursor:pointer;font-size:12px;color:var(--txt-soft)">Alternative: JSONBin (100 KB limit — not for attachments)</summary>
+        <div class="jgrid" style="margin-top:8px">
+          <label class="fld">Bin ID<input class="f" id="csId" value="${esc(CS.id)}" placeholder="from JSONBin" style="max-width:none"></label>
+          <label class="fld">X-Master-Key<input class="f" id="csKey" value="${esc(CS.key)}" placeholder="from JSONBin API keys" style="max-width:none"></label>
+        </div><div class="hint" style="margin-top:6px">Leave the URL above empty to use JSONBin. Firebase takes priority when both are set.</div>
+      </details>
       <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px">
         <button class="btn primary" id="csSaveBtn">Save to cloud</button>
         <button class="btn" id="csLoadBtn">Load from cloud</button>
@@ -4929,21 +4949,24 @@ function csPanel(v){
       <div id="csStatus" style="margin-top:12px;font-size:12.5px;line-height:1.6;background:var(--canvas);border:1px solid var(--line);border-radius:8px;padding:10px 12px">${lastErr?('<div style="color:var(--neg)">Last sync error: '+esc(lastErr)+'</div>'):'Tap <b>Test connection</b> to check this device can reach the cloud.'}</div>
       <div class="hint" style="margin-top:8px">${last?('Last cloud save: '+new Date(last).toLocaleString()):'Not saved to cloud yet.'}</div>
       <div class="note" style="margin-top:14px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01M11 12h1v4h1"/></svg>
-        <div><b>Setup (2 minutes, free):</b>
+        <div><b>Firebase setup (5 minutes, free, no size limit):</b>
         <ol style="margin:6px 0 0 18px;padding:0;line-height:1.9">
-          <li>Go to <b>jsonbin.io</b> → <b>Sign up</b> (free).</li>
-          <li>Click <b>Create Bin</b>, put <code>{}</code> as the content, <b>Create</b>. Copy the <b>Bin ID</b> from the URL/'id' field.</li>
-          <li>Open <b>API Keys</b> (left menu) → copy your <b>X-MASTER-KEY</b>.</li>
-          <li>Paste both above → <b>Save to cloud</b>. On any other device, just open the app and sign in — it loads automatically.</li>
+          <li>Go to <b>console.firebase.google.com</b> → <b>Add project</b> (any name) → skip Analytics → Create.</li>
+          <li>Left menu <b>Build → Realtime Database</b> → <b>Create Database</b> → pick a location → start in <b>Test mode</b> → Enable.</li>
+          <li>Copy the database URL shown at the top (looks like <code>https://your-project-default-rtdb.firebaseio.com</code>).</li>
+          <li>Paste it in <b>Realtime Database URL</b> above → <b>Save to cloud</b>. Done — every device syncs automatically.</li>
         </ol>
-        For fully automatic sync on brand-new devices, send me the Bin ID + Key and I'll bake them into the file so nothing needs typing.</div></div>
+        Send me that URL and I'll bake it into the file so new devices need zero typing. (Test mode is open for 30 days; I'll give you a one-line permanent rule to paste when you're ready.)</div></div>
     </div>`;
   v.appendChild(p);
-  $('#csId').onchange=e=>{csSet(e.target.value,$('#csKey').value);};
-  $('#csKey').onchange=e=>{csSet($('#csId').value,e.target.value);};
-  $('#csSaveBtn').onclick=()=>{csSet($('#csId').value,$('#csKey').value);csSaveNow();};
-  $('#csLoadBtn').onclick=()=>{csSet($('#csId').value,$('#csKey').value);csPullNow();};
-  $('#csTestBtn').onclick=()=>{csSet($('#csId').value,$('#csKey').value);csTest();};
+  const gv=id=>{const e=document.getElementById(id);return e?e.value:'';};
+  const syncFields=()=>{csSetFb(gv('csFb'));csSet(gv('csId'),gv('csKey'));};
+  if($('#csFb'))$('#csFb').onchange=syncFields;
+  if($('#csId'))$('#csId').onchange=syncFields;
+  if($('#csKey'))$('#csKey').onchange=syncFields;
+  $('#csSaveBtn').onclick=()=>{syncFields();csSaveNow();};
+  $('#csLoadBtn').onclick=()=>{syncFields();csPullNow();};
+  $('#csTestBtn').onclick=()=>{syncFields();csTest();};
   $('#csAuto').onchange=e=>{CS.auto=e.target.checked;try{localStorage.setItem('elmatager_cs_auto',CS.auto?'1':'0');}catch(x){}toast('Auto-sync '+(CS.auto?'enabled':'disabled'));};
 }
 
