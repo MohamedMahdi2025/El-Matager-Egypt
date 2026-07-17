@@ -2268,7 +2268,7 @@ function drawAttach(locked){const box=$('#jeAttachList');if(!box)return;box.inne
 }
 function handleAttach(files){
   [...files].forEach(f=>{
-    if(f.size>1600000){toast('“'+f.name+'” exceeds 1.5 MB and was skipped.',true);return;}
+    if(f.size>60000000){toast('“'+f.name+'” is very large ('+(f.size/1048576).toFixed(0)+' MB) — may be slow to sync.',true);}
     const rd=new FileReader();rd.onload=()=>{JE_ATTACH.push({name:f.name,size:f.size,type:f.type,data:rd.result});drawAttach(false);};rd.readAsDataURL(f);
   });
 }
@@ -2869,7 +2869,7 @@ function procDocModal(doc){
     $$('#prAttachList [data-rm]').forEach(b=>b.onclick=async()=>{PROC_ATTACH.splice(+b.dataset.rm,1);await persistProcAttach();drawProcAttach();});
   }
   async function persistProcAttach(){ if(editing){ doc.attachments=PROC_ATTACH.map(a=>({...a})); await store.saveProc(); } }
-  function handleProcAttach(files){ [...files].forEach(f=>{ if(f.size>1600000){toast('“'+f.name+'” exceeds 1.5 MB and was skipped.',true);return;} const rd=new FileReader(); rd.onload=async()=>{ PROC_ATTACH.push({name:f.name,size:f.size,type:f.type,data:rd.result}); await persistProcAttach(); drawProcAttach(); }; rd.readAsDataURL(f); }); }
+  function handleProcAttach(files){ [...files].forEach(f=>{ if(f.size>60000000){toast('“'+f.name+'” is very large ('+(f.size/1048576).toFixed(0)+' MB) — may be slow to sync.',true);} const rd=new FileReader(); rd.onload=async()=>{ PROC_ATTACH.push({name:f.name,size:f.size,type:f.type,data:rd.result}); await persistProcAttach(); drawProcAttach(); }; rd.readAsDataURL(f); }); }
   drawProcAttach();
   { const pf=$('#prFile'); if(pf) pf.onchange=e=>handleProcAttach(e.target.files); }
   if(!readOnly)$('#prAdd')&&($('#prAdd').onclick=()=>{readLines();lines.push({desc:'',accName:'',amount:'',capitalize:false});$('#prLines').innerHTML=linesHtml();bind();recalc();});
@@ -4808,7 +4808,7 @@ async function csGet(){
   return j;
 }
 async function csPut(obj){
-  const r=await fetch('https://api.jsonbin.io/v3/b/'+CS.id,{method:'PUT',keepalive:true,
+  const r=await fetch('https://api.jsonbin.io/v3/b/'+CS.id,{method:'PUT',
     headers:{'X-Master-Key':CS.key,'Content-Type':'application/json','X-Bin-Versioning':'false'},body:JSON.stringify(obj)});
   if(!r.ok){let t='';try{t=await r.text();}catch(e){} throw new Error('HTTP '+r.status+(t?(' — '+t.slice(0,120)):''));}
   return true;
@@ -4820,12 +4820,47 @@ async function csPush(){
   try{localStorage.setItem('elmatager_cs_lastsave',now);localStorage.removeItem('elmatager_cs_lasterr');}catch(e){}
   return true;
 }
-let _csT=null;
-function csSchedule(){ if(!CS.auto||!csConfigured())return; clearTimeout(_csT); _csT=setTimeout(()=>{csPush().catch(e=>{try{localStorage.setItem('elmatager_cs_lasterr',(e&&e.message)||'sync failed');}catch(x){}});},2500); }
-/* flush any pending save when the tab is hidden/closed (keepalive lets it finish) */
+let _csT=null,_csDirty=false,_csBusy=false;
+function csSchedule(){ if(!CS.auto||!csConfigured())return; _csDirty=true; csSetSync('pending'); clearTimeout(_csT); _csT=setTimeout(flushCloud,250); }
+async function flushCloud(){
+  if(!CS.auto||!csConfigured())return;
+  if(_csBusy){ _csDirty=true; return; }        // push already running → mark to re-push after
+  if(!_csDirty)return;
+  _csBusy=true; _csDirty=false; csSetSync('saving');
+  try{ await csPush(); csSetSync('saved'); }
+  catch(e){ _csDirty=true; csSetSync('error'); try{localStorage.setItem('elmatager_cs_lasterr',(e&&e.message)||'sync failed');}catch(x){} }
+  finally{ _csBusy=false; if(_csDirty) setTimeout(flushCloud,120); }   // coalesce changes that arrived mid-push
+}
+function csSetSync(state){
+  const map={pending:['#d39e00','Sync pending…'],saving:['#2f88d0','Saving to cloud…'],saved:['#2e7d32','All changes saved to cloud'],error:['#c0392b','Cloud sync failed — open Cloud page']};
+  const m=map[state]; if(!m)return;
+  const b=document.getElementById('cloudBtn'); if(b){ b.style.boxShadow='inset 0 0 0 2px '+m[0]; b.title=m[1]; if(state==='saved'){ setTimeout(()=>{ if(b)b.style.boxShadow=''; },1800); } }
+  const s=document.getElementById('csSyncPill'); if(s){ s.textContent=m[1]; s.style.color=m[0]; }
+}
 if(typeof window!=='undefined'){
-  window.addEventListener('pagehide',()=>{ if(CS.auto&&csConfigured())csPush().catch(()=>{}); });
-  document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='hidden'&&CS.auto&&csConfigured())csPush().catch(()=>{}); });
+  window.addEventListener('pagehide',flushCloud);
+  document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='hidden')flushCloud(); });
+}
+/* ---- instant LOAD: pull newest from cloud when this device becomes active ---- */
+let _csPullBusy=false,_csLastPull=0,_csLive=false;
+function csModalOpen(){const m=document.getElementById('modal');return !!(m&&m.classList.contains('on'));}
+async function csAutoPull(force){
+  if(!CS.auto||!csConfigured()||_csBusy||_csPullBusy)return;
+  const now=Date.now(); if(!force && now-_csLastPull<8000)return; _csLastPull=now;
+  if(csModalOpen())return;                         // don't disrupt an open form
+  _csPullBusy=true;
+  try{
+    const obj=await csGet();
+    if(obj&&obj.data){
+      const cloud=obj.savedAt||'',local=localStamp();
+      if(cloud&&cloud>local){ await applyBackup(obj); if(typeof render==='function')render(); if(typeof toast==='function')toast('Updated from cloud'); csSetSync('saved'); }
+    }
+  }catch(e){}finally{_csPullBusy=false;}
+}
+function startCloudLive(){ if(_csLive||!csConfigured())return; _csLive=true;
+  document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible')csAutoPull(true); });
+  window.addEventListener('focus',()=>csAutoPull(true));
+  if(typeof go==='function'){ const _go=go; go=function(){ const r=_go.apply(this,arguments); csAutoPull(false); return r; }; }
 }
 /* pull shared data at startup (before login) so synced accounts work on any device */
 async function csHydrate(){
@@ -4889,6 +4924,7 @@ function csPanel(v){
         <button class="btn" id="csLoadBtn">Load from cloud</button>
         <button class="btn" id="csTestBtn">Test connection</button>
         <label class="userpick" style="font-size:12.5px;color:var(--txt-soft);align-self:center"><input type="checkbox" id="csAuto" ${CS.auto?'checked':''} style="width:auto"> Auto-sync after changes</label>
+        <span id="csSyncPill" style="font-size:12px;font-weight:600;align-self:center;margin-left:2px"></span>
       </div>
       <div id="csStatus" style="margin-top:12px;font-size:12.5px;line-height:1.6;background:var(--canvas);border:1px solid var(--line);border-radius:8px;padding:10px 12px">${lastErr?('<div style="color:var(--neg)">Last sync error: '+esc(lastErr)+'</div>'):'Tap <b>Test connection</b> to check this device can reach the cloud.'}</div>
       <div class="hint" style="margin-top:8px">${last?('Last cloud save: '+new Date(last).toLocaleString()):'Not saved to cloud yet.'}</div>
@@ -4928,5 +4964,6 @@ function csPanel(v){
   const ok=await checkSession();
   if(ok){enterApp();}
   else{showLogin();}
+  startCloudLive();
 })();
 </script>
