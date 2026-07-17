@@ -550,6 +550,58 @@ tr.click:hover{box-shadow:inset 3px 0 0 var(--accent)}
 @keyframes pageIn{from{opacity:0;transform:translateY(20px) scale(.985)}to{opacity:1;transform:none}}
 /* ambient drifting particles canvas */
 #ambient{position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.5}
+/* ============================================================
+   MOTION PACK v2 — richer transaction & UI visuals
+   ============================================================ */
+/* modal zoom + backdrop fade */
+#modal.on{animation:modalIn .34s cubic-bezier(.2,.9,.3,1)}
+@keyframes modalIn{from{opacity:0;transform:translate(-50%,-46%) scale(.94)}to{opacity:1;transform:translate(-50%,-50%) scale(1)}}
+/* toast slide + bounce */
+#toast.on{animation:toastIn .45s cubic-bezier(.2,1.3,.4,1)}
+@keyframes toastIn{from{opacity:0;transform:translateX(-50%) translateY(24px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+/* KPI entrance stagger */
+.kpis .kpi{animation:kpiPop .5s cubic-bezier(.2,.8,.3,1) both}
+.kpis .kpi:nth-child(1){animation-delay:.02s}.kpis .kpi:nth-child(2){animation-delay:.08s}
+.kpis .kpi:nth-child(3){animation-delay:.14s}.kpis .kpi:nth-child(4){animation-delay:.2s}
+.kpis .kpi:nth-child(5){animation-delay:.26s}.kpis .kpi:nth-child(6){animation-delay:.32s}
+@keyframes kpiPop{from{opacity:0;transform:translateY(16px) scale(.97)}to{opacity:1;transform:none}}
+/* panel entrance */
+.view .panel{animation:panelUp .5s ease both}
+@keyframes panelUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+/* animated top accent that sweeps on active panels */
+.panel .phd{position:relative;overflow:hidden}
+.panel .phd:after{content:"";position:absolute;left:-40%;top:0;height:100%;width:40%;background:linear-gradient(90deg,transparent,rgba(47,136,208,.12),transparent);animation:sweep 3.6s ease-in-out infinite}
+@keyframes sweep{0%{left:-40%}55%,100%{left:120%}}
+/* pending status tag pulse */
+.st-pending,.st-draft{animation:tagPulse 1.8s ease-in-out infinite}
+@keyframes tagPulse{0%,100%{box-shadow:0 0 0 0 rgba(211,158,0,.0)}50%{box-shadow:0 0 0 4px rgba(211,158,0,.14)}}
+/* balance chip transmission pulse (triggered on post) */
+#balChip.txpulse{animation:txpulse .9s ease}
+@keyframes txpulse{0%{box-shadow:0 0 0 0 rgba(46,125,50,.5)}70%{box-shadow:0 0 0 12px rgba(46,125,50,0)}100%{box-shadow:none}}
+/* cloud icon "transmission" ring while saving */
+#cloudBtn.syncing:after{content:"";position:absolute;inset:-3px;border-radius:10px;border:2px dashed var(--accent);animation:spin 1.1s linear infinite;opacity:.8}
+#cloudBtn{position:relative}
+@keyframes spin{to{transform:rotate(360deg)}}
+/* active sidebar glow breathing */
+.sb-item.active>.sb-btn:before{animation:glowbar 2.4s ease-in-out infinite}
+@keyframes glowbar{0%,100%{box-shadow:0 0 8px rgba(125,208,255,.5)}50%{box-shadow:0 0 16px rgba(125,208,255,.9)}}
+/* crumbs fade */
+#crumbs{animation:fadeIn .4s ease}
+/* value count numbers shimmer on refresh */
+.kpi .vl{background-size:200% 100%}
+/* programmatic flash for newly-affected rows */
+.flash-in{animation:flashIn 1.1s ease}
+@keyframes flashIn{0%{background:rgba(47,136,208,.22)}100%{background:transparent}}
+/* edited/void badges in ledger */
+.edited-badge{display:inline-block;font-size:9px;font-weight:700;letter-spacing:.4px;padding:1px 6px;border-radius:20px;background:#fff3cd;color:#8a6d00;margin-left:6px;vertical-align:middle}
+/* button press */
+.btn:active{transform:translateY(1px) scale(.985)}
+/* row hover accent on data tables */
+.view table tbody tr:hover{background:linear-gradient(90deg,rgba(47,136,208,.06),transparent)}
+/* animated approval progress dots */
+.appdot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:4px;background:var(--line)}
+.appdot.done{background:var(--pos);box-shadow:0 0 6px rgba(46,125,50,.5);animation:pop .4s ease}
+@keyframes pop{from{transform:scale(0)}to{transform:scale(1)}}
 </style>
 
 <div id="login" class="hide">
@@ -806,7 +858,7 @@ function postedRows(){
   return out;
 }
 let ROWS=[];        // combined, rebuilt on every change
-function rebuild(){ ROWS = BASE.concat(postedRows()); computeSnaps(); }
+function rebuild(){ ROWS = (typeof effectiveBase==='function'?effectiveBase():BASE).concat(postedRows()); computeSnaps(); }
 
 /* ---------- aggregates ----------
    Two snapshots respect the global period:
@@ -942,9 +994,11 @@ const MODULES=[
     {id:'trial',t:'Trial Balance',icon:'scale'},
     {id:'cashflow',t:'Cash Flow Statement',icon:'trend'}]},
   {id:'admin',label:'Administration',pages:[
-    {id:'users',t:'Users & Approval Matrix',icon:'users'},
+    {id:'users',t:'Users & Roles',icon:'users'},
+    {id:'roles',t:'Roles & Approval Matrix',icon:'scale'},
     {id:'approvals',t:'Approvals Queue',icon:'edit'},
     {id:'periods',t:'Accounting Periods',icon:'scale'},
+    {id:'audit',t:'Audit Log',icon:'list'},
     {sep:1},
     {id:'cloud',t:'Cloud Backup & Sync',icon:'bank'}]},
   {id:'search',label:'Search',pages:[
@@ -965,6 +1019,7 @@ function buildMenu(){
   const bar=$('#menubar'); if(!bar)return; bar.innerHTML='';
   const curMod=PAGE_MODULE[CURRENT];
   MODULES.forEach((m,i)=>{
+    if(!canSeeModule(currentUser(),m.id))return;      // RBAC: hide modules without access
     const isCur=curMod&&curMod.id===m.id, multi=m.pages.length>1;
     const expanded=multi&&(OPEN_MENU===m.id||(OPEN_MENU===null&&isCur));
     const item=el('div','sb-item'+(isCur?' active':'')+(expanded?' expanded':''));
@@ -988,10 +1043,12 @@ function buildMenu(){
     }
     bar.appendChild(item);
   });
-  const nj=el('button','sb-newje');nj.type='button';
-  nj.innerHTML=`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg><span>New Journal Entry</span>`;
-  nj.onclick=()=>{closeDrawer();openJE();};
-  bar.appendChild(nj);
+  if(canActIn(currentUser(),'financial')){
+    const nj=el('button','sb-newje');nj.type='button';
+    nj.innerHTML=`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg><span>New Journal Entry</span>`;
+    nj.onclick=()=>{closeDrawer();openJE();};
+    bar.appendChild(nj);
+  }
 }
 document.addEventListener('click',e=>{
   const t=e.target;
@@ -1001,6 +1058,10 @@ document.addEventListener('click',e=>{
 
 let CRUMB_CTX='';   // drill context (account / party) shown as last crumb
 function go(id,opts={}){
+  const mid=pageModuleId(id);
+  if(mid && currentUser() && !canSeeModule(currentUser(),mid)){
+    toast('You don’t have access to that area.',true); id='dashboard';
+  }
   CURRENT=id; if(opts.acct!==undefined)LEDGER_ACCT=opts.acct;
   if(opts.party!==undefined)SOA_PARTY=opts.party;
   CRUMB_CTX='';
@@ -1040,7 +1101,7 @@ function render(){
     ap:renderAP,ar:renderAR,cashflow:renderCashFlow,depreciation:renderDepreciation,
     sales:renderSales,purchases:renderPurchases,procurement:renderProcurement,inventory:renderInventory,
     periods:renderPeriods,acquisitions:renderAcquisitions,proccycle:renderProcCycle,cycles:renderCycles,
-    users:renderUsers,approvals:renderApprovals,reports_hub:renderReportsHub,crm:renderCRM,hr:renderHR,mfg:renderMfg,psa:renderProjects,eam:renderMaint,qms:renderQuality,tms:renderFleet,fsm:renderFieldSvc,grc:renderGRC,cloud:renderCloud}[CURRENT]||renderDashboard)(v);
+    users:renderUsers,approvals:renderApprovals,roles:renderRolesMatrix,audit:renderAudit,reports_hub:renderReportsHub,crm:renderCRM,hr:renderHR,mfg:renderMfg,psa:renderProjects,eam:renderMaint,qms:renderQuality,tms:renderFleet,fsm:renderFieldSvc,grc:renderGRC,cloud:renderCloud}[CURRENT]||renderDashboard)(v);
   updateBalChip();
 }
 function updateBalChip(){
@@ -2191,6 +2252,8 @@ function tmplAcc(tag){const m={exp:ACC.find(a=>a.class==='EXPENSE'),ap:apAcc(),c
 function openJE(existing,opts){
   opts=opts||{};
   const editing = existing && existing.jeid;
+  if(rmeta(currentUser()).readonly && !opts.viewOnly){toast('Your role is read-only. You can view documents but not create or edit them.',true);return;}
+  if(!editing && !canCreateTxn(currentUser())){toast('You don’t have permission to create transactions.',true);return;}
   const locked = editing && isPeriodClosed(existing.date);
   JE_ATTACH = editing ? (existing.attachments?existing.attachments.map(a=>({...a})):[]) : [];
   let doctype = editing ? (existing.doctype||'Journal (Manual)') : (opts.doctype||'Journal (Manual)');
@@ -2290,13 +2353,16 @@ function openEntry(ref){
       <div class="fld"><span>Date</span><div class="roval">${date||'—'} <span class="tag ${closed?'expense':'revenue'}" style="margin-left:6px">${closed?'Period closed':'Period open'}</span></div></div>
       <div class="fld"><span>Type / source</span><div class="roval">${esc(lines[0]?lines[0].type:'')} · Imported GL</div></div>
     </div>
-    <div class="note" style="margin:12px 0"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01M11 12h1v4h1"/></svg><div>This is an imported historical ledger voucher and is read-only. Manual journal entries you post through the system can be opened and edited here whenever their accounting period is open.</div></div>
+    <div class="note" style="margin:12px 0"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01M11 12h1v4h1"/></svg><div>${canEditHistory()?(closed?'This voucher’s period is <b>closed</b> — reopen it to edit or void.':'You may <b>edit</b> or <b>void</b> this historical voucher (original import kept for audit).'):'This is an imported historical ledger voucher and is read-only for your role.'}</div></div>
     <div class="panel" style="box-shadow:none"><table><thead><tr><th>Account</th><th>Memo / description</th><th>Name</th><th class="r">Debit</th><th class="r">Credit</th></tr></thead>
       <tbody>${rows}</tbody>
       <tfoot><tr style="border-top:2px solid var(--header);font-weight:700;background:#f4f6f8"><td colspan="3" style="padding:9px 14px">Total</td><td class="r mono">${fmt(dr)}</td><td class="r mono">${fmt(cr)}</td></tr></tfoot></table></div>`;
+  const canEd=canEditHistory()&&!closed&&doc;
   $('#modalFoot').innerHTML=`<div class="hint" style="margin:0">${lines.length} line${lines.length===1?'':'s'} · ${Math.abs(dr-cr)<0.005?'balanced':'net '+fmt(dr-cr)}</div>
-     <div style="margin-left:auto"><button class="btn" id="jeCancel">Close</button></div>`;
-  $('#jeCancel').onclick=closeModal;openModal();
+     <div style="margin-left:auto;display:flex;gap:10px">${canEd?`<button class="btn danger" id="jeVoidH">Void</button><button class="btn primary" id="jeEditH">Edit entry</button>`:''}<button class="btn" id="jeCancel">Close</button></div>`;
+  $('#jeCancel').onclick=closeModal;
+  if(canEd){$('#jeEditH').onclick=()=>editHistorical(doc,date);$('#jeVoidH').onclick=()=>voidHistorical(doc,date);}
+  openModal();
 }
 function nextJEDoc(){
   let max=0;POSTED.forEach(j=>{const m=/JE-M-(\d+)/.exec(j.doc);if(m)max=Math.max(max,+m[1]);});
@@ -2339,6 +2405,7 @@ function recalcJE(){
   return ok;
 }
 async function postJE(existingId,doctype){
+  if(rmeta(currentUser()).readonly){toast('Your role is read-only and cannot post transactions.',true);return;}
   const date=$('#jeDate').value, doc=$('#jeDoc').value.trim()||nextJEDocPeek(), memo=$('#jeMemo').value.trim();
   const party0=($('#jeParty')&&$('#jeParty').value.trim())||'';
   const lines=JE_LINES.filter(l=>l.accName&&((+l.dr||0)>0||(+l.cr||0)>0))
@@ -2351,30 +2418,44 @@ async function postJE(existingId,doctype){
   const attachments=JE_ATTACH.map(a=>({...a}));
   if(existingId){
     const je=POSTED.find(x=>x.jeid===existingId);
+    if(je.status==='posted' && !isAdmin(currentUser()) && rmeta(currentUser()).rank<80){toast('Posted entries can only be corrected by Reversal.',true);return;}
     if(isPeriodClosed(je.date)){toast('Original period is closed — entry cannot be changed.',true);return;}
     je.date=date;je.doc=doc;je.memo=memo;je.lines=lines;je.attachments=attachments;je.amount=dr;
     if(je.status!=='pending')je.status='posted';
-    // sequence bump if it used a typed prefix
-    bumpSeqFor(doc);
+    bumpSeqFor(doc); audit('JE edited',doc,memo+' · '+fmt(dr));
   }else{
-    const status=needsApproval(dr)?'pending':'posted';
+    const chain=(typeof APPROVALS_ON!=='undefined'&&APPROVALS_ON)?approvalChain(dr):[];
+    const status=chain.length?'pending':'posted';
     POSTED.push({jeid:'je_'+Date.now()+'_'+Math.random().toString(36).slice(2,7),date,doc,memo,lines,
-      doctype:doctype||'Journal (Manual)',attachments,status,by:CURRENT_USER,amount:dr});
+      doctype:doctype||'Journal (Manual)',attachments,status,by:CURRENT_USER,amount:dr,
+      needChain:chain,approvals:[],createdAt:new Date().toISOString()});
     bumpSeqFor(doc);
+    audit(status==='pending'?'JE submitted for approval':'JE posted',doc,memo+' · '+fmt(dr));
   }
   await store.save(); await store.saveAssets(); rebuild(); closeModal();
-  const pend=needsApproval(dr)&&!existingId;
-  toast(existingId?'Entry updated — reports refreshed.':(pend?'Transaction submitted for approval ('+fmt(dr)+').':'Transaction posted — reflected across all reports.'));
+  const chain2=(typeof APPROVALS_ON!=='undefined'&&APPROVALS_ON)?approvalChain(dr):[];
+  const pend=chain2.length&&!existingId;
+  if(!pend)txPulse();
+  toast(existingId?'Entry updated — reports refreshed.':(pend?('Submitted for approval ('+fmt(dr)+') — requires '+chain2.map(l=>LEVEL_LABEL[l]).join(' → ')+'.'):'Transaction posted — reflected across all reports.'));
   render();
 }
 function bumpSeqFor(doc){for(const t of TX_TYPES){if(t.prefix!=='JE-M-'&&doc.indexOf(t.prefix)===0){const n=+doc.slice(t.prefix.length);if(n>(SEQ[t.seq]||0))SEQ[t.seq]=n;}}}
 async function reverseJE(jeid){
   const je=POSTED.find(x=>x.jeid===jeid);if(!je)return;
-  if(isPeriodClosed(je.date)){toast('Cannot reverse an entry in a closed period.',true);return;}
-  if(!confirm(`Reverse entry ${je.doc}?\nThis removes it from the ledger and all statements.`))return;
-  POSTED=POSTED.filter(x=>x.jeid!==jeid);
+  if(!can('reverse',{module:pageModuleId('journals')})){toast('Only a Controller, CFO or Administrator can reverse posted entries.',true);return;}
+  if(je.status!=='posted'){toast('Only posted entries can be reversed.',true);return;}
+  if(je.reversed){toast('This entry has already been reversed.',true);return;}
+  if(isPeriodClosed(je.date)){toast('Cannot reverse an entry in a closed period. Reopen it first.',true);return;}
+  if(!confirm(`Reverse ${je.doc}?\nA reversing entry will be posted (the original is kept for audit).`))return;
+  const rlines=je.lines.map(l=>({accName:l.accName,desc:'Reversal: '+(l.desc||''),party:l.party||'',dr:+l.cr||0,cr:+l.dr||0}));
+  const rdoc=(je.doc||'JE')+'-REV';
+  POSTED.push({jeid:'je_'+Date.now()+'_rev',date:todayISO(),doc:rdoc,memo:'Reversal of '+je.doc+' — '+(je.memo||''),
+    lines:rlines,doctype:'Reversal',attachments:[],status:'posted',by:CURRENT_USER,amount:je.amount||0,
+    needChain:[],approvals:[],reversalOf:je.jeid,createdAt:new Date().toISOString()});
+  je.reversed=true; je.reversedBy=rdoc; je.reversedAt=new Date().toISOString();
+  audit('Reversed entry',je.doc,'→ '+rdoc);
   await store.save();rebuild();closeModal();render();
-  toast('Entry reversed.');
+  toast('Reversing entry '+rdoc+' posted. Original retained for audit.');
 }
 
 /* ============================================================
@@ -2486,44 +2567,81 @@ async function postSystemJE(date,doc,memo,lines,extra){
 /* ============================================================
    ACCOUNTING PERIODS
    ============================================================ */
+const MONTH_ABBR=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+let PERIOD_OPEN_YEARS=null;
+function yearMonths(y){const a=[];for(let m=1;m<=12;m++)a.push(y+'-'+String(m).padStart(2,'0'));return a;}
 function renderPeriods(v){
+  const YEARS=[];for(let y=2020;y<=2030;y++)YEARS.push(y);
+  if(PERIOD_OPEN_YEARS===null){PERIOD_OPEN_YEARS=new Set([2025]);}
+  const canCfg=canEditHistory();   // Controller / CFO / Administrator
   const head=el('div','viewhead');
-  head.innerHTML=`<div><h2>Accounting Periods</h2><div class="desc">Open or close monthly periods. Postings and edits are blocked in closed periods across the whole system.</div></div>`;
+  head.innerHTML=`<div><h2>Accounting Periods · 2020–2030</h2><div class="desc">Open or close periods by year or month. Postings and edits (including to imported data) are blocked in closed periods across the whole system.${canCfg?'':' <b>Your role can view but not change period status.</b>'}</div></div>`;
   v.appendChild(head);
-  const months=allPeriods();
   const counts={},manual={};
   ROWS.forEach(r=>{const m=periodOf(r.date);if(m)counts[m]=(counts[m]||0)+1;});
   POSTED.forEach(j=>{const m=periodOf(j.date);if(m)manual[m]=(manual[m]||0)+1;});
-  const openCount=months.filter(m=>PERIOD_STATUS[m]!=='closed').length;
+  const allM=[];YEARS.forEach(y=>yearMonths(y).forEach(m=>allM.push(m)));
+  const openCount=allM.filter(m=>PERIOD_STATUS[m]!=='closed').length;
   const kp=el('div','kpis');
-  kp.innerHTML=kpiCount('a','Total Periods',months.length,'Months with activity')+
-    kpiCount('r','Open',openCount,'Editable periods')+
-    kpiCount('x','Closed',months.length-openCount,'Locked periods')+
+  kp.innerHTML=kpiCount('a','Years',YEARS.length,'2020 → 2030')+
+    kpiCount('r','Open months',openCount,'Editable periods')+
+    kpiCount('x','Closed months',allM.length-openCount,'Locked periods')+
     kpiCount('e','Manual JEs',POSTED.length,'Across all periods');
   v.appendChild(kp);
-  const bar=el('div','panel');bar.innerHTML=`<div class="phd"><h3>Bulk action</h3></div>`;
-  const bd=el('div','filters');bd.style.padding='14px 16px';
-  bd.innerHTML=`<label class="fld">Close all periods through
-     <select id="bulkMonth">${months.map(m=>`<option value="${m}">${m}</option>`).join('')}</select></label>
-     <button class="btn sm" id="bulkClose">Close through selected</button>
-     <button class="btn sm ghost" id="bulkOpenAll">Reopen all</button>`;
-  bar.appendChild(bd);v.appendChild(bar);
-  const panel=el('div','panel');
-  panel.innerHTML=`<div class="phd"><h3>Periods</h3><div class="meta">${months.length} months</div></div>`;
-  const tbl=el('table');
-  tbl.innerHTML=`<thead><tr><th>Period</th><th class="r">Postings</th><th class="r">Manual JEs</th><th>Status</th><th class="r">Action</th></tr></thead>`;
-  const tb=el('tbody');
-  months.forEach(m=>{const closed=PERIOD_STATUS[m]==='closed';
-    tb.innerHTML+=`<tr><td class="mono">${m}</td><td class="r mono">${(counts[m]||0).toLocaleString()}</td>
-      <td class="r mono">${manual[m]||0}</td>
-      <td><span class="st-tag ${closed?'st-rejected':'st-approved'}">${closed?'CLOSED':'OPEN'}</span></td>
-      <td class="r"><button class="btn sm ${closed?'':'danger'}" data-m="${m}" data-st="${closed?'open':'closed'}">${closed?'Reopen':'Close'}</button></td></tr>`;});
-  tbl.appendChild(tb);panel.appendChild(tbl);v.appendChild(panel);
-  $$('#view [data-m]').forEach(b=>b.onclick=()=>setPeriod(b.dataset.m,b.dataset.st));
-  $('#bulkClose').onclick=()=>{const upto=$('#bulkMonth').value;months.forEach(m=>{if(m<=upto)PERIOD_STATUS[m]='closed';});store.savePeriods();render();toast('Closed all periods through '+upto);};
-  $('#bulkOpenAll').onclick=()=>{PERIOD_STATUS={};store.savePeriods();render();toast('All periods reopened');};
+  if(canCfg){
+    const bar=el('div','panel');bar.innerHTML=`<div class="phd"><h3>Bulk action</h3></div>`;
+    const bd=el('div','filters');bd.style.padding='14px 16px';
+    bd.innerHTML=`<label class="fld">Close all periods through
+       <select id="bulkMonth">${allM.map(m=>`<option value="${m}">${m}</option>`).join('')}</select></label>
+       <button class="btn sm" id="bulkClose">Close through selected</button>
+       <button class="btn sm ghost" id="bulkOpenAll">Reopen all</button>`;
+    bar.appendChild(bd);v.appendChild(bar);
+  }
+  YEARS.forEach(y=>{
+    const ms=yearMonths(y);
+    const yPost=ms.reduce((s,m)=>s+(counts[m]||0),0);
+    const yManual=ms.reduce((s,m)=>s+(manual[m]||0),0);
+    const yClosed=ms.filter(m=>PERIOD_STATUS[m]==='closed').length;
+    const yState=yClosed===12?'closed':yClosed===0?'open':'partial';
+    const expanded=PERIOD_OPEN_YEARS.has(y);
+    const yp=el('div','panel');
+    yp.innerHTML=`<div class="phd yearhd" data-y="${y}" style="cursor:pointer;gap:10px;align-items:center">
+        <svg class="ycaret" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" style="transition:transform .25s;transform:rotate(${expanded?90:0}deg)"><path d="m9 6 6 6-6 6"/></svg>
+        <h3 style="margin:0">${y}</h3>
+        <span class="st-tag ${yState==='closed'?'st-rejected':yState==='open'?'st-approved':'st-pending'}">${yState==='closed'?'CLOSED':yState==='open'?'OPEN':yClosed+'/12 closed'}</span>
+        <div class="meta" style="margin-left:auto">${yPost.toLocaleString()} postings · ${yManual} JEs</div>
+        ${canCfg?`<button class="btn sm ${yState==='closed'?'':'danger'}" data-ycfg="${y}" data-yst="${yState==='closed'?'open':'closed'}">${yState==='closed'?'Reopen year':'Close year'}</button>`:''}</div>`;
+    if(expanded){
+      const grid=el('div');grid.style.cssText='display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;padding:12px 16px 16px';
+      ms.forEach((m,i)=>{const closed=PERIOD_STATUS[m]==='closed';const c=counts[m]||0;
+        const cell=el('div');cell.style.cssText=`border:1px solid var(--line);border-radius:9px;padding:9px 11px;background:${closed?'#fbecec':'#f2f8f2'}`;
+        cell.innerHTML=`<div style="display:flex;align-items:center;justify-content:space-between">
+            <span style="font-weight:700">${MONTH_ABBR[i]} <span class="muted" style="font-weight:500">${y}</span></span>
+            <span class="st-tag ${closed?'st-rejected':'st-approved'}" style="font-size:9px">${closed?'CLOSED':'OPEN'}</span></div>
+          <div class="muted" style="font-size:11px;margin:4px 0 8px">${c.toLocaleString()} postings${manual[m]?' · '+manual[m]+' JE':''}</div>
+          ${canCfg?`<button class="btn sm ${closed?'':'danger'}" data-m="${m}" data-st="${closed?'open':'closed'}" style="width:100%">${closed?'Reopen':'Close'}</button>`:`<span class="muted" style="font-size:11px">view only</span>`}`;
+        grid.appendChild(cell);});
+      yp.appendChild(grid);
+    }
+    v.appendChild(yp);
+  });
+  $$('#view .yearhd').forEach(h=>h.onclick=e=>{if(e.target.closest('[data-ycfg]'))return;const y=+h.dataset.y;if(PERIOD_OPEN_YEARS.has(y))PERIOD_OPEN_YEARS.delete(y);else PERIOD_OPEN_YEARS.add(y);render();});
+  $$('#view [data-ycfg]').forEach(b=>b.onclick=e=>{e.stopPropagation();closeYear(+b.dataset.ycfg,b.dataset.yst==='closed');});
+  $$('#view [data-m]').forEach(b=>b.onclick=e=>{e.stopPropagation();setPeriod(b.dataset.m,b.dataset.st);});
+  if(canCfg){
+    $('#bulkClose').onclick=()=>{const upto=$('#bulkMonth').value;allM.forEach(m=>{if(m<=upto)PERIOD_STATUS[m]='closed';});store.savePeriods();audit('Periods closed through',upto,'');render();toast('Closed all periods through '+upto);};
+    $('#bulkOpenAll').onclick=()=>{PERIOD_STATUS={};store.savePeriods();audit('All periods reopened','','');render();toast('All periods reopened');};
+  }
 }
-async function setPeriod(m,st){if(st==='closed')PERIOD_STATUS[m]='closed';else delete PERIOD_STATUS[m];await store.savePeriods();render();toast('Period '+m+' '+(st==='closed'?'closed':'reopened'));}
+async function closeYear(y,closed){
+  if(!canEditHistory()){toast('Only a Financial Controller, CFO or Administrator can change period status.',true);return;}
+  yearMonths(y).forEach(m=>{if(closed)PERIOD_STATUS[m]='closed';else delete PERIOD_STATUS[m];});
+  await store.savePeriods();audit(closed?'Year closed':'Year reopened',String(y),'');render();toast('Year '+y+(closed?' closed':' reopened'));
+}
+async function setPeriod(m,st){
+  if(!canEditHistory()){toast('Only a Financial Controller, CFO or Administrator can change period status.',true);return;}
+  if(st==='closed')PERIOD_STATUS[m]='closed';else delete PERIOD_STATUS[m];
+  await store.savePeriods();audit(st==='closed'?'Period closed':'Period reopened',m,'');render();toast('Period '+m+' '+(st==='closed'?'closed':'reopened'));}
 
 /* ============================================================
    FIXED ASSETS — sub-ledger register
@@ -2901,8 +3019,10 @@ function procDocModal(doc){
     if(existing){existing.date=date;existing.vendor=vendor;existing.memo=memo;existing.lines=cl;existing.total=total;
       existing.attachments=PROC_ATTACH.map(a=>({...a}));
       existing.status=needsApproval(total)?'pending':'approved';}
-    else{PROC.push({id:'pc_'+Date.now()+'_'+Math.random().toString(36).slice(2,6),type:'PR',num:nextSeq('pr','PR-',5),
-      date,vendor,memo,lines:cl,total,attachments:PROC_ATTACH.map(a=>({...a})),status:needsApproval(total)?'pending':'approved',by:CURRENT_USER,jelinks:[]});}
+    else{const chain=(typeof APPROVALS_ON!=='undefined'&&APPROVALS_ON)?approvalChain(total):[];
+      PROC.push({id:'pc_'+Date.now()+'_'+Math.random().toString(36).slice(2,6),type:'PR',num:nextSeq('pr','PR-',5),
+      date,vendor,memo,lines:cl,total,attachments:PROC_ATTACH.map(a=>({...a})),status:chain.length?'pending':'approved',needChain:chain,approvals:[],by:CURRENT_USER,jelinks:[]});
+      if(typeof audit==='function')audit(chain.length?'PR submitted':'PR created',vendor,fmt(total));}
     await store.saveProc();closeModal();render();
     toast(needsApproval(total)?'Requisition submitted for approval.':'Requisition saved & approved.');
   }
@@ -2941,7 +3061,7 @@ async function advanceProc(doc,toType){
 /* ============================================================
    USER MANAGEMENT & APPROVAL MATRIX
    ============================================================ */
-const ROLES=['Administrator','Controller','Accountant','AP Clerk','Viewer'];
+const ROLES=['Administrator','CFO','Financial Controller','GL Accountant','AP Accountant','AR Accountant','Treasury','Procurement Officer','Auditor'];
 function seedUsers(){
   if(USERS.length)return;
   USERS=[
@@ -2963,58 +3083,63 @@ function migrateUsers(){ // ensure pre-existing stored users can still sign in
 function initials(n){return n.split(/\s+/).slice(0,2).map(x=>x[0]).join('').toUpperCase();}
 function renderUsers(v){
   const head=el('div','viewhead');
-  head.innerHTML=`<div><h2>User Management & Approval Matrix</h2><div class="desc">Users, roles and per-user approval limits. Documents above a user's limit route for approval before they post.</div></div>
+  head.innerHTML=`<div><h2>Users & Roles</h2><div class="desc">Users, roles, per-user approval limits and operational module managers. See <b>Roles & Approval Matrix</b> for authority levels and thresholds.</div></div>
     <div class="tools"><label class="userpick" style="font-size:12.5px;color:var(--txt-soft)"><input type="checkbox" id="apprOn" ${APPROVALS_ON?'checked':''} style="width:auto"> Approvals enabled</label>
+    <button class="btn sm" id="openRoles">Roles & Matrix</button>
     <button class="btn sm primary" id="addUser"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>Add User</button></div>`;
   v.appendChild(head);
   const panel=el('div','panel');
   panel.innerHTML=`<div class="phd"><h3>Users</h3><div class="meta">${USERS.length}</div></div>`;
-  USERS.forEach(u=>{const c=el('div','usercard');
+  USERS.forEach(u=>{const c=el('div','usercard');const mgr=Array.isArray(u.modMgr)?u.modMgr:[];
     c.innerHTML=`<div class="avatar">${initials(u.name)}</div>
-      <div class="meta"><div class="nm">${esc(u.name)} ${u.id===CURRENT_USER?'<span class="attach-pill">you</span>':''}</div><div class="rl">${u.role} · ${esc(u.email||'')}</div></div>
+      <div class="meta"><div class="nm">${esc(u.name)} ${u.id===CURRENT_USER?'<span class="attach-pill">you</span>':''} ${u.active===false?'<span class="st-tag st-rejected">Inactive</span>':''}</div>
+        <div class="rl">${esc(normRole(u.role))} · ${esc(u.email||'')}${mgr.length?' · '+mgr.length+' module'+(mgr.length>1?'s':'')+' managed':''}</div></div>
       <div style="text-align:right"><div class="l" style="font-size:10px;color:var(--txt-faint);text-transform:uppercase;letter-spacing:.5px">Approval limit</div>
         <div class="mono" style="font-weight:600">${u.limit===null||u.limit===Infinity?'Unlimited':fmt(u.limit)}</div></div>
       <button class="btn sm ghost" data-edit="${u.id}">Edit</button>
       <button class="btn sm ghost" data-act="${u.id}">${u.id===CURRENT_USER?'Active':'Switch to'}</button>`;
     panel.appendChild(c);});
   v.appendChild(panel);
-  // approval matrix summary
-  const m=el('div','panel');
-  m.innerHTML=`<div class="phd"><h3>Approval Matrix</h3></div><div style="padding:14px 18px">
-    <table class="ratios"><thead><tr><th>Role</th><th>Approval authority</th><th>Typical documents</th></tr></thead><tbody>
-    <tr><td>Administrator</td><td class="rgood">Unlimited</td><td style="text-align:left">All documents</td></tr>
-    <tr><td>Controller</td><td>Up to ${fmt(1000000)}</td><td style="text-align:left">JE, PO, Bill, Payment</td></tr>
-    <tr><td>Accountant</td><td>Up to ${fmt(100000)}</td><td style="text-align:left">JE, Bill</td></tr>
-    <tr><td>AP Clerk</td><td>Up to ${fmt(25000)}</td><td style="text-align:left">Requisition, Bill (raise)</td></tr>
-    <tr><td>Viewer</td><td class="rbad">None</td><td style="text-align:left">Read-only</td></tr>
-    </tbody></table>
-    <div class="hint" style="margin-top:10px">A document whose total exceeds the acting user's limit is held as <b>Pending approval</b> and excluded from the ledger until an authorized user approves it in the Approvals queue.</div></div>`;
-  v.appendChild(m);
-  $('#apprOn').onchange=e=>{APPROVALS_ON=e.target.checked;store.saveCfg();toast('Approvals '+(APPROVALS_ON?'enabled':'disabled'));};
+  $('#apprOn').onchange=e=>{APPROVALS_ON=e.target.checked;store.saveCfg();audit('Approvals '+(APPROVALS_ON?'enabled':'disabled'),'','');toast('Approvals '+(APPROVALS_ON?'enabled':'disabled'));};
+  $('#openRoles').onclick=()=>go('roles');
   $('#addUser').onclick=()=>userModal();
   $$('#view [data-edit]').forEach(b=>b.onclick=()=>userModal(USERS.find(u=>u.id===b.dataset.edit)));
-  $$('#view [data-act]').forEach(b=>b.onclick=async()=>{CURRENT_USER=b.dataset.act;await store.saveCfg();buildUserSwitcher();render();toast('Now acting as '+currentUser().name);});
+  $$('#view [data-act]').forEach(b=>b.onclick=async()=>{CURRENT_USER=b.dataset.act;await store.saveCfg();buildUserSwitcher();buildMenu();render();toast('Now acting as '+currentUser().name);});
 }
 function userModal(u){
   const editing=!!u;
+  if(!isAdmin(currentUser())){toast('Only an Administrator can manage users.',true);return;}
+  const OPMODS=[['crm','CRM'],['hr','Human Resources'],['mfg','Manufacturing'],['psa','Projects'],['eam','Maintenance'],['qms','Quality'],['tms','Fleet'],['fsm','Field Service'],['grc','Risk & Compliance']];
+  const mgr=editing&&Array.isArray(u.modMgr)?u.modMgr:[];
   $('#modalTitle').textContent=editing?'Edit User':'Add User';
   $('#modalBody').innerHTML=`<div class="jgrid">
     <label class="fld">Name<input class="f" id="uName" value="${esc(editing?u.name:'')}" style="max-width:none"></label>
-    <label class="fld">Role<select id="uRole" style="max-width:none">${ROLES.map(r=>`<option${editing&&u.role===r?' selected':''}>${r}</option>`).join('')}</select></label>
+    <label class="fld">Role<select id="uRole" style="max-width:none">${ROLES.map(r=>`<option${editing&&normRole(u.role)===r?' selected':''}>${r}</option>`).join('')}</select></label>
     <label class="fld">Email (sign-in)<input class="f" id="uEmail" value="${esc(editing?(u.email||''):'')}" placeholder="user@elmatager.com" style="max-width:none"></label>
     <label class="fld">Password<input class="f" id="uPass" value="${esc(editing?(u.password||''):'')}" placeholder="set a password" style="max-width:none"></label>
-    <label class="fld">Approval limit (blank = unlimited)<input class="f r" id="uLimit" inputmode="decimal" value="${editing&&u.limit!==Infinity&&u.limit!==null?u.limit:''}" style="max-width:none"></label>
-  </div>`;
-  $('#modalFoot').innerHTML=`<div style="margin-left:auto;display:flex;gap:10px">${editing?'<button class="btn danger" id="uDel">Delete</button>':''}<button class="btn" id="uCancel">Cancel</button><button class="btn primary" id="uSave">Save</button></div>`;
+    <label class="fld">Approval limit (blank = role default)<input class="f r" id="uLimit" inputmode="decimal" value="${editing&&u.limit!==Infinity&&u.limit!==null?u.limit:''}" style="max-width:none"></label>
+    <label class="fld">Status<select id="uActive" style="max-width:none"><option value="1"${!editing||u.active!==false?' selected':''}>Active</option><option value="0"${editing&&u.active===false?' selected':''}>Inactive</option></select></label>
+  </div>
+  <div id="uRoleDesc" class="hint" style="margin-top:8px"></div>
+  <div style="margin-top:14px"><div style="font-size:12px;font-weight:600;color:var(--txt-soft);margin-bottom:6px">Operational module manager (grants full access to those modules)</div>
+    <div class="mgrgrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px">
+      ${OPMODS.map(([id,nm])=>`<label class="userpick" style="font-size:12px"><input type="checkbox" class="uMgr" value="${id}" ${mgr.indexOf(id)>=0?'checked':''} style="width:auto"> ${nm}</label>`).join('')}
+    </div></div>`;
+  $('#modalFoot').innerHTML=`<div style="margin-left:auto;display:flex;gap:10px">${editing&&u.id!=='u_admin'?'<button class="btn danger" id="uDel">Delete</button>':''}<button class="btn" id="uCancel">Cancel</button><button class="btn primary" id="uSave">Save</button></div>`;
+  const showDesc=()=>{const r=$('#uRole').value;const m=ROLE_META[r];$('#uRoleDesc').innerHTML=m?('<b>'+r+':</b> '+m.desc+' · default limit '+(m.limit===Infinity?'unlimited':fmt(m.limit))+' EGP'):'';};
+  $('#uRole').onchange=showDesc; showDesc();
   $('#uCancel').onclick=closeModal;
   $('#uSave').onclick=async()=>{const name=$('#uName').value.trim();if(!name){toast('Enter a name.',true);return;}
-    const role=$('#uRole').value;const lv=$('#uLimit').value.trim();const limit=role==='Administrator'?Infinity:(lv===''?Infinity:+lv);
+    const role=$('#uRole').value;const lv=$('#uLimit').value.trim();
+    const limit=role==='Administrator'||role==='CFO'?Infinity:(lv===''?roleDefaultLimit(role):+lv);
     const email=$('#uEmail').value.trim()||name.toLowerCase().replace(/[^a-z]+/g,'')+'@elmatager.com';
     const password=$('#uPass').value.trim()||'Welcome@2025';
-    if(editing){u.name=name;u.role=role;u.limit=limit;u.email=email;u.password=password;}
-    else USERS.push({id:'u_'+Date.now(),name,role,limit,active:true,email,password});
-    await store.saveUsers();closeModal();buildUserSwitcher();render();toast('User saved');};
-  if(editing)$('#uDel').onclick=async()=>{if(USERS.length<=1){toast('At least one user required.',true);return;}USERS=USERS.filter(x=>x.id!==u.id);if(CURRENT_USER===u.id)CURRENT_USER=USERS[0].id;await store.saveUsers();closeModal();buildUserSwitcher();render();toast('User removed');};
+    const active=$('#uActive').value==='1';
+    const modMgr=$$('.uMgr').filter(c=>c.checked).map(c=>c.value);
+    if(editing){u.name=name;u.role=role;u.limit=limit;u.email=email;u.password=password;u.active=active;u.modMgr=modMgr;audit('User updated',name,role);}
+    else {USERS.push({id:'u_'+Date.now(),name,role,limit,active,email,password,modMgr});audit('User created',name,role);}
+    await store.saveUsers();closeModal();buildUserSwitcher();buildMenu();render();toast('User saved');};
+  if(editing&&u.id!=='u_admin')$('#uDel').onclick=async()=>{if(USERS.length<=1){toast('At least one user required.',true);return;}USERS=USERS.filter(x=>x.id!==u.id);if(CURRENT_USER===u.id)CURRENT_USER=USERS[0].id;audit('User removed',u.name,'');await store.saveUsers();closeModal();buildUserSwitcher();render();toast('User removed');};
   openModal();
 }
 function pendingItems(){
@@ -3036,24 +3161,120 @@ function renderApprovals(v){
   panel.innerHTML=`<div class="phd"><h3>Pending Documents</h3><div class="meta">${items.length}</div></div>`;
   if(!items.length){panel.appendChild(el('div','empty','<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20 6 9 17l-5-5"/></svg><div>Nothing pending. All documents are approved and posted.</div>'));}
   else{const tbl=el('table');
-    tbl.innerHTML=`<thead><tr><th>Document</th><th>Type</th><th>Date</th><th>Detail</th><th class="r">Amount</th><th></th></tr></thead>`;
+    tbl.innerHTML=`<thead><tr><th>Document</th><th>Type</th><th>Date</th><th>Detail</th><th>Approvals</th><th class="r">Amount</th><th></th></tr></thead>`;
     const tb=el('tbody');
     items.forEach(it=>{const ok=canApprove(it);
       tb.innerHTML+=`<tr><td class="mono">${esc(it.num)}</td><td>${it.kind==='JE'?(it.ref.doctype||'Journal'):'Procurement'}</td>
-        <td class="mono">${it.date}</td><td>${esc(it.memo)}</td><td class="r mono">${fmt(it.amount)}</td>
-        <td class="r">${ok?`<button class="btn sm" data-appr="${it.kind}:${it.id}">Approve</button><button class="btn sm danger" data-rej="${it.kind}:${it.id}">Reject</button>`:'<span class="st-tag st-pending">Above your limit</span>'}</td></tr>`;});
+        <td class="mono">${it.date}</td><td>${esc(it.memo)}</td><td style="font-size:11px;color:var(--txt-soft)">${esc(apprProgress(it.ref))}</td><td class="r mono">${fmt(it.amount)}</td>
+        <td class="r">${ok?`<button class="btn sm" data-appr="${it.kind}:${it.id}">Approve ${it.ref.needChain&&nextLevel(it.ref)?esc(LEVEL_LABEL[nextLevel(it.ref)]):''}</button><button class="btn sm danger" data-rej="${it.kind}:${it.id}">Reject</button>`:'<span class="st-tag st-pending">'+(it.ref.by===CURRENT_USER&&!isAdmin(currentUser())?'You created this':'Awaiting '+(nextLevel(it.ref)?esc(LEVEL_LABEL[nextLevel(it.ref)]):'—'))+'</span>'}</td></tr>`;});
     tbl.appendChild(tb);panel.appendChild(tbl);}
   v.appendChild(panel);
   $$('#view [data-appr]').forEach(b=>b.onclick=()=>decide(b.dataset.appr,true));
   $$('#view [data-rej]').forEach(b=>b.onclick=()=>decide(b.dataset.rej,false));
 }
-function canApprove(it){const u=currentUser();if(!u)return false;if(u.role==='Administrator')return true;if(u.role==='Viewer')return false;return it.amount<=u.limit+0.005;}
+function canApprove(it){
+  const u=currentUser();if(!u)return false;
+  const doc=it.ref;
+  if(doc.by===CURRENT_USER && !isAdmin(u))return false;     // separation of duties: creator ≠ approver
+  const lv=nextLevel(doc); if(!lv)return false;
+  return userFulfillsLevel(u,lv,it.amount);
+}
+function apprProgress(doc){
+  const chain=doc.needChain||[]; if(!chain.length)return '';
+  return chain.map(lv=>{const done=(doc.approvals||[]).some(a=>a.level===lv);return (done?'✓ ':'○ ')+LEVEL_LABEL[lv];}).join('  ');
+}
 async function decide(token,approve){
   const [kind,id]=token.split(':');const it=pendingItems().find(x=>x.kind===kind&&x.id===id);if(!it)return;
-  if(!canApprove(it)){toast('This document exceeds your approval authority.',true);return;}
-  if(kind==='JE'){it.ref.status=approve?'posted':'rejected';await store.save();}
-  else{it.ref.status=approve?'approved':'rejected';await store.saveProc();}
-  rebuild();render();toast('Document '+it.num+(approve?' approved & posted':' rejected'));
+  const doc=it.ref, lv=nextLevel(doc);
+  if(approve){
+    if(!canApprove(it)){toast('You are not authorized for the next approval level ('+(lv?LEVEL_LABEL[lv]:'—')+').',true);return;}
+    doc.approvals=doc.approvals||[];
+    doc.approvals.push({level:lv,by:CURRENT_USER,byName:currentUser().name,at:new Date().toISOString()});
+    audit('Approved · '+LEVEL_LABEL[lv],it.num,'');
+    if(fullyApproved(doc)){
+      doc.status=(kind==='JE')?'posted':'approved';
+      audit((kind==='JE')?'JE posted (approved)':'PO approved',it.num,fmt(it.amount));
+      toast('Fully approved — '+it.num+(kind==='JE'?' posted to the ledger.':' approved.'));
+    }else{
+      toast(LEVEL_LABEL[lv]+' approval recorded. Next: '+LEVEL_LABEL[nextLevel(doc)]+'.');
+    }
+  }else{
+    doc.status='rejected'; audit('Rejected',it.num,'');
+    toast('Document '+it.num+' rejected.');
+  }
+  if(kind==='JE')await store.save(); else await store.saveProc();
+  rebuild();render();
+}
+
+function renderRolesMatrix(v){
+  if(!isAdmin(currentUser())){v.appendChild(el('div','empty','<div>Administrator access required.</div>'));return;}
+  const head=el('div','viewhead');
+  head.innerHTML=`<div><h2>Roles & Approval Matrix</h2><div class="desc">Role authority, module access and the amount-based approval chain (EGP). Two-level: Financial Controller → CFO.</div></div>`;
+  v.appendChild(head);
+  // Approval tiers editor
+  const tiers=apprTiers();
+  const tp=el('div','panel');
+  tp.innerHTML=`<div class="phd"><h3>Approval thresholds (EGP)</h3><div class="meta">2-level</div></div>
+    <div style="padding:14px 18px">
+      <table class="ratios"><thead><tr><th>Up to amount (EGP)</th><th>Approvals required (in order)</th></tr></thead><tbody id="tierBody">
+      ${tiers.map((t,i)=>`<tr>
+        <td><input class="f r" id="tmax${i}" value="${t.max===Infinity?'':t.max}" placeholder="${t.max===Infinity?'and above':''}" style="max-width:160px;text-align:right"></td>
+        <td style="text-align:left"><label class="userpick" style="font-size:12px"><input type="checkbox" class="tL1" data-i="${i}" ${t.chain.indexOf('L1')>=0?'checked':''} style="width:auto"> Financial Controller</label>
+          <label class="userpick" style="font-size:12px;margin-left:14px"><input type="checkbox" class="tL2" data-i="${i}" ${t.chain.indexOf('L2')>=0?'checked':''} style="width:auto"> CFO</label></td></tr>`).join('')}
+      </tbody></table>
+      <div style="margin-top:12px;display:flex;gap:10px"><button class="btn primary" id="saveTiers">Save thresholds</button><button class="btn" id="resetTiers">Reset to default</button></div>
+      <div class="hint" style="margin-top:8px">Leave the last "Up to amount" blank for "and above". A document is held as <b>Pending approval</b> and excluded from the ledger until every required level approves. The creator can never approve their own document.</div>
+    </div>`;
+  v.appendChild(tp);
+  // Role authority
+  const rp=el('div','panel');
+  rp.innerHTML=`<div class="phd"><h3>Role authority</h3><div class="meta">${ROLE_LIST.length} roles</div></div><div style="padding:12px 16px;overflow:auto">
+    <table class="ratios"><thead><tr><th style="text-align:left">Role</th><th>Sees Admin</th><th>Approver</th><th>Can reverse</th><th>Default limit</th><th style="text-align:left">Mandate</th></tr></thead><tbody>
+    ${ROLE_LIST.map(r=>{const m=ROLE_META[r];return `<tr><td style="text-align:left;font-weight:600">${r}</td>
+      <td>${m.seesAdmin?'<span class="rgood">✓</span>':'—'}</td>
+      <td>${m.approver?'<span class="rgood">✓</span>':'—'}</td>
+      <td>${m.rank>=80?'<span class="rgood">✓</span>':'—'}</td>
+      <td class="mono">${m.limit===Infinity?'Unlimited':fmt(m.limit)}</td>
+      <td style="text-align:left;font-size:11.5px;color:var(--txt-soft)">${esc(m.desc)}</td></tr>`;}).join('')}
+    </tbody></table></div>`;
+  v.appendChild(rp);
+  // Module access matrix
+  const mods=MODULES.filter(m=>['home','search'].indexOf(m.id)<0);
+  const mp=el('div','panel');
+  mp.innerHTML=`<div class="phd"><h3>Module access</h3><div class="meta">act / view / —</div></div><div style="padding:8px 12px;overflow:auto">
+    <table class="ratios" style="font-size:11px"><thead><tr><th style="text-align:left">Module</th>${ROLE_LIST.map(r=>`<th>${r.split(' ').map(w=>w[0]).join('')}</th>`).join('')}</tr></thead><tbody>
+    ${mods.map(m=>`<tr><td style="text-align:left">${esc(m.label)}</td>${ROLE_LIST.map(r=>{const a=moduleAccess({role:r,modMgr:[]},m.id);return `<td>${a==='act'?'<span class="rgood">act</span>':a==='view'?'<span style="color:var(--txt-soft)">view</span>':'—'}</td>`;}).join('')}</tr>`).join('')}
+    </tbody></table>
+    <div class="hint" style="margin-top:8px">Column headers are role initials. Per-user <b>module manager</b> assignments (set on the user) grant <b>act</b> on operational modules regardless of role.</div></div>`;
+  v.appendChild(mp);
+  $('#saveTiers').onclick=()=>{
+    const rows=$$('#tierBody tr');const nt=[];
+    rows.forEach((tr,i)=>{const mx=$('#tmax'+i).value.trim();const chain=[];if(tr.querySelector('.tL1').checked)chain.push('L1');if(tr.querySelector('.tL2').checked)chain.push('L2');nt.push({max:mx===''?Infinity:+mx,chain});});
+    nt.sort((a,b)=>(a.max===Infinity?1:a.max)-(b.max===Infinity?1e18:b.max));
+    saveApprTiers(nt);audit('Approval thresholds updated','','');toast('Approval thresholds saved.');render();
+  };
+  $('#resetTiers').onclick=()=>{saveApprTiers(APPR_TIERS_DEFAULT.map(t=>({max:t.max,chain:t.chain.slice()})));toast('Reset to default.');render();};
+}
+function renderAudit(v){
+  if(!isAdmin(currentUser())){v.appendChild(el('div','empty','<div>Administrator access required.</div>'));return;}
+  const head=el('div','viewhead');
+  head.innerHTML=`<div><h2>Audit Log</h2><div class="desc">Append-only trail of every create, approval, posting, reversal and user change. Synced across devices.</div></div>
+    <div class="tools"><input class="f" id="auditQ" placeholder="Filter…" style="max-width:220px"></div>`;
+  v.appendChild(head);
+  const rows=AUDIT.slice().reverse();
+  const kp=el('div','kpis');
+  kp.innerHTML=kpiCount('l','Events',rows.length,'Recorded')+kpiCount('r','Today',rows.filter(r=>(r.ts||'').slice(0,10)===todayISO()).length,'Actions today');
+  v.appendChild(kp);
+  const panel=el('div','panel');
+  panel.innerHTML=`<div class="phd"><h3>Activity</h3><div class="meta">${rows.length}</div></div>`;
+  if(!rows.length)panel.appendChild(el('div','empty','<div>No activity recorded yet.</div>'));
+  else{const tbl=el('table');
+    tbl.innerHTML=`<thead><tr><th>When</th><th>User</th><th>Role</th><th>Action</th><th>Reference</th><th>Detail</th></tr></thead>`;
+    const tb=el('tbody');
+    rows.slice(0,500).forEach(r=>{tb.innerHTML+=`<tr><td class="mono" style="font-size:11px">${new Date(r.ts).toLocaleString()}</td><td>${esc(r.user)}</td><td style="font-size:11px;color:var(--txt-soft)">${esc(r.role||'')}</td><td>${esc(r.action)}</td><td class="mono">${esc(r.ref||'')}</td><td style="font-size:11px">${esc(r.detail||'')}</td></tr>`;});
+    tbl.appendChild(tb);panel.appendChild(tbl);}
+  v.appendChild(panel);
+  const q=$('#auditQ');if(q)q.oninput=()=>{const t=q.value.toLowerCase();$$('#view tbody tr').forEach(tr=>{tr.style.display=tr.textContent.toLowerCase().indexOf(t)>=0?'':'none';});};
 }
 
 /* ============================================================
@@ -4540,7 +4761,8 @@ const BACKUP_VERSION=1;
 function collectBackup(){
   return {app:'ElMatager-ERP',version:BACKUP_VERSION,savedAt:new Date().toISOString(),
     data:{posted:POSTED,periods:PERIOD_STATUS,assets:ASSETS,seq:SEQ,proc:PROC,users:USERS,
-      cfg:{currentUser:CURRENT_USER,approvalsOn:APPROVALS_ON},inv:INV,ent:ENT}};
+      cfg:{currentUser:CURRENT_USER,approvalsOn:APPROVALS_ON},inv:INV,ent:ENT,
+      audit:(typeof AUDIT!=='undefined'?AUDIT:[]),gledits:(typeof GL_EDITS!=='undefined'?GL_EDITS:{}),apprtiers:((typeof window!=='undefined'&&window.__apprTiers)?window.__apprTiers.map(t=>({max:t.max===Infinity?null:t.max,chain:t.chain})):null)}};
 }
 /* local data timestamp — used for non-destructive cloud sync */
 function localStamp(){try{return localStorage.getItem('elmatager_datastamp')||'';}catch(e){return '';}}
@@ -4557,6 +4779,9 @@ async function applyBackup(obj){
   if(d.cfg){if(d.cfg.currentUser)CURRENT_USER=d.cfg.currentUser;APPROVALS_ON=d.cfg.approvalsOn!==false;}
   if(d.inv)INV=Object.assign({items:[],warehouses:[],moves:[]},d.inv);
   if(d.ent)ENT=Object.assign(blankEnt(),d.ent);
+  if(Array.isArray(d.audit)&&typeof AUDIT!=='undefined')AUDIT=d.audit;
+  if(d.gledits&&typeof d.gledits==='object'&&typeof GL_EDITS!=='undefined')GL_EDITS=d.gledits;
+  if(Array.isArray(d.apprtiers)){try{const a=d.apprtiers.map(t=>({max:t.max===null?Infinity:t.max,chain:t.chain}));window.__apprTiers=a;}catch(e){}}
   if(typeof migrateUsers==='function')migrateUsers();
   await store.save();await store.savePeriods();await store.saveAssets();
   await store.saveProc();await store.saveUsers();await store.saveInv();await saveEnt();
@@ -4850,9 +5075,12 @@ async function flushCloud(){
 function csSetSync(state){
   const map={pending:['#d39e00','Sync pending…'],saving:['#2f88d0','Saving to cloud…'],saved:['#2e7d32','All changes saved to cloud'],error:['#c0392b','Cloud sync failed — open Cloud page']};
   const m=map[state]; if(!m)return;
-  const b=document.getElementById('cloudBtn'); if(b){ b.style.boxShadow='inset 0 0 0 2px '+m[0]; b.title=m[1]; if(state==='saved'){ setTimeout(()=>{ if(b)b.style.boxShadow=''; },1800); } }
+  const b=document.getElementById('cloudBtn'); if(b){ b.style.boxShadow='inset 0 0 0 2px '+m[0]; b.title=m[1];
+    b.classList.toggle('syncing',state==='saving'||state==='pending');
+    if(state==='saved'){ setTimeout(()=>{ if(b){b.style.boxShadow='';b.classList.remove('syncing');} },1800); } }
   const s=document.getElementById('csSyncPill'); if(s){ s.textContent=m[1]; s.style.color=m[0]; }
 }
+function txPulse(){const c=document.getElementById('balChip');if(c){c.classList.remove('txpulse');void c.offsetWidth;c.classList.add('txpulse');setTimeout(()=>c&&c.classList.remove('txpulse'),950);}}
 if(typeof window!=='undefined'){
   window.addEventListener('pagehide',flushCloud);
   document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='hidden')flushCloud(); });
@@ -4970,11 +5198,207 @@ function csPanel(v){
   $('#csAuto').onchange=e=>{CS.auto=e.target.checked;try{localStorage.setItem('elmatager_cs_auto',CS.auto?'1':'0');}catch(x){}toast('Auto-sync '+(CS.auto?'enabled':'disabled'));};
 }
 
+/* ============================================================
+   PROFESSIONAL RBAC · APPROVAL MATRIX · REVERSALS · AUDIT
+   ============================================================ */
+const ROLE_LIST=['Administrator','CFO','Financial Controller','GL Accountant','AP Accountant','AR Accountant','Treasury','Procurement Officer','Auditor'];
+const ROLE_ALIAS={'Controller':'Financial Controller','Accountant':'GL Accountant','AP Clerk':'AP Accountant','Viewer':'Auditor','Finance Director':'CFO','Cashier':'Treasury'};
+function normRole(r){return ROLE_ALIAS[r]||r||'Auditor';}
+const ROLE_META={
+ 'Administrator':{rank:100,approver:true,seesAdmin:true,limit:Infinity,readonly:false,desc:'Full access · users, roles & configuration'},
+ 'CFO':{rank:90,approver:true,seesAdmin:false,limit:Infinity,readonly:false,desc:'Top approver · unlimited · can reverse & close periods'},
+ 'Financial Controller':{rank:80,approver:true,seesAdmin:false,limit:1000000,readonly:false,desc:'Second-level approver · posts · can reverse (open period)'},
+ 'GL Accountant':{rank:60,approver:false,seesAdmin:false,limit:100000,readonly:false,desc:'Creates & posts GL, assets, period-end'},
+ 'AP Accountant':{rank:50,approver:false,seesAdmin:false,limit:25000,readonly:false,desc:'Vendor bills, payment drafts, PRs'},
+ 'AR Accountant':{rank:50,approver:false,seesAdmin:false,limit:25000,readonly:false,desc:'Sales invoices & customer receipts'},
+ 'Treasury':{rank:55,approver:false,seesAdmin:false,limit:100000,readonly:false,desc:'Bank transactions · executes approved payments'},
+ 'Procurement Officer':{rank:50,approver:false,seesAdmin:false,limit:50000,readonly:false,desc:'PR/PO & vendors · cannot approve own PO'},
+ 'Auditor':{rank:10,approver:false,seesAdmin:false,limit:0,readonly:true,desc:'Read-only everywhere + all reports'},
+};
+function rmeta(u){return ROLE_META[normRole(u&&u.role)]||ROLE_META['Auditor'];}
+function isAdmin(u){return normRole(u&&u.role)==='Administrator';}
+function roleDefaultLimit(role){const m=ROLE_META[normRole(role)];return m?m.limit:0;}
+
+/* ---- module access: 'act' | 'view' | 'none' ---- */
+const OPS_MODS=['crm','hr','mfg','psa','eam','qms','tms','fsm','grc'];
+const FIN_ACT=['Administrator','CFO','Financial Controller','GL Accountant'];
+const MODULE_ACCESS={
+ home:{act:ROLE_LIST,view:[]},
+ financial:{act:FIN_ACT,view:['AP Accountant','AR Accountant','Treasury','Procurement Officer','Auditor']},
+ ap:{act:['Administrator','CFO','Financial Controller','GL Accountant','AP Accountant','Treasury'],view:['Procurement Officer','Auditor']},
+ ar:{act:['Administrator','CFO','Financial Controller','GL Accountant','AR Accountant','Treasury'],view:['Auditor']},
+ treasury:{act:['Administrator','CFO','Financial Controller','GL Accountant','Treasury'],view:['Auditor']},
+ assets:{act:FIN_ACT,view:['Auditor']},
+ sales:{act:['Administrator','CFO','Financial Controller','GL Accountant','AR Accountant','Procurement Officer'],view:['Auditor']},
+ purchases:{act:['Administrator','CFO','Financial Controller','GL Accountant','AP Accountant','Procurement Officer'],view:['Auditor']},
+ procurement:{act:['Administrator','CFO','Financial Controller','AP Accountant','Procurement Officer'],view:['GL Accountant','Auditor']},
+ inventory:{act:['Administrator','CFO','Financial Controller','GL Accountant','AP Accountant','AR Accountant','Procurement Officer'],view:['Auditor']},
+ reports:{act:ROLE_LIST,view:[]},
+ search:{act:ROLE_LIST,view:[]},
+ admin:{act:['Administrator'],view:[]},
+};
+function moduleAccess(u,modId){
+ if(isAdmin(u))return 'act';
+ const role=normRole(u&&u.role);
+ if(modId==='admin')return 'none';
+ if(u&&Array.isArray(u.modMgr)&&u.modMgr.indexOf(modId)>=0)return 'act';   // per-module manager
+ if(OPS_MODS.indexOf(modId)>=0){
+   if(role==='CFO'||role==='Financial Controller')return 'act';
+   if(role==='Auditor')return 'view';
+   return 'none';
+ }
+ const m=MODULE_ACCESS[modId];
+ if(!m)return role==='Auditor'?'view':'none';
+ if(m.act.indexOf(role)>=0)return 'act';
+ if(m.view.indexOf(role)>=0)return 'view';
+ if(role==='Auditor')return 'view';
+ return 'none';
+}
+function canSeeModule(u,modId){return moduleAccess(u,modId)!=='none';}
+function canActIn(u,modId){return moduleAccess(u,modId)==='act';}
+function canCreateTxn(u){ if(rmeta(u).readonly)return false; return ['financial','ap','ar','treasury','assets'].some(m=>canActIn(u,m)); }
+function pageModuleId(pid){const m=PAGE_MODULE[pid];return m?m.id:null;}
+
+/* ---- capability check ---- */
+function can(verb,ctx){
+ const u=currentUser(); if(!u)return false;
+ if(isAdmin(u))return true;
+ const meta=rmeta(u);
+ if(meta.readonly)return false;                     // Auditor read-only
+ const mod=ctx&&ctx.module;
+ if(mod && !canActIn(u,mod))return false;
+ switch(verb){
+   case 'create': case 'edit': case 'submit': case 'delete': return true;
+   case 'post': return true;                          // gated further by approval completeness
+   case 'approve': return meta.approver;
+   case 'reverse': return meta.rank>=80;              // Controller / CFO / Admin
+   case 'configure': return false;
+   default: return true;
+ }
+}
+
+/* ---- approval matrix: 2 levels (Controller → CFO), EGP, configurable ---- */
+const APPR_TIERS_DEFAULT=[{max:5000,chain:[]},{max:50000,chain:['L1']},{max:Infinity,chain:['L1','L2']}];
+function apprTiers(){ try{return (window.__apprTiers&&window.__apprTiers.length)?window.__apprTiers:APPR_TIERS_DEFAULT;}catch(e){return APPR_TIERS_DEFAULT;} }
+function loadApprTiers(){ try{const s=localStorage.getItem('elmatager_apprtiers'); if(s){const a=JSON.parse(s); a.forEach(t=>{if(t.max===null)t.max=Infinity;}); window.__apprTiers=a;}}catch(e){} }
+function saveApprTiers(a){ try{window.__apprTiers=a; localStorage.setItem('elmatager_apprtiers',JSON.stringify(a.map(t=>({max:t.max===Infinity?null:t.max,chain:t.chain})))); if(typeof csSchedule==='function')csSchedule();}catch(e){} }
+function approvalChain(amount){ const a=Math.abs(+amount||0); for(const t of apprTiers()){ if(a<=t.max)return t.chain.slice(); } return ['L1','L2']; }
+const LEVEL_LABEL={L1:'Financial Controller',L2:'CFO'};
+function userFulfillsLevel(u,level,amount){
+ if(!u)return false; const role=normRole(u.role); const meta=rmeta(u);
+ if(role==='Administrator')return true;
+ if(level==='L2')return role==='CFO';
+ if(level==='L1')return (role==='Financial Controller'||role==='CFO')&&(meta.limit>=Math.abs(amount)-0.005);
+ return false;
+}
+/* next unmet approval level for a doc, or null if fully approved */
+function nextLevel(doc){
+ const chain=doc.needChain||[]; const done=(doc.approvals||[]).map(a=>a.level);
+ for(const lv of chain){ if(done.indexOf(lv)<0)return lv; }
+ return null;
+}
+function fullyApproved(doc){ return nextLevel(doc)===null; }
+
+/* ---- append-only AUDIT log ---- */
+let AUDIT=[]; const AUDIT_KEY='elmatager_audit_v1';
+async function loadAudit(){ try{const r=await window.storage.get(AUDIT_KEY); if(r&&r.value)AUDIT=JSON.parse(r.value);}catch(e){AUDIT=[];} if(!Array.isArray(AUDIT))AUDIT=[]; }
+async function saveAudit(){ try{await window.storage.set(AUDIT_KEY,JSON.stringify(AUDIT.slice(-2000)));}catch(e){} }
+function audit(action,ref,detail){
+ const u=currentUser();
+ AUDIT.push({ts:new Date().toISOString(),user:u?u.name:'—',role:u?normRole(u.role):'—',action,ref:ref||'',detail:detail||''});
+ if(AUDIT.length>2000)AUDIT=AUDIT.slice(-2000);
+ saveAudit(); if(typeof csSchedule==='function')csSchedule();
+}
+
+/* ============================================================
+   EDIT / VOID HISTORICAL (IMPORTED) GL ENTRIES  — per role
+   Keeps the original immutable base; edits ride on an override
+   layer that is persisted and cloud-synced. Authority: Financial
+   Controller / CFO / Administrator, open period only.
+   ============================================================ */
+let GL_EDITS={}; const GLEDIT_KEY='elmatager_gledits_v1';
+async function loadGLEdits(){ try{const r=await window.storage.get(GLEDIT_KEY); if(r&&r.value)GL_EDITS=JSON.parse(r.value);}catch(e){GL_EDITS={};} if(!GL_EDITS||typeof GL_EDITS!=='object')GL_EDITS={}; }
+async function saveGLEdits(){ try{await window.storage.set(GLEDIT_KEY,JSON.stringify(GL_EDITS));}catch(e){} if(typeof csSchedule==='function')csSchedule(); }
+function docKey(doc,date){ return (doc||'')+'|'+(date||''); }
+function canEditHistory(){ return can('reverse',{module:'financial'}); }   // Controller / CFO / Admin
+function effectiveBase(){
+  const keys=Object.keys(GL_EDITS); if(!keys.length) return BASE;
+  const ov=new Set(keys);
+  const kept=BASE.filter(r=>!ov.has(docKey(r.doc,r.date)));
+  const extra=[];
+  keys.forEach(k=>{ const e=GL_EDITS[k]; if(!e||e.mode==='delete')return;
+    const doc=e.doc||k.split('|')[0], date=e.date||k.split('|')[1];
+    (e.lines||[]).forEach(l=>{ const acc=ACC_BY_NAME[l.accName]; if(!acc)return;
+      extra.push({acc,type:'Journal (edited)',date,doc,memo:l.memo||'',desc:l.memo||'',party:l.party||'',bu:'',dept:'',loc:'',dr:+l.dr||0,cr:+l.cr||0,src:'GL',jeid:null,edited:true}); });
+  });
+  return kept.concat(extra);
+}
+/* editable modal for an imported/edited historical voucher */
+function editHistorical(doc,date){
+  if(!canEditHistory()){toast('Only a Financial Controller, CFO or Administrator can edit historical entries.',true);return;}
+  if(isPeriodClosed(date)){toast('Period '+periodOf(date)+' is closed. Reopen it to edit history.',true);return;}
+  if(!doc){toast('This voucher has no document number and cannot be edited individually.',true);return;}
+  let lines=ROWS.filter(r=>r.doc===doc&&r.date===date&&r.src==='GL').map(l=>({accName:l.acc.name,memo:l.memo||l.desc||'',party:l.party||'',dr:+l.dr||0,cr:+l.cr||0}));
+  if(!lines.length){toast('Could not load the voucher lines.',true);return;}
+  let curDate=date;
+  const accOpts=ACC.slice().sort((a,b)=>a.class.localeCompare(b.class)||a.name.localeCompare(b.name)).map(a=>`<option value="${esc(a.name)}">${esc(a.name)}</option>`).join('');
+  function draw(){
+    const dr=lines.reduce((s,l)=>s+(+l.dr||0),0),cr=lines.reduce((s,l)=>s+(+l.cr||0),0),diff=dr-cr;
+    $('#modalBody').innerHTML=`<div class="jgrid"><label class="fld">Document<input class="f" id="ehDoc" value="${esc(doc)}" disabled style="max-width:none"></label>
+      <label class="fld">Date<input class="f" id="ehDate" type="date" value="${esc(curDate)}" style="max-width:none"></label></div>
+      <div class="note" style="margin:10px 0"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01M11 12h1v4h1"/></svg><div>Editing a historical voucher. The original import is preserved for audit; your changes are tracked in the Audit Log.</div></div>
+      <div id="ehRows"></div>
+      <div style="display:flex;gap:10px;margin-top:8px"><button class="btn sm" id="ehAdd">+ Add line</button>
+        <div style="margin-left:auto;font-weight:700" class="mono ${Math.abs(diff)<0.005?'':'diff-bad'}">Dr ${fmt(dr)} · Cr ${fmt(cr)} ${Math.abs(diff)<0.005?'· balanced':'· out '+fmt(diff)}</div></div>`;
+    const box=$('#ehRows'); box.innerHTML='';
+    box.appendChild(el('div','jerow hdr',`<div>Account</div><div>Memo</div><div style="text-align:right">Debit</div><div style="text-align:right">Credit</div><div></div>`));
+    lines.forEach((l,i)=>{const row=el('div','jerow');
+      row.innerHTML=`<select data-i="${i}" data-k="accName" class="ehf">${accOpts}</select>
+        <input data-i="${i}" data-k="memo" class="ehf" value="${esc(l.memo)}">
+        <input data-i="${i}" data-k="dr" class="ehf r" inputmode="decimal" value="${l.dr||''}">
+        <input data-i="${i}" data-k="cr" class="ehf r" inputmode="decimal" value="${l.cr||''}">
+        <button class="jerm" data-rm="${i}">×</button>`;
+      box.appendChild(row);
+      row.querySelector('[data-k=accName]').value=l.accName;
+    });
+    $$('.ehf').forEach(inp=>inp.oninput=()=>{const i=+inp.dataset.i,k=inp.dataset.k;lines[i][k]=(k==='dr'||k==='cr')?(+inp.value||0):inp.value;if(k==='dr'||k==='cr')draw();});
+    $$('[data-rm]').forEach(b=>b.onclick=()=>{lines.splice(+b.dataset.rm,1);draw();});
+    $('#ehAdd').onclick=()=>{lines.push({accName:ACC[0].name,memo:'',party:'',dr:0,cr:0});draw();};
+    $('#ehDate').onchange=e=>{curDate=e.target.value;};
+  }
+  $('#modalTitle').textContent='Edit historical entry — '+doc;
+  $('#modalFoot').innerHTML=`<button class="btn danger" id="ehVoid">Void entry</button><div style="margin-left:auto;display:flex;gap:10px"><button class="btn" id="ehCancel">Cancel</button><button class="btn primary" id="ehSave">Save changes</button></div>`;
+  draw();
+  $('#ehCancel').onclick=closeModal;
+  $('#ehVoid').onclick=()=>voidHistorical(doc,date);
+  $('#ehSave').onclick=async()=>{
+    const cl=lines.filter(l=>l.accName&&((+l.dr||0)>0||(+l.cr||0)>0));
+    const dr=cl.reduce((s,l)=>s+(+l.dr||0),0),cr=cl.reduce((s,l)=>s+(+l.cr||0),0);
+    if(!cl.length){toast('Add at least one line.',true);return;}
+    if(Math.abs(dr-cr)>0.005){toast('Entry is out of balance by '+fmt(dr-cr)+'.',true);return;}
+    if(isPeriodClosed(curDate)){toast('Target period is closed.',true);return;}
+    GL_EDITS[docKey(doc,date)]={mode:'edit',doc,date:curDate,lines:cl.map(l=>({accName:l.accName,memo:l.memo||'',party:l.party||'',dr:+l.dr||0,cr:+l.cr||0})),editedBy:CURRENT_USER,editedAt:new Date().toISOString()};
+    await saveGLEdits(); audit('Historical entry edited',doc,fmt(dr)); rebuild(); closeModal(); render(); toast('Historical entry '+doc+' updated across all reports.');
+  };
+  openModal();
+}
+async function voidHistorical(doc,date){
+  if(!canEditHistory()){toast('Not authorized to void historical entries.',true);return;}
+  if(isPeriodClosed(date)){toast('Period is closed. Reopen it first.',true);return;}
+  if(!confirm(`Void historical entry ${doc}?\nIt will be removed from the ledger and all statements. The original import stays in the Audit Log.`))return;
+  GL_EDITS[docKey(doc,date)]={mode:'delete',doc,date,voidedBy:CURRENT_USER,voidedAt:new Date().toISOString()};
+  await saveGLEdits(); audit('Historical entry voided',doc,''); rebuild(); closeModal(); render(); toast('Historical entry '+doc+' voided.');
+}
+function isEditedDoc(doc,date){const e=GL_EDITS[docKey(doc,date)];return e?e.mode:null;}
+
 (async function boot(){
   const ent=DATA.meta.entity.replace(/^El Matager\s*/i,'').replace(/[()]/g,'').trim()||DATA.meta.entity;
   $('#entLabel').textContent=DATA.meta.currency+' · '+ent;
   await store.load();
   await loadEnt();
+  await loadAudit();
+  await loadGLEdits();
+  loadApprTiers();
   seedUsers();
   migrateUsers();
   await csHydrate();                 // pull shared cloud data BEFORE login (cross-device accounts)
