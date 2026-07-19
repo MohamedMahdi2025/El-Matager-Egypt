@@ -765,9 +765,15 @@ function unionChart(){const seen={};const out=[];chartCopy(DATA.accounts).forEac
   return out;}
 function buildActiveChart(){
   if(typeof REPORT_SCOPE!=='undefined'&&REPORT_SCOPE==='consolidated'){ACC=unionChart();}
-  else{const c=(typeof COMPANIES!=='undefined')?COMPANIES.find(x=>x.id===CO):null;ACC=(c&&Array.isArray(c.coa)&&c.coa.length)?c.coa.map(a=>({...a})):DATA.accounts;}
+  else{const c=(typeof COMPANIES!=='undefined')?COMPANIES.find(x=>x.id===CO):null;
+    if(c&&Array.isArray(c.coa)&&c.coa.length){ if(c.coa.some(a=>!a.code)){try{assignCodes(c.coa);if(typeof persistCompanies==='function')persistCompanies();}catch(e){}} ACC=c.coa.map(a=>({...a})); }
+    else ACC=DATA.accounts;}
   reindexAcc();
 }
+function accCodeBase(cls){return {ASSET:1000,LIABILITY:2000,EQUITY:3000,REVENUE:4000,EXPENSE:5000}[cls]||9000;}
+function assignCodes(chart){const ctr={};(chart||[]).forEach(a=>{if(a.code)return;const base=accCodeBase(a.class);const cur=(ctr[a.class]==null)?base:ctr[a.class]+10;ctr[a.class]=cur;a.code=String(cur);});return chart;}
+function nextAccCode(chart,cls){const base=accCodeBase(cls);let max=base-10;(chart||[]).forEach(a=>{if(a.class===cls&&/^\d+$/.test(String(a.code||''))){const n=+a.code;if(n>=base&&n<base+1000&&n>max)max=n;}});return String(max+10);}
+try{assignCodes(DATA.accounts);reindexAcc();}catch(e){}
 const C={a:0,t:1,d:2,doc:3,memo:4,desc:5,p:6,bu:7,dep:8,loc:9,dr:10,cr:11};
 
 // normalize a base row (array) -> object
@@ -2487,7 +2493,7 @@ function drawJELines(locked){
     box.insertAdjacentHTML('beforeend',`<datalist id="dlBu">${dimValues('bu').map(x=>`<option value="${esc(x)}">`).join('')}</datalist><datalist id="dlLoc">${dimValues('loc').map(x=>`<option value="${esc(x)}">`).join('')}</datalist><datalist id="dlDept">${dimValues('dept').map(x=>`<option value="${esc(x)}">`).join('')}</datalist><datalist id="dlEmp">${dimValues('emp').map(x=>`<option value="${esc(x)}">`).join('')}</datalist>`);}
   box.appendChild(el('div','jerow hdr',`<div>Account</div><div>Line memo</div><div style="text-align:right">Debit</div><div style="text-align:right">Credit</div><div></div>`));
   const opts=ACC.slice().sort((a,b)=>a.class.localeCompare(b.class)||a.name.localeCompare(b.name))
-     .map(a=>`<option value="${esc(a.name)}">${esc(a.name)}</option>`).join('');
+     .map(a=>`<option value="${esc(a.name)}">${a.code?esc(a.code)+' · ':''}${esc(a.name)}</option>`).join('');
   const dis=locked?' disabled':'';
   JE_LINES.forEach((ln,i)=>{
     const row=el('div','jerow');
@@ -5017,10 +5023,16 @@ async function applyBackup(obj){
   const d=(obj&&obj.data)?obj.data:obj;
   if(!d||typeof d!=='object')throw new Error('Not a valid Best Books Online backup file');
   if(d.cos && typeof d.cos==='object'){
-    COMPANIES=(Array.isArray(d.companies)&&d.companies.length)?d.companies:[{id:'main',name:'Egypt : eDirect',base:true}];
+    let _localCos=[],_localData={};
+    try{if(typeof captureActive==='function')captureActive();}catch(e){}
+    try{_localCos=(typeof COMPANIES!=='undefined')?COMPANIES.slice():[];_localData=Object.assign({},(typeof CO_DATA!=='undefined'?CO_DATA:{}));}catch(e){}
+    COMPANIES=(Array.isArray(d.companies)&&d.companies.length)?d.companies.slice():[{id:'main',name:'Egypt : eDirect',base:true}];
     if(!COMPANIES.some(c=>c.id==='main'))COMPANIES.unshift({id:'main',name:'Egypt : eDirect',base:true});
-    CO_DATA=d.cos||{};
-    CO=(d.activeCo&&COMPANIES.some(c=>c.id===d.activeCo))?d.activeCo:'main'; window.__CO=CO;
+    CO_DATA=Object.assign({},d.cos||{});
+    // preserve any company that exists locally but is missing from the cloud snapshot (prevents losing a just-created company before its sync lands)
+    const _cloudIds=new Set(COMPANIES.map(c=>c.id));
+    _localCos.forEach(lc=>{if(lc&&lc.id&&!_cloudIds.has(lc.id)){COMPANIES.push(lc);if(_localData[lc.id])CO_DATA[lc.id]=_localData[lc.id];}});
+    CO=(d.activeCo&&COMPANIES.some(c=>c.id===d.activeCo))?d.activeCo:((typeof CO!=='undefined'&&COMPANIES.some(c=>c.id===CO))?CO:'main'); window.__CO=CO;
     applyCompanyData(CO);                       // load active company's globals FIRST (before any save/capture)
     for(const id in CO_DATA){ await persistCoBlob(id); }
     if(Array.isArray(d.users)&&d.users.length)USERS=d.users;
@@ -5326,7 +5338,7 @@ async function csPush(){
   return true;
 }
 let _csT=null,_csDirty=false,_csBusy=false;
-function csSchedule(){ try{if(typeof markDirtyCompany==='function')markDirtyCompany();}catch(e){} try{if(typeof checkStorageWarn==='function')checkStorageWarn();}catch(e){} if(!CS.auto||!csConfigured())return; _csDirty=true; csSetSync('pending'); clearTimeout(_csT); _csT=setTimeout(flushCloud,250); }
+function csSchedule(){ try{if(typeof markDirtyCompany==='function')markDirtyCompany();}catch(e){} try{bumpStamp(new Date().toISOString());}catch(e){} try{if(typeof checkStorageWarn==='function')checkStorageWarn();}catch(e){} if(!CS.auto||!csConfigured())return; _csDirty=true; csSetSync('pending'); clearTimeout(_csT); _csT=setTimeout(flushCloud,250); }
 async function flushCloud(){
   if(!CS.auto||!csConfigured())return;
   if(_csBusy){ _csDirty=true; return; }        // push already running → mark to re-push after
@@ -5945,7 +5957,7 @@ async function createCompany(name){
   name=(name||'').trim(); if(!name){toast('Enter a company name.',true);return;}
   _coSwitching=true;
   const id='co_'+Date.now().toString(36);
-  COMPANIES.push({id,name});
+  COMPANIES.push({id,name,coa:standardChart()});
   CO_DATA[id]=emptyCompanyData();
   await persistCoBlob(id); await persistCompanies();
   audit('Company created',name,'');
@@ -6052,7 +6064,8 @@ function exportCompany(id){
   try{captureActive();}catch(e){}
   const c=COMPANIES.find(x=>x.id===id)||{};const data=(typeof CO_DATA!=='undefined'&&CO_DATA[id])||emptyCompanyData();
   const blob={app:'ElMatager-Company',version:1,exportedAt:new Date().toISOString(),
-    company:{name:c.name,legalName:c.legalName||'',taxNumber:c.taxNumber||'',crNumber:c.crNumber||'',address:c.address||'',footer:c.footer||'',logo:c.logo||'',apprtiers:c.apprtiers||null},
+    company:{name:c.name,legalName:c.legalName||'',taxNumber:c.taxNumber||'',crNumber:c.crNumber||'',address:c.address||'',footer:c.footer||'',logo:c.logo||'',apprtiers:c.apprtiers||null,
+      currency:c.currency||'',fiscalStart:c.fiscalStart||1,coa:Array.isArray(c.coa)?c.coa:standardChart(),products:c.products||[],dims:c.dims||null,importPresets:c.importPresets||[]},
     data};
   const s=JSON.stringify(blob,null,2);const b=new Blob([s],{type:'application/json'});const a=document.createElement('a');
   a.href=URL.createObjectURL(b);a.download='company-'+String(c.name||id).replace(/[^\w]+/g,'_')+'.json';a.click();URL.revokeObjectURL(a.href);
@@ -6066,7 +6079,8 @@ async function importCompanyFile(file){
     const base=(blob.company&&blob.company.name)||'Imported company';let name=base,i=2;
     while(COMPANIES.some(c=>c.name===name)){name=base+' ('+i+')';i++;}
     const id='co_'+Date.now().toString(36);const entry={id,name};const cp=blob.company||{};
-    ['legalName','taxNumber','crNumber','address','footer','logo','apprtiers'].forEach(k=>{if(cp[k])entry[k]=cp[k];});
+    ['legalName','taxNumber','crNumber','address','footer','logo','apprtiers','currency','fiscalStart','products','dims','importPresets'].forEach(k=>{if(cp[k]!=null)entry[k]=cp[k];});
+    entry.coa=(Array.isArray(cp.coa)&&cp.coa.length)?cp.coa.map(a=>({...a})):standardChart();
     COMPANIES.push(entry);
     CO_DATA[id]=Object.assign(emptyCompanyData(),blob.data||{});
     await persistCoBlob(id);await persistCompanies();if(typeof csSchedule==='function')csSchedule();
@@ -7054,6 +7068,8 @@ async function createCompanyFull(wiz){
   try{applyCoBranding();}catch(e){}
   try{buildCoSwitcher();}catch(e){}
   render();
+  try{bumpStamp(new Date().toISOString());}catch(e){}
+  try{if(typeof flushCloud==='function'){_csDirty=true;await flushCloud();}}catch(e){}
   toast('Company "'+wiz.name+'" created — profile set and books ready.');
 }
 
@@ -7350,7 +7366,7 @@ function minimalChart(){
     ['General and Administrative','EXPENSE','Operating Expenses'],
     ['Selling and Distribution','EXPENSE','Operating Expenses'],
   ];
-  return rows.map(([name,cls,root])=>({name,class:cls,root,path:[root,name],code:''}));
+  return assignCodes(rows.map(([name,cls,root])=>({name,class:cls,root,path:[root,name],code:''})));
 }
 function activeCoa(){const c=COMPANIES.find(x=>x.id===CO);return c&&Array.isArray(c.coa)?c.coa:null;}
 function makeEditableCoa(){const c=COMPANIES.find(x=>x.id===CO);if(!c)return;if(!Array.isArray(c.coa)||!c.coa.length)c.coa=standardChart();persistCompanies();if(typeof csSchedule==='function')csSchedule();rebuild();render();}
@@ -7359,17 +7375,20 @@ function coaAddModal(){
   const roots=[...new Set(coa.map(a=>a.root))].sort();
   $('#modalTitle').textContent='Add account';
   $('#modalBody').innerHTML=`<div class="jgrid">
+    <label class="fld">Account number <span style="color:var(--neg)">*</span><input class="f" id="caCode" value="${esc(nextAccCode(coa,'ASSET'))}" style="max-width:none"></label>
     <label class="fld">Account name<input class="f" id="caName" style="max-width:none"></label>
     <label class="fld">Class<select class="f" id="caClass" style="max-width:none">${['ASSET','LIABILITY','EQUITY','REVENUE','EXPENSE'].map(c=>`<option>${c}</option>`).join('')}</select></label>
     <label class="fld">Group / root<input class="f" id="caRoot" list="caRoots" placeholder="e.g. Operating Expenses" style="max-width:none"><datalist id="caRoots">${roots.map(r=>`<option value="${esc(r)}">`).join('')}</datalist></label>
-    <label class="fld">Code (optional)<input class="f" id="caCode" style="max-width:none"></label>
   </div>`;
   $('#modalFoot').innerHTML=`<div style="margin-left:auto;display:flex;gap:10px"><button class="btn" id="caCancel">Cancel</button><button class="btn primary" id="caSave">Add account</button></div>`;
   $('#caCancel').onclick=closeModal;
-  $('#caSave').onclick=()=>{const name=$('#caName').value.trim(),cls=$('#caClass').value,root=$('#caRoot').value.trim()||name,code=$('#caCode').value.trim();
+  $('#caClass').onchange=()=>{$('#caCode').value=nextAccCode(coa,$('#caClass').value);};
+  $('#caSave').onclick=()=>{const name=$('#caName').value.trim(),cls=$('#caClass').value,root=$('#caRoot').value.trim()||name,code=$('#caCode').value.trim()||nextAccCode(coa,cls);
     if(!name){toast('Enter an account name.',true);return;}
+    if(!code){toast('Enter an account number.',true);return;}
     if(coa.some(a=>a.name.toLowerCase()===name.toLowerCase())){toast('That account already exists.',true);return;}
-    coa.push({name,class:cls,root,path:[root,name],code});persistCompanies();if(typeof csSchedule==='function')csSchedule();audit('Account added',name,cls);rebuild();closeModal();render();toast('Account added.');};
+    if(coa.some(a=>String(a.code)===String(code))){toast('Account number '+code+' is already used.',true);return;}
+    coa.push({name,class:cls,root,path:[root,name],code});persistCompanies();if(typeof csSchedule==='function')csSchedule();audit('Account added',code+' '+name,cls);rebuild();closeModal();render();toast('Account '+code+' added.');};
   openModal();
 }
 async function coaImportFile(file){
@@ -7392,6 +7411,7 @@ async function coaImportFile(file){
       const root=(ci.root>=0&&r[ci.root]?r[ci.root]:name).toString().trim();const code=(ci.code>=0&&r[ci.code]?r[ci.code]:'').toString().trim();
       if(target.some(a=>a.name.toLowerCase()===name.toLowerCase())){skip++;return;}
       target.push({name,class:cls,root,path:[root,name],code});added++;});
+    if(target)assignCodes(target);
     persistCompanies();if(typeof csSchedule==='function')csSchedule();audit('Chart imported',file.name,added+' accounts');rebuild();render();
     toast('Imported '+added+' account(s)'+(skip?', '+skip+' already existed':'')+(errs.length?', '+errs.length+' skipped (bad class)':'')+'.');
   }catch(e){toast('Could not import: '+((e&&e.message)||e),true);}
