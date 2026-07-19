@@ -766,14 +766,22 @@ function unionChart(){const seen={};const out=[];chartCopy(DATA.accounts).forEac
 function buildActiveChart(){
   if(typeof REPORT_SCOPE!=='undefined'&&REPORT_SCOPE==='consolidated'){ACC=unionChart();}
   else{const c=(typeof COMPANIES!=='undefined')?COMPANIES.find(x=>x.id===CO):null;
-    if(c&&Array.isArray(c.coa)&&c.coa.length){ if(c.coa.some(a=>!a.code)){try{assignCodes(c.coa);if(typeof persistCompanies==='function')persistCompanies();}catch(e){}} ACC=c.coa.map(a=>({...a})); }
+    if(c&&Array.isArray(c.coa)&&c.coa.length){ ensureDepAccounts(c.coa); if(c.coa.some(a=>!a.code)){try{assignCodes(c.coa);if(typeof persistCompanies==='function')persistCompanies();}catch(e){}} ACC=c.coa.map(a=>({...a})); }
     else ACC=DATA.accounts;}
   reindexAcc();
 }
 function accCodeBase(cls){return {ASSET:1000,LIABILITY:2000,EQUITY:3000,REVENUE:4000,EXPENSE:5000}[cls]||9000;}
 function assignCodes(chart){const ctr={};(chart||[]).forEach(a=>{if(a.code)return;const base=accCodeBase(a.class);const cur=(ctr[a.class]==null)?base:ctr[a.class]+10;ctr[a.class]=cur;a.code=String(cur);});return chart;}
 function nextAccCode(chart,cls){const base=accCodeBase(cls);let max=base-10;(chart||[]).forEach(a=>{if(a.class===cls&&/^\d+$/.test(String(a.code||''))){const n=+a.code;if(n>=base&&n<base+1000&&n>max)max=n;}});return String(max+10);}
-try{assignCodes(DATA.accounts);reindexAcc();}catch(e){}
+function ensureDepAccounts(chart){
+  if(!Array.isArray(chart))return chart;
+  if(!chart.some(a=>a.class==='EXPENSE'&&/depreciat/i.test(a.name)&&!/amort|right.?of.?use|\brou\b/i.test(a.name)))
+    chart.push({name:'Depreciation Expense',class:'EXPENSE',root:'Depreciation Expense',path:['Depreciation Expense','Depreciation Expense'],code:''});
+  if(!chart.some(a=>a.class==='ASSET'&&/accumulated deprec/i.test(a.name)&&!/amort|right.?of.?use|\brou\b/i.test(a.name)))
+    chart.push({name:'Accumulated Depreciation',class:'ASSET',root:'Accumulated Depreciation',path:['Accumulated Depreciation','Accumulated Depreciation'],code:''});
+  return chart;
+}
+try{ensureDepAccounts(DATA.accounts);assignCodes(DATA.accounts);reindexAcc();}catch(e){}
 const C={a:0,t:1,d:2,doc:3,memo:4,desc:5,p:6,bu:7,dep:8,loc:9,dr:10,cr:11};
 
 // normalize a base row (array) -> object
@@ -875,11 +883,19 @@ function monthsBetween(a,b){ // whole months from a to b (a,b ISO)
   return (db.getFullYear()-da.getFullYear())*12+(db.getMonth()-da.getMonth());
 }
 function assetMonthlyDep(a){const base=(a.cost-(a.salvage||0));return a.lifeMonths>0?base/a.lifeMonths:0;}
-function assetAccumDep(a,asOf){ // straight-line accumulated depreciation up to asOf (ISO)
+function mIdx(ym){ym=String(ym||'');const y=+ym.slice(0,4),m=+ym.slice(5,7);return (y*12)+(m-1);}
+function assetDepMonthsPosted(a,asOf){ // number of months actually depreciated (posted) up to asOf
+  const start=(a.acqDate||todayISO()).slice(0,7);
+  let through=a.postedDepThrough||'';
+  if(!through||through<start)return 0;
+  if(asOf){const asM=String(asOf).slice(0,7);if(asM<through)through=asM;}
+  if(through<start)return 0;
+  return Math.max(0,mIdx(through)-mIdx(start)+1);
+}
+function assetAccumDep(a,asOf){ // accumulated depreciation = months actually posted × monthly (capped at depreciable base)
   if(!asOf)asOf=_maxDate();
-  let m=monthsBetween(a.acqDate,asOf);
-  m=Math.max(0,Math.min(m,a.lifeMonths));
-  return Math.min(assetMonthlyDep(a)*m, a.cost-(a.salvage||0));
+  const n=assetDepMonthsPosted(a,asOf);
+  return Math.min(assetMonthlyDep(a)*n, a.cost-(a.salvage||0));
 }
 function assetNBV(a,asOf){return a.cost-assetAccumDep(a,asOf);}
 /* Code39 barcode → SVG (real, scannable) */
@@ -2683,8 +2699,18 @@ function exportStatement(name){
    ============================================================ */
 /* ---- account resolvers (pick representative GL accounts) ---- */
 function accByRoot(root,cls){return ACC.find(a=>a.root===root&&(!cls||a.class===cls));}
-function depExpenseAcc(){return accByRoot('Depreciation and Amortization','EXPENSE')||ACC.find(a=>a.class==='EXPENSE'&&/deprec/i.test(a.name));}
-function accumDepAcc(){return accByRoot('Accumulated Depreciation')||ACC.find(a=>/accumulated deprec|accumulated amort/i.test(a.name));}
+function depExpenseAcc(){
+  return ACC.find(a=>a.class==='EXPENSE'&&/depreciat/i.test(a.name)&&!/amort|right.?of.?use|\brou\b|lease/i.test(a.name))
+    || accByRoot('Depreciation','EXPENSE')
+    || ACC.find(a=>a.class==='EXPENSE'&&/depreciat/i.test(a.name))
+    || accByRoot('Depreciation and Amortization','EXPENSE')
+    || ACC.find(a=>a.class==='EXPENSE'&&/deprec/i.test(a.name));
+}
+function accumDepAcc(){
+  return ACC.find(a=>/accumulated deprec/i.test(a.name)&&!/amort|right.?of.?use|\brou\b/i.test(a.name))
+    || accByRoot('Accumulated Depreciation')
+    || ACC.find(a=>/accumulated deprec/i.test(a.name))|| ACC.find(a=>/accumulated amort/i.test(a.name));
+}
 function cashAcc(){return accByRoot(CASH_ROOT);}
 function apAcc(){return accByRoot('Accounts Payable/s');}
 function arAcc(){return accByRoot('Accounts Receivable/s');}
@@ -2796,6 +2822,7 @@ async function setPeriod(m,st){
 const LIFE_DEFAULT={'Property and Equipment':60,'Right of Use Assets':36,'Computer & Office Equipment':36,'Furniture':84};
 function assetsCost(){return ASSETS.filter(a=>a.status!=='Disposed').reduce((s,a)=>s+a.cost,0);}
 function renderAssetRegister(v){
+  try{const _own=(typeof activeCoa==='function')&&activeCoa();const _chart=_own||DATA.accounts;const _before=_chart.length;ensureDepAccounts(_chart);if(_chart.length!==_before){try{assignCodes(_chart);}catch(e){}if(_own&&typeof persistCompanies==='function')persistCompanies();rebuild();}}catch(e){}
   const head=el('div','viewhead');
   head.innerHTML=`<div><h2>Fixed Asset Register</h2><div class="desc">Asset sub-ledger with auto asset codes, barcodes, straight-line depreciation, and disposals. All movements post to the GL.</div></div>
     <div class="tools">
@@ -2837,10 +2864,15 @@ function renderAssetRegister(v){
   // reconciliation with GL
   const glCost=assetCostAccs().reduce((s,a)=>s+(ACCSTATE[a.name]?accBalance(a.name):0),0);
   v.appendChild(noteBox(`GL Property &amp; Equipment / Right-of-Use balance is <b>${fmt(glCost)}</b>; sub-ledger registered cost is <b>${fmt(assetsCost())}</b>. ${Math.abs(glCost-assetsCost())<1?'Sub-ledger reconciles to the GL.':'Difference of '+fmt(glCost-assetsCost())+' — capitalize remaining acquisitions to reconcile.'}`));
+  const roues=ASSETS.filter(a=>a.status!=='Disposed'&&(/amort|right.?of.?use|\brou\b/i.test(a.depExpAcc||'')||/amort|right.?of.?use|\brou\b/i.test(a.accumDepAcc||'')));
+  if(roues.length){const warn=el('div','note');warn.style.borderLeft='3px solid #e0a80f';
+    warn.innerHTML=`<svg viewBox="0 0 24 24" fill="none" stroke="#e0a80f" stroke-width="2"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg><div><b>${roues.length} asset(s)</b> are mapped to Right-of-Use / amortization accounts. If they are owned assets (not leases), remap them to proper depreciation accounts. <button class="btn sm" id="faFixAccts" style="margin-left:8px">Remap to depreciation accounts</button></div>`;
+    v.appendChild(warn);}
   $('#faGen').onclick=()=>go('acquisitions');
   $('#faDep').onclick=runDepModal;
   $('#faAdd').onclick=()=>addAssetModal();
   $$('#view tr[data-id]').forEach(tr=>tr.onclick=()=>assetModal(ASSETS.find(a=>a.id===tr.dataset.id)));
+  if($('#faFixAccts'))$('#faFixAccts').onclick=async()=>{const de=(depExpenseAcc()||{}).name,ac=(accumDepAcc()||{}).name;if(!de||!ac){toast('Add proper depreciation accounts first in Chart of Accounts — Setup.',true);return;}roues.forEach(a=>{a.depExpAcc=de;a.accumDepAcc=ac;});await store.saveAssets();if(typeof csSchedule==='function')csSchedule();audit('Assets remapped to depreciation accounts',roues.length+' asset(s)',de+' / '+ac);rebuild();render();toast(roues.length+' asset(s) remapped to '+de+' / '+ac+'.');};
 }
 function assetModal(a){if(!a)return;
   const asOf=PERIOD.to||_maxDate();
@@ -2869,6 +2901,10 @@ function assetModal(a){if(!a)return;
           <div class="fld"><span>Net book value</span><div class="roval" style="font-weight:700">${fmt(nbv)}</div></div>
           <div class="fld"><span>Source</span><div class="roval">${esc(a.sourceDoc||'Manual')}</div></div>
         </div>
+        <div class="jgrid" style="margin-top:8px">
+          <div class="fld"><span>Depreciation expense account</span><div class="roval" style="font-size:12px">${esc(a.depExpAcc||((depExpenseAcc()||{}).name)||'— not set —')}</div></div>
+          <div class="fld"><span>Accumulated depreciation account</span><div class="roval" style="font-size:12px">${esc(a.accumDepAcc||((accumDepAcc()||{}).name)||'— not set —')}</div></div>
+        </div>
         ${a.status==='Disposed'?`<div class="note" style="margin-top:12px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/></svg><div>Disposed on ${a.disposal.date} for proceeds ${fmt(a.disposal.proceeds)} — ${a.disposal.gain>=0?'gain':'loss'} of ${fmt(Math.abs(a.disposal.gain))}.</div></div>`:''}
       </div>
       <div style="width:250px">
@@ -2886,12 +2922,34 @@ function assetModal(a){if(!a)return;
     <div style="margin-left:auto;display:flex;gap:10px">
       <button class="btn danger" id="faDelete">Delete</button>
       <button class="btn" id="faSched">Depreciation schedule</button>
+      ${canAct?'<button class="btn" id="faAccts">Edit GL accounts</button>':''}
       ${canAct?'<button class="btn" id="faDispose">Dispose / Sell</button>':''}
       <button class="btn" id="faClose">Close</button></div>`;
   $('#faClose').onclick=closeModal;
   $('#faSched').onclick=()=>assetDepScheduleModal(a);
+  if(canAct&&$('#faAccts'))$('#faAccts').onclick=()=>editAssetAccountsModal(a);
   $('#faDelete').onclick=async()=>{if(confirm('Remove asset '+a.code+' from the register? (does not reverse GL postings)')){ASSETS=ASSETS.filter(x=>x.id!==a.id);await store.saveAssets();closeModal();render();toast('Asset removed');}};
   if(canAct)$('#faDispose').onclick=()=>disposeModal(a);
+  openModal();
+}
+function editAssetAccountsModal(a){
+  const expOpts=ACC.filter(x=>x.class==='EXPENSE').sort((x,y)=>x.name.localeCompare(y.name));
+  const accOpts=ACC.filter(x=>x.class==='ASSET').sort((x,y)=>x.name.localeCompare(y.name));
+  const curDe=a.depExpAcc||((depExpenseAcc()||{}).name)||'';
+  const curAc=a.accumDepAcc||((accumDepAcc()||{}).name)||'';
+  $('#modalTitle').textContent='GL accounts — '+(a.code||a.name||'');
+  $('#modalBody').innerHTML=`<div class="jgrid">
+    <label class="fld" style="grid-column:1/-1">Depreciation expense account (P&L)
+      <select class="f" id="eaExp" style="max-width:none"><option value="">— select expense account —</option>${expOpts.map(x=>`<option value="${esc(x.name)}"${x.name===curDe?' selected':''}>${x.code?esc(x.code)+' · ':''}${esc(x.name)}</option>`).join('')}</select></label>
+    <label class="fld" style="grid-column:1/-1">Accumulated depreciation account (Balance Sheet, contra-asset)
+      <select class="f" id="eaAcc" style="max-width:none"><option value="">— select accumulated-depreciation account —</option>${accOpts.map(x=>`<option value="${esc(x.name)}"${x.name===curAc?' selected':''}>${x.code?esc(x.code)+' · ':''}${esc(x.name)}</option>`).join('')}</select></label>
+  </div>
+  <div class="note" style="margin-top:12px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01M11 12h1v4h1"/></svg><div>New depreciation runs post to these accounts. Entries already posted are not changed. If your chart lacks proper depreciation accounts, add them under <b>Chart of Accounts — Setup</b>.</div></div>`;
+  $('#modalFoot').innerHTML=`<div style="margin-left:auto;display:flex;gap:10px"><button class="btn" id="eaCancel">Cancel</button><button class="btn primary" id="eaSave">Save accounts</button></div>`;
+  $('#eaCancel').onclick=()=>assetModal(a);
+  $('#eaSave').onclick=async()=>{const de=$('#eaExp').value,ac=$('#eaAcc').value;
+    if(!de||!ac){toast('Select both accounts.',true);return;}
+    a.depExpAcc=de;a.accumDepAcc=ac;await store.saveAssets();if(typeof csSchedule==='function')csSchedule();audit('Asset GL accounts set',a.code,de+' / '+ac);toast('GL accounts updated.');assetModal(a);};
   openModal();
 }
 function assetDepScheduleModal(a){
@@ -3034,12 +3092,12 @@ async function depreciateMonth(month){
   if(isPeriodClosed(month))return {skipped:true,month};
   const gd=depExpenseAcc(),ga=accumDepAcc();
   const active=ASSETS.filter(a=>a.status!=='Disposed');
-  const groups={};const touched=[];
+  const groups={};const touched=[];const deps=[];
   active.forEach(a=>{if((a.postedDepThrough||'')<month && month<=addMonths(a.acqDate,a.lifeMonths)){
     const m=assetMonthlyDep(a);if(m<=0)return;
     const de=a.depExpAcc||(gd&&gd.name),ac=a.accumDepAcc||(ga&&ga.name);
     if(!de||!ac)return;
-    const key=de+'||'+ac;groups[key]=(groups[key]||0)+m;touched.push(a);
+    const key=de+'||'+ac;groups[key]=(groups[key]||0)+m;touched.push(a);deps.push({assetId:a.id,code:a.code,amount:+m.toFixed(2),month,de,ac});
   }});
   const keys=Object.keys(groups);
   if(!keys.length){ if(active.some(a=>(a.postedDepThrough||'')<month && !((a.depExpAcc||(gd&&gd.name))&&(a.accumDepAcc||(ga&&ga.name))))) return {error:true,month}; return {none:true,month}; }
@@ -3048,8 +3106,9 @@ async function depreciateMonth(month){
     lines.push({accName:p[0],desc:'Depreciation '+month,party:'',dr:amt,cr:0});
     lines.push({accName:p[1],desc:'Accumulated depreciation '+month,party:'',dr:0,cr:amt});});
   const date=lastDay(+month.slice(0,4),+month.slice(5,7));
-  const je=await postSystemJE(date,nextSeq('dep','DEP-',5),'Depreciation — '+month,lines,{doctype:'Depreciation'});
-  if(je){touched.forEach(a=>a.postedDepThrough=month);return {posted:true,month,total,je};}
+  const je=await postSystemJE(date,nextSeq('dep','DEP-',5),'Depreciation — '+month,lines,{doctype:'Depreciation',depMonth:month,deps});
+  if(je && je.status==='posted'){touched.forEach(a=>a.postedDepThrough=month);return {posted:true,month,total,je};}
+  if(je && je.status==='pending'){return {pending:true,month,total,je};} // awaiting approval — NOT marked posted
   return {failed:true,month};
 }
 async function runDepreciation(month){
@@ -3057,8 +3116,9 @@ async function runDepreciation(month){
   const r=await depreciateMonth(month);
   if(r.error){toast('Could not locate depreciation / accumulated-depreciation GL accounts.',true);return;}
   if(r.none){toast('Nothing to depreciate for '+month+'.',true);return;}
+  if(r.pending){closeModal();render();toast('Depreciation for '+month+' was submitted for approval — it will appear in the register once approved.',true);return;}
   if(r.posted){await store.saveAssets();closeModal();render();
-    toast('Depreciation posted for '+month+' ('+fmt(r.total)+(r.je.status==='pending'?', pending approval':'')+')');}
+    toast('Depreciation posted for '+month+' ('+fmt(r.total)+')');}
 }
 /* plan every missed month from each asset's last-posted month up to target */
 function catchUpPlan(target){
@@ -3081,11 +3141,11 @@ async function catchUpDepreciation(target){
   if(!active.length){toast('No active assets to depreciate.',true);return;}
   const plan=catchUpPlan(target);
   if(!plan.monthsPost){toast(plan.skipped?('All '+plan.skipped+' due month(s) fall in closed periods — reopen them first.'):'Nothing outstanding to catch up.',true);return;}
-  let posted=0,grand=0,skipped=0;
-  for(const p of plan.plan){ if(p.closed){skipped++;continue;} const r=await depreciateMonth(p.month); if(r.posted){posted++;grand+=r.total;} }
+  let posted=0,grand=0,skipped=0,pending=0;
+  for(const p of plan.plan){ if(p.closed){skipped++;continue;} const r=await depreciateMonth(p.month); if(r.posted){posted++;grand+=r.total;} else if(r.pending){pending++;} }
   await store.saveAssets();audit('Catch-up depreciation',posted+' month(s)',fmt(grand)+' through '+target);rebuild();closeModal();render();
   if(typeof txPulse==='function'&&posted)txPulse();
-  toast('Catch-up complete — '+posted+' month(s) posted ('+fmt(grand)+')'+(skipped?', '+skipped+' closed month(s) skipped':'')+'.');
+  toast('Catch-up complete — '+posted+' month(s) posted ('+fmt(grand)+')'+(pending?', '+pending+' awaiting approval':'')+(skipped?', '+skipped+' closed month(s) skipped':'')+'.');
 }
 /* Disposal / sale */
 function disposeModal(a){
