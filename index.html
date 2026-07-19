@@ -606,6 +606,16 @@ tr.click:hover{box-shadow:inset 3px 0 0 var(--accent)}
 @keyframes pop{from{transform:scale(0)}to{transform:scale(1)}}
 
 /* ---- Print / PDF: clean branded statement only ---- */
+.subtabs button{display:inline-flex;align-items:center;gap:6px}
+.tabstar{font-size:11px;line-height:1;color:var(--txt-soft);opacity:0;cursor:pointer;transition:opacity .12s,color .12s}
+.subtabs button:hover .tabstar{opacity:.55}
+.tabstar:hover{opacity:1!important;color:#e0a80f}
+.tabstar.on{opacity:1;color:#e0a80f}
+.sb-star{margin-left:auto;font-size:12px;line-height:1;color:var(--txt-soft);opacity:.5;padding:0 2px;cursor:pointer;flex:0 0 auto;transition:opacity .12s,color .12s}
+.sb-star:hover{opacity:1;color:#e0a80f}
+.sb-star.on{opacity:1;color:#e0a80f}
+.sb-link{display:flex;align-items:center;gap:6px}
+.sb-linktx{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .favstar{height:26px;padding:0 10px;border:1px solid var(--line);border-radius:5px;background:var(--panel);color:var(--txt-soft);font-size:11.5px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:4px;white-space:nowrap}
 .favstar:hover{border-color:var(--accent);color:var(--txt)}
 .favstar.on{color:#e0a80f;border-color:#e0a80f;background:color-mix(in srgb,#e0a80f 10%,transparent)}
@@ -746,8 +756,18 @@ function todayISO(){return new Date().toISOString().slice(0,10);}
    base rows (immutable) + posted rows (localStorage-persisted)
    ============================================================ */
 const D=DATA.dict;
-const ACC=DATA.accounts;                       // [{name,class,root,path}]
-const ACC_BY_NAME={}; ACC.forEach((a,i)=>{a.idx=i;ACC_BY_NAME[a.name]=a;});
+let ACC=DATA.accounts;                       // [{name,class,root,path}] — swapped per active company
+let ACC_BY_NAME={}; function reindexAcc(){ACC_BY_NAME={};ACC.forEach((a,i)=>{a.idx=i;ACC_BY_NAME[a.name]=a;});} reindexAcc();
+function chartCopy(src){return (src||[]).map(a=>({name:a.name,class:a.class,root:a.root||a.name,path:a.path?a.path.slice():[a.root||a.name,a.name],code:a.code||''}));}
+function standardChart(){return chartCopy(DATA.accounts);}
+function unionChart(){const seen={};const out=[];chartCopy(DATA.accounts).forEach(a=>{if(!seen[a.name]){seen[a.name]=1;out.push(a);}});
+  (typeof COMPANIES!=='undefined'?COMPANIES:[]).forEach(c=>{if(Array.isArray(c.coa))c.coa.forEach(a=>{if(a&&a.name&&!seen[a.name]){seen[a.name]=1;out.push({name:a.name,class:a.class,root:a.root||a.name,path:a.path||[a.root||a.name,a.name],code:a.code||''});}});});
+  return out;}
+function buildActiveChart(){
+  if(typeof REPORT_SCOPE!=='undefined'&&REPORT_SCOPE==='consolidated'){ACC=unionChart();}
+  else{const c=(typeof COMPANIES!=='undefined')?COMPANIES.find(x=>x.id===CO):null;ACC=(c&&Array.isArray(c.coa)&&c.coa.length)?c.coa.map(a=>({...a})):DATA.accounts;}
+  reindexAcc();
+}
 const C={a:0,t:1,d:2,doc:3,memo:4,desc:5,p:6,bu:7,dep:8,loc:9,dr:10,cr:11};
 
 // normalize a base row (array) -> object
@@ -901,6 +921,7 @@ function consolidatedRows(){
 let REPORT_SCOPE='company';   // 'company' | 'consolidated'
 let ROWS=[];        // combined, rebuilt on every change
 function rebuild(){
+  try{buildActiveChart();}catch(e){}
   if(typeof REPORT_SCOPE!=='undefined'&&REPORT_SCOPE==='consolidated'){ ROWS=consolidatedRows(); computeSnaps(); return; }
   const _co=(typeof window!=='undefined'&&window.__CO)?window.__CO:'main'; const _base=(_co==='main')?(typeof effectiveBase==='function'?effectiveBase():BASE):[]; ROWS=_base.concat(postedRows()); computeSnaps();
 }
@@ -1008,6 +1029,8 @@ const MODULES=[
   {id:'sales',label:'Sales',pages:[
     {id:'sales',t:'Revenue Analysis',icon:'trend'}]},
   {id:'purchases',label:'Purchases',pages:[
+    {id:'purchase_invoice',t:'Purchase Invoices',icon:'book'},
+    {id:'products',t:'Items & Products',icon:'grid'},
     {id:'purchases',t:'Purchase & VAT Analysis',icon:'book'}]},
   {id:'procurement',label:'Procurement',pages:[
     {id:'proccycle',t:'Procurement Cycle',icon:'edit'},
@@ -1040,6 +1063,7 @@ const MODULES=[
     {sep:1},
     {id:'balance',t:'Balance Sheet',icon:'layers'},
     {id:'income',t:'Income Statement',icon:'trend'},
+    {id:'pnl_dim',t:'P&L by Dimension',icon:'layers'},
     {id:'trial',t:'Trial Balance',icon:'scale'},
     {id:'cashflow',t:'Cash Flow Statement',icon:'trend'}]},
   {id:'admin',label:'Administration',pages:[
@@ -1051,6 +1075,7 @@ const MODULES=[
     {id:'audit',t:'Audit Log',icon:'list'},
     {id:'companies',t:'Companies',icon:'grid'},
     {id:'dimensions',t:'Analysis Dimensions',icon:'list'},
+    {id:'coasetup',t:'Chart of Accounts — Setup',icon:'layers'},
     {sep:1},
     {id:'cloud',t:'Cloud Backup & Sync',icon:'bank'}]},
   {id:'search',label:'Search',pages:[
@@ -1072,6 +1097,13 @@ function openMenuLayer(){}   /* legacy no-op — navigation is now an inline lef
 function closeMenuLayer(){}  /* legacy no-op */
 function buildMenu(){
   const bar=$('#menubar'); if(!bar)return; bar.innerHTML='';
+  const favItem=el('div','sb-item'+(CURRENT==='favorites'?' active':''));
+  favItem.style.setProperty('--i',0);
+  favItem.innerHTML=`<button type="button" class="sb-btn">
+    <svg class="sb-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+    <span class="sb-lbl">Favorites</span>${(typeof FAVORITES!=='undefined'&&FAVORITES.length)?`<span style="margin-left:auto;font-size:10px;font-weight:700;background:var(--accent);color:#fff;border-radius:9px;padding:1px 7px">${FAVORITES.length}</span>`:''}</button>`;
+  favItem.querySelector('.sb-btn').onclick=()=>{OPEN_MENU=null;go('favorites');closeDrawer();};
+  bar.appendChild(favItem);
   const curMod=PAGE_MODULE[CURRENT];
   MODULES.forEach((m,i)=>{
     if(!canSeeModule(currentUser(),m.id))return;      // RBAC: hide modules without access
@@ -1085,14 +1117,22 @@ function buildMenu(){
       <span class="sb-lbl">${esc(m.label)}</span>
       ${multi?'<svg class="sb-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="m6 9 6 6 6-6"/></svg>':''}</button>`;
     const btn=item.querySelector('.sb-btn');
-    if(!multi){btn.onclick=()=>{OPEN_MENU=null;go(m.pages[0].id);closeDrawer();};}
+    if(!multi){btn.onclick=()=>{OPEN_MENU=null;go(m.pages[0].id);closeDrawer();};
+      const pid0=m.pages[0].id;
+      const st0=el('span','sb-star'+(isFavPage(pid0)?' on':''));st0.textContent=isFavPage(pid0)?'★':'☆';st0.title='Add to Favorites';
+      st0.onclick=e=>{e.preventDefault();e.stopPropagation();toggleFavPage(pid0,m.pages[0].t,m.label);buildMenu();};
+      btn.appendChild(st0);
+    }
     else{
       btn.onclick=()=>{OPEN_MENU=(OPEN_MENU===m.id?null:m.id);buildMenu();};
       const sub=el('div','sb-sub');
       m.pages.forEach(p=>{ if(p.sep)return;
         const a=el('a','sb-link'+(p.id===CURRENT?' cur':''));a.href='#';
-        a.innerHTML=`<span class="dotli"></span>${esc(p.t)}`;
+        a.innerHTML=`<span class="dotli"></span><span class="sb-linktx">${esc(p.t)}</span>`;
         a.onclick=e=>{e.preventDefault();OPEN_MENU=m.id;const act=p.action,pid=p.id;if(act==='je'){openJE();}else go(pid);closeDrawer();};
+        const star=el('span','sb-star'+(isFavPage(p.id)?' on':''));star.textContent=isFavPage(p.id)?'★':'☆';star.title='Add to Favorites';
+        star.onclick=e=>{e.preventDefault();e.stopPropagation();toggleFavPage(p.id,p.t,m.label);buildMenu();};
+        a.appendChild(star);
         sub.appendChild(a);});
       item.appendChild(sub);
     }
@@ -1157,7 +1197,7 @@ function render(){
     ap:(v)=>withEnqRender(v,'ap',renderAP),ar:(v)=>withEnqRender(v,'ar',renderAR),cashflow:renderCashFlow,depreciation:(v)=>withEnqRender(v,'depreciation',renderDepreciation),
     sales:(v)=>withEnqRender(v,'sales',renderSales),purchases:(v)=>withEnqRender(v,'purchases',renderPurchases),procurement:(v)=>withEnqRender(v,'procurement',renderProcurement),inventory:renderInventory,
     periods:renderPeriods,acquisitions:renderAcquisitions,proccycle:renderProcCycle,cycles:renderCycles,
-    users:renderUsers,approvals:renderApprovals,roles:renderRolesMatrix,audit:renderAudit,amort:amortWorkspace,amort_detail:renderAmortDetail,amended:renderChangeHistory,companies:renderCompanies,reports_hub:renderReportsHub,import:renderImport,favorites:renderFavorites,dimensions:renderDimensions,crm:renderCRM,hr:renderHR,mfg:renderMfg,psa:renderProjects,eam:renderMaint,qms:renderQuality,tms:renderFleet,fsm:renderFieldSvc,grc:renderGRC,cloud:renderCloud}[CURRENT]||renderDashboard)(v);
+    users:renderUsers,approvals:renderApprovals,roles:renderRolesMatrix,audit:renderAudit,amort:amortWorkspace,amort_detail:renderAmortDetail,amended:renderChangeHistory,companies:renderCompanies,reports_hub:renderReportsHub,import:renderImport,favorites:renderFavorites,dimensions:renderDimensions,pnl_dim:renderPnlDim,products:renderProducts,purchase_invoice:renderPurchaseInvoice,coasetup:renderCoaSetup,crm:renderCRM,hr:renderHR,mfg:renderMfg,psa:renderProjects,eam:renderMaint,qms:renderQuality,tms:renderFleet,fsm:renderFieldSvc,grc:renderGRC,cloud:renderCloud}[CURRENT]||renderDashboard)(v);
   updateBalChip();
 }
 function updateBalChip(){
@@ -1552,7 +1592,7 @@ function renderIncome(v){
   const T=classTotals();
   const head=el('div','viewhead');
   head.innerHTML=`<div><h2>Income Statement</h2><div class="desc">Profit &amp; loss — revenue less expenses for the period.</div></div>
-    <div class="tools"><button class="btn sm" id="isPrint"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v8H6z"/></svg>Print / PDF</button><button class="btn sm" id="isExport"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12m0 0 4-4m-4 4-4-4M5 21h14"/></svg>Export CSV</button></div>`;
+    <div class="tools"><button class="btn sm" id="isPrint"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v8H6z"/></svg>Print / PDF</button><button class="btn sm" id="isPnlDim"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18M8 17V9m5 8V5m5 12v-6"/></svg>By dimension</button><button class="btn sm" id="isExport"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12m0 0 4-4m-4 4-4-4M5 21h14"/></svg>Export CSV</button></div>`;
   v.appendChild(head);
   const panel=el('div','panel stmt');
   panel.innerHTML=coReportHeader('Income Statement',periodLabel());
@@ -1572,7 +1612,7 @@ function renderIncome(v){
     <div class="it"><div class="l">Net margin</div><div class="v ${marg<0?'neg':'pos'}">${marg.toFixed(1)}%</div></div>`;
   panel.appendChild(m);panel.appendChild(body);v.appendChild(panel);
   bindStmt(panel);
-  $('#isExport').onclick=()=>exportStatement('income_statement');$('#isPrint').onclick=printReport;
+  $('#isExport').onclick=()=>exportStatement('income_statement');$('#isPrint').onclick=printReport;if($('#isPnlDim'))$('#isPnlDim').onclick=()=>go('pnl_dim');
 }
 
 /* ============================================================
@@ -2851,20 +2891,24 @@ function assetModal(a){if(!a)return;
 function assetDepScheduleModal(a){
   const monthly=assetMonthlyDep(a), depBase=a.cost-(a.salvage||0);
   const startYM=(a.acqDate||todayISO()).slice(0,7);
+  const depByMonth={};POSTED.filter(j=>j.doctype==='Depreciation').forEach(j=>{const ym=(j.date||'').slice(0,7);if(ym)depByMonth[ym]=j.doc;});
   $('#modalTitle').textContent='Depreciation schedule — '+(a.code||a.name||'');
   let acc=0,rows='';
   for(let i=0;i<a.lifeMonths;i++){ const ym=addMonths(startYM,i); const dep=Math.min(monthly,depBase-acc); acc+=dep;
-    const nbv=a.cost-acc; const posted=a.postedDepThrough&&ym<=a.postedDepThrough;
-    rows+=`<tr><td class="mono">${i+1}</td><td class="mono">${ym}</td><td class="r mono">${fmt(dep)}</td><td class="r mono">${fmt(acc)}</td><td class="r mono">${fmt(nbv)}</td><td>${posted?'<span class="st-tag st-approved" style="font-size:9px">POSTED</span>':'<span class="st-tag st-draft" style="font-size:9px">SCHEDULED</span>'}</td></tr>`;
+    const nbv=a.cost-acc; const posted=a.postedDepThrough&&ym<=a.postedDepThrough; const docNo=posted?(depByMonth[ym]||''):'';
+    rows+=`<tr><td class="mono">${i+1}</td><td class="mono">${ym}</td><td class="r mono">${fmt(dep)}</td><td class="r mono">${fmt(acc)}</td><td class="r mono">${fmt(nbv)}</td><td class="mono" style="font-size:11px">${docNo?esc(docNo):'—'}</td><td>${posted?'<span class="st-tag st-approved" style="font-size:9px">POSTED</span>':'<span class="st-tag st-draft" style="font-size:9px">SCHEDULED</span>'}</td></tr>`;
     if(acc>=depBase-0.005)break;
   }
+  const de=a.depExpAcc||((depExpenseAcc()||{}).name)||'—', ac=a.accumDepAcc||((accumDepAcc()||{}).name)||'—';
   $('#modalBody').innerHTML=`<div class="jgrid">
      <div class="fld"><span>Cost</span><div class="roval mono">${fmt(a.cost)}</div></div>
      <div class="fld"><span>Salvage</span><div class="roval mono">${fmt(a.salvage||0)}</div></div>
      <div class="fld"><span>Life</span><div class="roval">${a.lifeMonths} months (${(a.lifeMonths/12).toFixed(1)} yrs)</div></div>
-     <div class="fld"><span>Monthly (straight-line)</span><div class="roval mono">${fmt(monthly)}</div></div></div>
-     <div class="panel" style="box-shadow:none;margin-top:12px;max-height:360px;overflow:auto"><table><thead><tr><th>#</th><th>Period</th><th class="r">Depreciation</th><th class="r">Accumulated</th><th class="r">NBV</th><th>Status</th></tr></thead><tbody>${rows}</tbody></table></div>`;
-  $('#modalFoot').innerHTML=`<div class="hint" style="margin:0">Straight-line over ${a.lifeMonths} months from ${startYM}.</div><div style="margin-left:auto"><button class="btn" id="faSchedBack">Back</button></div>`;
+     <div class="fld"><span>Monthly (straight-line)</span><div class="roval mono">${fmt(monthly)}</div></div>
+     <div class="fld" style="grid-column:1/-1"><span>Depreciation expense account</span><div class="roval">${esc(de)}</div></div>
+     <div class="fld" style="grid-column:1/-1"><span>Accumulated depreciation account</span><div class="roval">${esc(ac)}</div></div></div>
+     <div class="panel" style="box-shadow:none;margin-top:12px;max-height:340px;overflow:auto"><table><thead><tr><th>#</th><th>Period</th><th class="r">Depreciation</th><th class="r">Accumulated</th><th class="r">NBV</th><th>Entry #</th><th>Status</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+  $('#modalFoot').innerHTML=`<div class="hint" style="margin:0">Straight-line over ${a.lifeMonths} months from ${startYM}. Posted rows show the depreciation entry number.</div><div style="margin-left:auto"><button class="btn" id="faSchedBack">Back</button></div>`;
   $('#faSchedBack').onclick=()=>assetModal(a);
   openModal();
 }
@@ -2872,31 +2916,43 @@ function addAssetModal(prefill){
   prefill=prefill||{};
   $('#modalTitle').textContent='Add Fixed Asset';
   const catOpts=assetCostAccs().map(a=>`<option value="${esc(a.name)}"${prefill.category===a.name?' selected':''}>${esc(a.name)}</option>`).join('');
+  const deDef=(depExpenseAcc()||{}).name||'';
+  const acDef=(accumDepAcc()||{}).name||'';
+  const accSorted=ACC.filter(a=>a.name).slice().sort((a,b)=>a.class.localeCompare(b.class)||a.name.localeCompare(b.name));
+  const deOpts=accSorted.map(a=>`<option value="${esc(a.name)}"${a.name===deDef?' selected':''}>${esc(a.name)}</option>`).join('');
+  const acOpts=accSorted.map(a=>`<option value="${esc(a.name)}"${a.name===acDef?' selected':''}>${esc(a.name)}</option>`).join('');
   $('#modalBody').innerHTML=`
     <div class="jgrid">
       <label class="fld">Description<input class="f" id="faName" value="${esc(prefill.name||'')}" style="max-width:none"></label>
-      <label class="fld">Category / GL cost account<select id="faCat" style="max-width:none">${catOpts}</select></label>
+      <label class="fld">Category / GL asset (cost) account<select id="faCat" style="max-width:none">${catOpts}</select></label>
       <label class="fld">Acquisition date<input class="f" type="date" id="faDate" value="${prefill.acqDate||todayISO()}" style="max-width:none"></label>
       <label class="fld">Cost<input class="f r" id="faCost" inputmode="decimal" value="${prefill.cost||''}" style="max-width:none"></label>
       <label class="fld">Useful life (months)<input class="f r" id="faLife" inputmode="numeric" value="${prefill.lifeMonths||60}" style="max-width:none"></label>
       <label class="fld">Salvage value<input class="f r" id="faSalv" inputmode="decimal" value="0" style="max-width:none"></label>
+      <label class="fld">Depreciation expense account<select id="faDep" style="max-width:none">${deOpts}</select></label>
+      <label class="fld">Accumulated depreciation account<select id="faAccum" style="max-width:none">${acOpts}</select></label>
     </div>
+    <div class="note" style="margin-top:10px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01M11 12h1v4h1"/></svg><div>Depreciation for this asset will post <b>Dr</b> the depreciation-expense account and <b>Cr</b> the accumulated-depreciation account you select — mapped per asset, straight from your chart of accounts.</div></div>
     <label class="fld" style="margin-top:8px"><input type="checkbox" id="faPost" ${prefill.sourceDoc?'':'checked'} style="width:auto;display:inline;margin-right:6px">Post acquisition entry to GL (Dr asset / Cr cash). Leave unchecked if the cost is already in the ledger.</label>`;
-  $('#modalFoot').innerHTML=`<div class="hint" style="margin:0">A unique asset code and barcode are generated automatically.</div>
+  $('#modalFoot').innerHTML=`<div class="hint" style="margin:0">A unique asset code and barcode are generated automatically. Depreciation is <b>not</b> posted until you run it.</div>
     <div style="margin-left:auto;display:flex;gap:10px"><button class="btn" id="faCancel">Cancel</button><button class="btn primary" id="faSave">Create asset</button></div>`;
   $('#faCancel').onclick=closeModal;
+  if($('#faDep')&&deDef)$('#faDep').value=deDef;
+  if($('#faAccum')&&acDef)$('#faAccum').value=acDef;
   $('#faSave').onclick=async()=>{
     const name=$('#faName').value.trim(),category=$('#faCat').value,acqDate=$('#faDate').value;
     const cost=+$('#faCost').value||0,lifeMonths=+$('#faLife').value||60,salvage=+$('#faSalv').value||0;
+    const depExpAcc=$('#faDep').value||deDef||(depExpenseAcc()||{}).name||'';
+    const accumDepAcc=$('#faAccum').value||acDef||(accumDepAcc()||{}).name||'';
     if(!name||cost<=0){toast('Enter a description and a positive cost.',true);return;}
     const code=nextAssetCode();
-    const asset={id:'as_'+Date.now()+'_'+Math.random().toString(36).slice(2,6),code,barcode:code,name,category,acqDate,cost,lifeMonths,salvage,method:'SL',status:'Active',postedDepThrough:cutoffMonth(),sourceDoc:prefill.sourceDoc||null,sourceKey:prefill.sourceKey||null};
+    const asset={id:'as_'+Date.now()+'_'+Math.random().toString(36).slice(2,6),code,barcode:code,name,category,acqDate,cost,lifeMonths,salvage,method:'SL',status:'Active',postedDepThrough:addMonths((acqDate||todayISO()).slice(0,7)+'-01',-1),depExpAcc,accumDepAcc,sourceDoc:prefill.sourceDoc||null,sourceKey:prefill.sourceKey||null};
     ASSETS.push(asset);await store.saveAssets();
     if($('#faPost').checked){
       const ca=ACC_BY_NAME[category],cash=cashAcc();
       if(ca&&cash)await postSystemJE(acqDate,nextSeq('faacq','FA-ACQ-',5),'Asset acquisition — '+name,[{accName:ca.name,desc:name,party:'',dr:cost,cr:0},{accName:cash.name,desc:'Payment for '+name,party:'',dr:0,cr:cost}],{doctype:'Asset Acquisition'});
     }
-    closeModal();render();toast('Asset '+code+' created');
+    closeModal();render();toast('Asset '+code+' created — depreciation starts '+(acqDate||'').slice(0,7)+' (run it when ready).');
   };
   openModal();
 }
@@ -2937,7 +2993,7 @@ function genFromRow(c,save){
   const life=LIFE_DEFAULT[r.acc.name]||LIFE_DEFAULT[r.acc.root]||60;
   ASSETS.push({id:'as_'+Date.now()+'_'+Math.random().toString(36).slice(2,6),code,barcode:code,
     name:(r.memo||r.desc||r.acc.name).slice(0,60),category:r.acc.name,acqDate:r.date,cost:r.dr,
-    lifeMonths:life,salvage:0,method:'SL',status:'Active',postedDepThrough:cutoffMonth(),
+    lifeMonths:life,salvage:0,method:'SL',status:'Active',postedDepThrough:addMonths((r.date||todayISO()).slice(0,7)+'-01',-1),
     sourceDoc:r.doc||'GL',sourceKey:c.key});
   if(save)store.saveAssets();
 }
@@ -2970,17 +3026,23 @@ function runDepModal(){
 function addMonths(iso,n){const d=new Date(iso);d.setMonth(d.getMonth()+n);return d.toISOString().slice(0,7);}
 async function depreciateMonth(month){
   if(isPeriodClosed(month))return {skipped:true,month};
-  const dep=depExpenseAcc(),acc=accumDepAcc();
-  if(!dep||!acc)return {error:true,month};
+  const gd=depExpenseAcc(),ga=accumDepAcc();
   const active=ASSETS.filter(a=>a.status!=='Disposed');
-  let total=0;const touched=[];
-  active.forEach(a=>{if((a.postedDepThrough||'')<month && month<=addMonths(a.acqDate,a.lifeMonths)){total+=assetMonthlyDep(a);touched.push(a);}});
-  if(total<=0)return {none:true,month};
+  const groups={};const touched=[];
+  active.forEach(a=>{if((a.postedDepThrough||'')<month && month<=addMonths(a.acqDate,a.lifeMonths)){
+    const m=assetMonthlyDep(a);if(m<=0)return;
+    const de=a.depExpAcc||(gd&&gd.name),ac=a.accumDepAcc||(ga&&ga.name);
+    if(!de||!ac)return;
+    const key=de+'||'+ac;groups[key]=(groups[key]||0)+m;touched.push(a);
+  }});
+  const keys=Object.keys(groups);
+  if(!keys.length){ if(active.some(a=>(a.postedDepThrough||'')<month && !((a.depExpAcc||(gd&&gd.name))&&(a.accumDepAcc||(ga&&ga.name))))) return {error:true,month}; return {none:true,month}; }
+  let total=0;const lines=[];
+  keys.forEach(k=>{const p=k.split('||'),amt=+groups[k].toFixed(2);total+=amt;
+    lines.push({accName:p[0],desc:'Depreciation '+month,party:'',dr:amt,cr:0});
+    lines.push({accName:p[1],desc:'Accumulated depreciation '+month,party:'',dr:0,cr:amt});});
   const date=lastDay(+month.slice(0,4),+month.slice(5,7));
-  const je=await postSystemJE(date,nextSeq('dep','DEP-',5),'Depreciation — '+month,
-    [{accName:dep.name,desc:'Monthly depreciation '+month,party:'',dr:+total.toFixed(2),cr:0},
-     {accName:acc.name,desc:'Accumulated depreciation '+month,party:'',dr:0,cr:+total.toFixed(2)}],
-    {doctype:'Depreciation'});
+  const je=await postSystemJE(date,nextSeq('dep','DEP-',5),'Depreciation — '+month,lines,{doctype:'Depreciation'});
   if(je){touched.forEach(a=>a.postedDepThrough=month);return {posted:true,month,total,je};}
   return {failed:true,month};
 }
@@ -3544,9 +3606,22 @@ function wireLogin(){
 /* ============================================================
    SUB-TABS helper
    ============================================================ */
-function subTabBar(tabs,active,onSel){
+function subTabBar(tabs,active,onSel,fav){
   const bar=el('div','subtabs');
-  tabs.forEach(t=>{const b=el('button',t.id===active?'on':'');b.textContent=t.label;b.onclick=()=>onSel(t.id);bar.appendChild(b);});
+  tabs.forEach(t=>{const b=el('button',t.id===active?'on':'');
+    b.innerHTML=`<span class="sttx">${esc(t.label)}</span>`;
+    if(fav&&typeof FAVORITES!=='undefined'){
+      const sub=fav.state+':'+t.id, key=fav.page+'|'+sub, on=FAVORITES.some(f=>f.key===key);
+      const star=el('span','tabstar'+(on?' on':''));star.textContent=on?'★':'☆';star.title=on?'Remove from Favorites':'Add to Favorites';
+      star.onclick=e=>{e.stopPropagation();e.preventDefault();
+        const label=(fav.prefix||(typeof PAGE_TITLE!=='undefined'&&PAGE_TITLE[fav.page])||fav.page)+' · '+t.label;
+        const i=FAVORITES.findIndex(f=>f.key===key);
+        if(i>=0){FAVORITES.splice(i,1);star.classList.remove('on');star.textContent='☆';toast('Removed from Favorites.');}
+        else{FAVORITES.push({key,page:fav.page,sub,label,mod:(typeof PAGE_MODULE!=='undefined'&&PAGE_MODULE[fav.page]?PAGE_MODULE[fav.page].label:'')});star.classList.add('on');star.textContent='★';toast('★ Added to Favorites.');}
+        saveFav();if(typeof csSchedule==='function')csSchedule();if(CURRENT==='favorites')render();};
+      b.appendChild(star);
+    }
+    b.onclick=()=>onSel(t.id);bar.appendChild(b);});
   return bar;
 }
 
@@ -3580,7 +3655,7 @@ function invWorkspace(v){
   const tabs=[['dash','Dashboard'],['items','Item Master'],['moves','Stock Movements'],['count','Physical Count'],['registers','Registers'],['val','Valuation'],
     ['reorder','Reorder Report'],['abc','ABC Analysis'],['aging','Stock Aging'],['dead','Dead / Slow'],['neg','Negative Stock'],['ledger','Stock Ledger'],['turn','Turnover'],['wh','Warehouses']]
     .map(([id,label])=>({id,label}));
-  v.appendChild(subTabBar(tabs,INV_TAB,id=>{INV_TAB=id;render();}));
+  v.appendChild(subTabBar(tabs,INV_TAB,id=>{INV_TAB=id;render();},{page:'inventory',state:'inv',prefix:'Inventory'}));
   const c=el('div');c.id='invBody';v.appendChild(c);
   if(!INV.items.length){
     c.appendChild(noteBox('A General Ledger holds no item-level stock data, so this is a full inventory <b>sub-ledger</b>. Add items and record movements, or load a sample catalog to explore every report. Movements can optionally post to GL control accounts.'));
@@ -3854,7 +3929,7 @@ function apWorkspace(v){
   {const bh=el('div','panel');bh.style.cssText='padding:0;overflow:hidden';bh.innerHTML=coReportHeader('Accounts Payable','Payables as at '+(PERIOD.to||'latest'));v.appendChild(bh);}
   const tabs=[['summary','Aging Summary'],['detail','Aging Detail'],['vendors','Vendor Balances'],['cash','Cash Requirements'],
     ['pay','Payment Register'],['top','Top Vendors'],['recon','GL Reconciliation'],['trend','AP Trend & DPO']].map(([id,label])=>({id,label}));
-  v.appendChild(subTabBar(tabs,AP_TAB,id=>{AP_TAB=id;render();}));
+  v.appendChild(subTabBar(tabs,AP_TAB,id=>{AP_TAB=id;render();},{page:'ap',state:'ap',prefix:'Accounts Payable'}));
   const c=el('div');c.id='apBody';v.appendChild(c);
   const AProots=new Set(['Accounts Payable/s']);
   ({summary:()=>apSummary(c,AProots),detail:()=>apDetail(c,AProots),vendors:()=>apVendors(c),cash:()=>apCash(c),
@@ -6308,7 +6383,7 @@ const IMPORT_DEFS={
     apply(b){let n=0;b.docs.forEach(d=>{const code=d.code||nextAssetCode();
       ASSETS.push({id:'as_'+Date.now()+'_'+Math.random().toString(36).slice(2,6),code,barcode:code,name:d.name,
         category:d.category,acqDate:d.acqDate,cost:d.cost,lifeMonths:d.lifeMonths,salvage:d.salvage,method:'SL',
-        status:'Active',postedDepThrough:cutoffMonth(),sourceDoc:'IMPORT'});n++;});
+        status:'Active',postedDepThrough:addMonths((d.acqDate||todayISO()).slice(0,7)+'-01',-1),sourceDoc:'IMPORT'});n++;});
       if(typeof store!=='undefined')store.saveAssets();return n;}},
 
   item:{label:'Inventory Items (master)',icon:'grid',optional:['SKU','Category','UOM','StdCost','Warehouse','OpeningQty'],
@@ -6709,7 +6784,7 @@ const MODENQ={
 function withEnqRender(v,key,fn){
   const active=MODTAB[key]||'overview';
   const bar=el('div');bar.style.cssText='margin:-2px 0 6px';
-  bar.appendChild(subTabBar([{id:'overview',label:'Overview'},{id:'reports',label:'Enquiries & Reports'}],active,id=>{MODTAB[key]=id;render();}));
+  bar.appendChild(subTabBar([{id:'overview',label:'Overview'},{id:'reports',label:'Enquiries & Reports'}],active,id=>{MODTAB[key]=id;render();},{page:key,state:'modtab',prefix:((typeof MODENQ!=='undefined'&&MODENQ[key]&&MODENQ[key].title)||(typeof PAGE_TITLE!=='undefined'&&PAGE_TITLE[key])||key)}));
   v.appendChild(bar);
   if(active==='reports')renderModReports(v,key);else fn(v);
 }
@@ -6833,7 +6908,7 @@ loadFav();
 function favCtx(){
   const page=CURRENT;let sub='',subLabel='';
   if(page==='inventory'){sub='inv:'+INV_TAB;subLabel=' · '+({dash:'Dashboard',items:'Item Master',moves:'Stock Movements',count:'Physical Count',registers:'Registers',val:'Valuation',reorder:'Reorder',abc:'ABC',aging:'Aging',dead:'Dead / Slow',neg:'Negative Stock',ledger:'Stock Ledger',turn:'Turnover',wh:'Warehouses'}[INV_TAB]||INV_TAB);}
-  else if(typeof MODTAB!=='undefined'&&MODTAB[page]==='reports'){sub='reports';subLabel=' · Enquiries & Reports';}
+  else if(typeof MODTAB!=='undefined'&&MODTAB[page]&&MODTAB[page]!=='overview'){sub='modtab:'+MODTAB[page];subLabel=' · '+(MODTAB[page]==='reports'?'Enquiries & Reports':MODTAB[page]);}
   const base=(typeof PAGE_TITLE!=='undefined'&&PAGE_TITLE[page])||page;
   const modLabel=(typeof PAGE_MODULE!=='undefined'&&PAGE_MODULE[page])?PAGE_MODULE[page].label:'';
   return {key:page+'|'+sub,page,sub,label:base+subLabel,mod:modLabel};
@@ -6844,10 +6919,20 @@ function toggleFav(){const c=favCtx();const i=FAVORITES.findIndex(f=>f.key===c.k
   saveFav();if(typeof csSchedule==='function')csSchedule();
   if(CURRENT==='favorites')render();else crumbs();}
 function openFav(f){
-  if(typeof MODTAB!=='undefined')MODTAB[f.page]=(f.sub==='reports')?'reports':(MODTAB[f.page]||'overview');
-  if(f.sub&&f.sub.indexOf('inv:')===0)INV_TAB=f.sub.slice(4);
+  const sub=f.sub||'';
+  if(sub.indexOf('inv:')===0)INV_TAB=sub.slice(4);
+  else if(sub.indexOf('ap:')===0){if(typeof AP_TAB!=='undefined')AP_TAB=sub.slice(3);if(typeof MODTAB!=='undefined')MODTAB[f.page]='overview';}
+  else if(sub.indexOf('modtab:')===0){if(typeof MODTAB!=='undefined')MODTAB[f.page]=sub.slice(7);}
+  else if(sub==='reports'){if(typeof MODTAB!=='undefined')MODTAB[f.page]='reports';}
+  else {if(typeof MODTAB!=='undefined')MODTAB[f.page]='overview';}
   go(f.page);
 }
+function favKeyForPage(pid){return pid+'|';}
+function isFavPage(pid){return FAVORITES.some(f=>f.key===favKeyForPage(pid));}
+function toggleFavPage(pid,label,mod){const key=favKeyForPage(pid);const i=FAVORITES.findIndex(f=>f.key===key);
+  if(i>=0){FAVORITES.splice(i,1);toast('Removed from Favorites.');}
+  else{FAVORITES.push({key,page:pid,sub:'',label:((typeof PAGE_TITLE!=='undefined'&&PAGE_TITLE[pid])||label||pid),mod:mod||''});toast('★ Added to Favorites.');}
+  saveFav();if(typeof csSchedule==='function')csSchedule();if(CURRENT==='favorites')render();}
 function favControls(){
   const host=document.querySelector('.substatus');if(!host)return;
   let box=document.getElementById('favCtl');
@@ -6883,7 +6968,7 @@ function renderFavorites(v){
    ============================================================ */
 function companySetupWizard(){
   if(!isAdmin(currentUser())){toast('Only an Administrator can create companies.',true);return;}
-  const wiz={name:'',legalName:'',country:'Egypt',currency:'EGP',fiscalStart:1,taxNumber:'',crNumber:'',address:'',city:'',phone:'',email:'',website:'',footer:'',logo:'',seedInv:false};
+  const wiz={name:'',legalName:'',country:'Egypt',currency:'EGP',fiscalStart:1,taxNumber:'',crNumber:'',address:'',city:'',phone:'',email:'',website:'',footer:'',logo:'',seedInv:false,coaMode:'standard'};
   let step=1;const N=6;
   const titles=['Company identity','Financial setup','Registration & tax','Address & contact','Branding','Review & create'];
   const months=['January','February','March','April','May','June','July','August','September','October','November','December'];
@@ -6895,7 +6980,7 @@ function companySetupWizard(){
     else if(step===2){wiz.currency=val('wzCur');wiz.fiscalStart=+val('wzFis')||1;}
     else if(step===3){wiz.taxNumber=val('wzTax');wiz.crNumber=val('wzCR');}
     else if(step===4){wiz.address=val('wzAddr');wiz.city=val('wzCity');wiz.phone=val('wzPhone');wiz.email=val('wzEmail');wiz.website=val('wzWeb');}
-    else if(step===5){wiz.footer=val('wzFooter');if($('#wzSeed'))wiz.seedInv=$('#wzSeed').checked;}
+    else if(step===5){wiz.footer=val('wzFooter');if($('#wzSeed'))wiz.seedInv=$('#wzSeed').checked;var cm=document.querySelector('input[name=wzCoa]:checked');if(cm)wiz.coaMode=cm.value;}
   };
   const stepper=()=>`<div style="display:flex;gap:6px;margin-bottom:6px">${Array.from({length:N},(_,i)=>`<div style="flex:1;height:4px;border-radius:2px;background:${i<step?'var(--accent)':'var(--line)'}"></div>`).join('')}</div><div class="muted" style="font-size:11px;margin:0 0 14px">Step ${step} of ${N} · ${titles[step-1]}</div>`;
   const noteBox=t=>`<div class="note" style="margin-top:12px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01M11 12h1v4h1"/></svg><div>${t}</div></div>`;
@@ -6927,8 +7012,8 @@ function companySetupWizard(){
           <div class="hint" style="margin-top:6px">Shown in the header and on financial statements.</div></div>
       </div>
       <label class="fld" style="margin-top:16px">Report footer note<input class="f" id="wzFooter" value="${esc(wiz.footer)}" placeholder="e.g. Confidential · Prepared by Finance" style="max-width:none"></label>
-      <label class="chk" style="display:flex;align-items:center;gap:8px;margin-top:14px;font-size:13px;cursor:pointer"><input type="checkbox" id="wzSeed" ${wiz.seedInv?'checked':''}> Load a sample inventory catalog to explore (optional)</label>`;
-    const rows=[['Display name',wiz.name],['Legal name',wiz.legalName],['Country',wiz.country],['Base currency',wiz.currency],['Fiscal year starts',months[wiz.fiscalStart-1]],['Tax / VAT',wiz.taxNumber],['CR number',wiz.crNumber],['Address',[wiz.address,wiz.city].filter(Boolean).join(', ')],['Phone',wiz.phone],['Email',wiz.email],['Website',wiz.website],['Footer',wiz.footer],['Sample catalog',wiz.seedInv?'Yes':'No']];
+      <label class="chk" style="display:flex;align-items:center;gap:8px;margin-top:14px;font-size:13px;cursor:pointer"><input type="checkbox" id="wzSeed" ${wiz.seedInv?'checked':''}> Load a sample inventory catalog to explore (optional)</label><div class="fld" style="margin-top:16px"><span>Chart of accounts for this company</span></div><div style="display:flex;flex-direction:column;gap:8px;margin-top:4px"><label class="chk" style="display:flex;align-items:center;gap:8px;font-size:12.5px;cursor:pointer"><input type="radio" name="wzCoa" value="standard" ${wiz.coaMode==='standard'?'checked':''}> <b>Standard chart</b> — its own editable copy of a full standard chart (recommended)</label><label class="chk" style="display:flex;align-items:center;gap:8px;font-size:12.5px;cursor:pointer"><input type="radio" name="wzCoa" value="copy" ${wiz.coaMode==='copy'?'checked':''}> <b>Copy current company\'s chart</b></label><label class="chk" style="display:flex;align-items:center;gap:8px;font-size:12.5px;cursor:pointer"><input type="radio" name="wzCoa" value="minimal" ${wiz.coaMode==='minimal'?'checked':''}> <b>Minimal starter chart</b> — a small standard set you can extend or import into</label></div>`;
+    const rows=[['Display name',wiz.name],['Legal name',wiz.legalName],['Country',wiz.country],['Base currency',wiz.currency],['Fiscal year starts',months[wiz.fiscalStart-1]],['Tax / VAT',wiz.taxNumber],['CR number',wiz.crNumber],['Address',[wiz.address,wiz.city].filter(Boolean).join(', ')],['Phone',wiz.phone],['Email',wiz.email],['Website',wiz.website],['Footer',wiz.footer],['Sample catalog',wiz.seedInv?'Yes':'No'],['Chart of accounts',{standard:'Own standard copy',copy:'Copy of current company',minimal:'Minimal starter'}[wiz.coaMode]||wiz.coaMode]];
     return `${stepper()}${noteBox('The company starts with the shared chart of accounts, roles and modules — and empty books. Review and create.')}
       <table style="margin-top:8px"><tbody>${rows.map(([k,val])=>`<tr><td class="muted" style="width:170px">${k}</td><td>${esc(val||'—')}</td></tr>`).join('')}</tbody></table>`;
   };
@@ -6958,6 +7043,10 @@ async function createCompanyFull(wiz){
     taxNumber:wiz.taxNumber||'',crNumber:wiz.crNumber||'',address:[wiz.address,wiz.city].filter(Boolean).join(', '),
     phone:wiz.phone||'',email:wiz.email||'',website:wiz.website||'',footer:wiz.footer||'',logo:wiz.logo||''});
   CO_DATA[id]=emptyCompanyData();
+  const _c=COMPANIES[COMPANIES.length-1];
+  if(wiz.coaMode==='minimal')_c.coa=minimalChart();
+  else if(wiz.coaMode==='copy')_c.coa=chartCopy(ACC&&ACC.length?ACC:DATA.accounts);
+  else _c.coa=standardChart();
   await persistCoBlob(id); await persistCompanies();
   audit('Company created',wiz.name,(wiz.currency||'')+(wiz.legalName?(' · '+wiz.legalName):''));
   await switchCompany(id);
@@ -7008,6 +7097,326 @@ function renderDimensions(v){
   DIM_KEYS.forEach(([k])=>{const inp=$('#dim_'+k);if(inp)inp.onkeydown=e=>{if(e.key==='Enter'){addDimValue(k,inp.value);}};});
   $$('#view [data-dimadd]').forEach(b=>b.onclick=()=>{const k=b.dataset.dimadd;addDimValue(k,$('#dim_'+k).value);});
   $$('#view [data-dimrm]').forEach(b=>b.onclick=()=>removeDimValue(b.dataset.dimrm,b.dataset.val));
+}
+
+/* ============================================================
+   DIMENSIONAL P&L — income statement with a column per
+   business line / location / department / employee.
+   ============================================================ */
+let PNL_DIM='bu', PNL_FROM='', PNL_TO='';
+function renderPnlDim(v){
+  const dimLabels={bu:'Business line',loc:'Location',dept:'Department',emp:'Employee'};
+  const dim=PNL_DIM;
+  const head=el('div','viewhead');
+  head.innerHTML=`<div><h2>P&amp;L by ${dimLabels[dim]}</h2><div class="desc">Income statement broken out into a column per ${dimLabels[dim].toLowerCase()}. Respects the active company / consolidated scope.</div></div>
+    <div class="tools"><button class="btn sm" id="pnlPrint"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v8H6z"/></svg>Print / PDF</button><button class="btn sm" id="pnlExp"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12m0 0 4-4m-4 4-4-4M5 21h14"/></svg>Export CSV</button></div>`;
+  v.appendChild(head);
+  // controls
+  const ctrl=el('div','panel');ctrl.style.cssText='padding:12px 16px';
+  ctrl.innerHTML=`<div class="jgrid">
+    <label class="fld">Break out by<select class="f" id="pnlDim" style="max-width:none">${Object.entries(dimLabels).map(([k,l])=>`<option value="${k}"${k===dim?' selected':''}>${l}</option>`).join('')}</select></label>
+    <label class="fld">From date<input type="date" class="f" id="pnlFrom" value="${PNL_FROM}" style="max-width:none"></label>
+    <label class="fld">To date<input type="date" class="f" id="pnlTo" value="${PNL_TO}" style="max-width:none"></label>
+  </div>`;
+  v.appendChild(ctrl);
+  $('#pnlDim').onchange=e=>{PNL_DIM=e.target.value;render();};
+  $('#pnlFrom').onchange=e=>{PNL_FROM=e.target.value;render();};
+  $('#pnlTo').onchange=e=>{PNL_TO=e.target.value;render();};
+
+  const from=PNL_FROM,to=PNL_TO;
+  const pl=ROWS.filter(r=>(r.acc.class==='REVENUE'||r.acc.class==='EXPENSE')&&(!from||r.date>=from)&&(!to||r.date<=to));
+  const amt=r=>r.acc.class==='REVENUE'?(r.cr-r.dr):(r.dr-r.cr);
+  const dvSet=new Set();pl.forEach(r=>dvSet.add(r[dim]||'(Unassigned)'));
+  let cols=[...dvSet].sort((a,b)=>a==='(Unassigned)'?1:(b==='(Unassigned)'?-1:a.localeCompare(b)));
+  if(!cols.length){v.appendChild(el('div','empty',`<div>No revenue or expense activity ${from||to?'in this date range':'yet'}. Tag entries with a ${dimLabels[dim].toLowerCase()} to see them split out here.</div>`));return;}
+  const byAcc={};pl.forEach(r=>{const an=r.acc.name;byAcc[an]=byAcc[an]||{cls:r.acc.class,cols:{},tot:0};const dv=r[dim]||'(Unassigned)';byAcc[an].cols[dv]=(byAcc[an].cols[dv]||0)+amt(r);byAcc[an].tot+=amt(r);});
+  const order=ACC.filter(a=>(a.class==='REVENUE'||a.class==='EXPENSE')&&byAcc[a.name]).sort((a,b)=>a.class.localeCompare(b.class)||a.name.localeCompare(b.name));
+  const colTot={},secTot={REVENUE:{},EXPENSE:{}};cols.forEach(c=>{colTot[c]=0;secTot.REVENUE[c]=0;secTot.EXPENSE[c]=0;});
+  let grandRev=0,grandExp=0;
+  order.forEach(a=>{const rec=byAcc[a.name];cols.forEach(c=>{const val=rec.cols[c]||0;secTot[a.class][c]+=val;});if(a.class==='REVENUE')grandRev+=rec.tot;else grandExp+=rec.tot;});
+  const net=grandRev-grandExp;
+  // KPIs
+  const kp=el('div','kpis');const marg=grandRev?net/grandRev*100:0;
+  kp.innerHTML=kpi('a','Revenue',grandRev,'All '+dimLabels[dim].toLowerCase()+'s')+kpi('x','Expenses',grandExp,'All '+dimLabels[dim].toLowerCase()+'s')+kpi(net<0?'x':'e','Net '+(net<0?'loss':'profit'),net,'Across the period')+kpiCount('r','Net margin',marg.toFixed(1)+'%','Net ÷ revenue');
+  v.appendChild(kp);
+  // table
+  const panel=el('div','panel stmt');
+  panel.innerHTML=coReportHeader('P&L by '+dimLabels[dim],(from||to)?((from||'…')+' → '+(to||'…')):'All dates');
+  const wrap=el('div');wrap.style.cssText='overflow-x:auto';
+  const cell=n=>`<td class="r mono ${n<0?'neg':''}">${n?fmt(n):'—'}</td>`;
+  const secRows=cls=>order.filter(a=>a.class===cls).map(a=>{const rec=byAcc[a.name];
+    return `<tr><td style="white-space:nowrap">${esc(a.name)}</td>${cols.map(c=>cell(rec.cols[c]||0)).join('')}<td class="r mono" style="font-weight:700">${fmt(rec.tot)}</td></tr>`;}).join('');
+  const subRow=(label,cls)=>{let t=0;const cells=cols.map(c=>{t+=secTot[cls][c];return `<td class="r mono" style="font-weight:700">${fmt(secTot[cls][c])}</td>`;}).join('');return `<tr style="background:var(--canvas)"><td style="font-weight:700">${label}</td>${cells}<td class="r mono" style="font-weight:800">${fmt(cls==='REVENUE'?grandRev:grandExp)}</td></tr>`;};
+  const netCells=cols.map(c=>{const n=secTot.REVENUE[c]-secTot.EXPENSE[c];return `<td class="r mono ${n<0?'neg':'pos'}" style="font-weight:800">${fmt(n)}</td>`;}).join('');
+  const tbl=el('table');tbl.style.minWidth=(160+cols.length*110+120)+'px';
+  tbl.innerHTML=`<thead><tr><th style="position:sticky;left:0;background:var(--panel)">Account</th>${cols.map(c=>`<th class="r">${esc(c)}</th>`).join('')}<th class="r">Total</th></tr></thead>
+    <tbody>
+      <tr><td colspan="${cols.length+2}" style="font-weight:800;letter-spacing:.4px;color:var(--txt-soft);font-size:11px;padding-top:10px">REVENUE</td></tr>
+      ${secRows('REVENUE')}
+      ${subRow('Total revenue','REVENUE')}
+      <tr><td colspan="${cols.length+2}" style="font-weight:800;letter-spacing:.4px;color:var(--txt-soft);font-size:11px;padding-top:10px">EXPENSES</td></tr>
+      ${secRows('EXPENSE')}
+      ${subRow('Total expenses','EXPENSE')}
+      <tr style="border-top:2px solid var(--header)"><td style="font-weight:800">Net ${net<0?'loss':'profit'}</td>${netCells}<td class="r mono ${net<0?'neg':'pos'}" style="font-weight:800">${fmt(net)}</td></tr>
+    </tbody>`;
+  wrap.appendChild(tbl);panel.appendChild(wrap);v.appendChild(panel);
+  $('#pnlPrint').onclick=printReport;
+  $('#pnlExp').onclick=()=>{
+    const header=['Account','Class',...cols,'Total'];
+    const lines=order.map(a=>{const rec=byAcc[a.name];return [a.name,a.class,...cols.map(c=>(rec.cols[c]||0).toFixed(2)),rec.tot.toFixed(2)];});
+    lines.push(['Total revenue','',...cols.map(c=>secTot.REVENUE[c].toFixed(2)),grandRev.toFixed(2)]);
+    lines.push(['Total expenses','',...cols.map(c=>secTot.EXPENSE[c].toFixed(2)),grandExp.toFixed(2)]);
+    lines.push(['Net '+(net<0?'loss':'profit'),'',...cols.map(c=>(secTot.REVENUE[c]-secTot.EXPENSE[c]).toFixed(2)),net.toFixed(2)]);
+    exportCSV('pnl_by_'+dim,header,lines);
+  };
+}
+
+/* ============================================================
+   PRODUCT / ITEM MASTER  +  VAT PURCHASE INVOICE
+   Items classified as inventory / non-inventory / service,
+   each linked to a GL account and a default VAT rate.
+   ============================================================ */
+function coProducts(){const c=(typeof COMPANIES!=='undefined')?COMPANIES.find(x=>x.id===CO):null;if(c){c.products=c.products||[];return c.products;}return [];}
+function saveProducts(){persistCompanies();if(typeof csSchedule==='function')csSchedule();}
+function defaultVatRate(){const c=activeCoProfile();return (c&&c.vatRate!=null)?c.vatRate:14;}
+const PROD_TYPES=[['inventory','Inventory item'],['noninventory','Non-inventory item'],['service','Service']];
+
+function productModal(p){
+  const edit=!!p;p=p||{type:'inventory',vatRate:defaultVatRate()};
+  const accSorted=ACC.filter(a=>a.name).slice().sort((a,b)=>a.class.localeCompare(b.class)||a.name.localeCompare(b.name));
+  const accOptsFor=(type,sel)=>{const pool=(type==='inventory')?accSorted.filter(a=>a.class==='ASSET'):accSorted.filter(a=>a.class==='EXPENSE');const list=pool.length?pool:accSorted;return list.map(a=>`<option value="${esc(a.name)}"${sel===a.name?' selected':''}>${esc(a.name)} · ${a.class}</option>`).join('');};
+  const accLabelFor=t=>t==='inventory'?'Inventory (asset) account':'Expense account';
+  $('#modalTitle').textContent=edit?('Edit item — '+(p.name||'')):'New item / product';
+  $('#modalBody').innerHTML=`<div class="jgrid">
+    <label class="fld">Item code<input class="f" id="prCode" value="${esc(p.code||'')}" placeholder="e.g. ITM-001" style="max-width:none"></label>
+    <label class="fld">Name<input class="f" id="prName" value="${esc(p.name||'')}" style="max-width:none"></label>
+    <label class="fld">Type<select class="f" id="prType" style="max-width:none">${PROD_TYPES.map(([k,l])=>`<option value="${k}"${p.type===k?' selected':''}>${l}</option>`).join('')}</select></label>
+    <label class="fld"><span id="prAccLabel">${accLabelFor(p.type||'inventory')}</span><select class="f" id="prAcc" style="max-width:none">${accOptsFor(p.type||'inventory',p.glAccount)}</select></label>
+    <label class="fld">Default VAT rate (%)<input class="f r" id="prVat" inputmode="decimal" value="${p.vatRate!=null?p.vatRate:defaultVatRate()}" style="max-width:none"></label>
+    <label class="fld">Unit price / cost<input class="f r" id="prPrice" inputmode="decimal" value="${p.price!=null?p.price:''}" style="max-width:none"></label>
+  </div>
+  <div class="note" style="margin-top:10px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01M11 12h1v4h1"/></svg><div><b>Inventory</b> items should point to an inventory asset account and will update stock on a purchase invoice. <b>Non-inventory</b> / <b>service</b> items point to an expense account.</div></div>`;
+  $('#modalFoot').innerHTML=`<div style="margin-left:auto;display:flex;gap:10px"><button class="btn" id="prCancel">Cancel</button><button class="btn primary" id="prSave">${edit?'Save':'Create item'}</button></div>`;
+  $('#prCancel').onclick=closeModal;
+  $('#prType').onchange=()=>{const t=$('#prType').value;$('#prAccLabel').textContent=accLabelFor(t);$('#prAcc').innerHTML=accOptsFor(t,$('#prAcc').value);};
+  $('#prSave').onclick=()=>{
+    const code=$('#prCode').value.trim(),name=$('#prName').value.trim();
+    if(!name){toast('Enter an item name.',true);return;}
+    const rec={id:p.id||('pr_'+Date.now().toString(36)),code:code||('ITM-'+((coProducts().length+1)+'').padStart(3,'0')),name,type:$('#prType').value,glAccount:$('#prAcc').value,vatRate:+$('#prVat').value||0,price:+$('#prPrice').value||0};
+    const arr=coProducts();const i=arr.findIndex(x=>x.id===rec.id);if(i>=0)arr[i]=rec;else arr.push(rec);
+    saveProducts();audit(edit?'Item updated':'Item created',rec.name,rec.type);closeModal();render();toast('Item saved.');
+  };
+  openModal();
+}
+function renderProducts(v){
+  const head=el('div','viewhead');
+  head.innerHTML=`<div><h2>Items &amp; Products</h2><div class="desc">Master list for <b>${esc(activeCoProfile().name||coName(CO))}</b> — each item is classified and linked to a GL account with a default VAT rate. Used on purchase invoices.</div></div>
+    <div class="tools"><button class="btn sm primary" id="prNew"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>New item</button></div>`;
+  v.appendChild(head);
+  const list=coProducts();
+  const p=el('div','panel');p.innerHTML=`<div class="phd"><h3>Item master</h3><div class="meta">${list.length}</div></div>`;
+  if(!list.length)p.appendChild(el('div','empty','<div>No items yet. Add inventory or non-inventory items to use them on purchase invoices.</div>'));
+  else{const tbl=el('table');tbl.innerHTML=`<thead><tr><th>Code</th><th>Name</th><th>Type</th><th>GL account</th><th class="r">VAT %</th><th class="r">Unit price</th><th></th></tr></thead>`;
+    const tb=el('tbody');list.forEach(x=>{const tl=(PROD_TYPES.find(t=>t[0]===x.type)||[])[1]||x.type;
+      tb.innerHTML+=`<tr class="click" data-ed="${x.id}"><td class="mono">${esc(x.code)}</td><td>${esc(x.name)}</td><td><span class="st-tag ${x.type==='inventory'?'st-approved':'st-draft'}" style="font-size:9px">${esc(tl)}</span></td><td style="font-size:11px">${esc(x.glAccount||'—')}</td><td class="r mono">${x.vatRate||0}%</td><td class="r mono">${x.price?fmt(x.price):'—'}</td><td class="r"><button class="del" data-rm="${x.id}">×</button></td></tr>`;});
+    tbl.appendChild(tb);p.appendChild(tbl);}
+  v.appendChild(p);
+  $('#prNew').onclick=()=>productModal(null);
+  $$('#view tr[data-ed]').forEach(tr=>tr.onclick=e=>{if(e.target.closest('[data-rm]'))return;const x=coProducts().find(y=>y.id===tr.dataset.ed);if(x)productModal(x);});
+  $$('#view [data-rm]').forEach(b=>b.onclick=e=>{e.stopPropagation();if(confirm('Remove this item?')){const arr=coProducts();const i=arr.findIndex(y=>y.id===b.dataset.rm);if(i>=0)arr.splice(i,1);saveProducts();render();toast('Item removed.');}});
+}
+
+/* ---------------- VAT PURCHASE INVOICE ---------------- */
+let PINV_LINES=[];
+function piBlank(){return {productId:'',glAccount:'',desc:'',qty:1,price:0,vat:defaultVatRate()};}
+function purchaseInvoiceModal(){
+  if(!apAcc()){toast('No Accounts Payable account found in the chart of accounts.',true);return;}
+  PINV_LINES=[piBlank(),piBlank()];
+  const vendors=[...new Set(POSTED.flatMap(j=>(j.lines||[]).map(l=>l.party)).filter(Boolean))].sort();
+  $('#modalTitle').textContent='New Purchase Invoice';
+  $('#modalBody').innerHTML=`<div class="jgrid">
+      <label class="fld">Vendor<input class="f" id="piVendor" list="piVendors" placeholder="Supplier name" style="max-width:none"><datalist id="piVendors">${vendors.map(x=>`<option value="${esc(x)}">`).join('')}</datalist></label>
+      <label class="fld">Invoice date<input class="f" type="date" id="piDate" value="${todayISO()}" style="max-width:none"></label>
+      <label class="fld">Supplier invoice #<input class="f" id="piRef" placeholder="optional" style="max-width:none"></label>
+    </div>
+    <div id="piRows" style="margin-top:12px"></div>
+    <button class="btn sm" id="piAdd" style="margin-top:8px">+ Add line</button>
+    <div id="piTotals" style="margin-top:14px"></div>`;
+  $('#modalFoot').innerHTML=`<div class="hint" style="margin:0">Posts <b>Dr</b> item accounts + <b>Dr</b> input VAT, <b>Cr</b> Accounts Payable. Inventory items also update stock.</div>
+    <div style="margin-left:auto;display:flex;gap:10px"><button class="btn" id="piCancel">Cancel</button><button class="btn primary" id="piPost">Post invoice</button></div>`;
+  $('#piCancel').onclick=closeModal;
+  $('#piAdd').onclick=()=>{PINV_LINES.push(piBlank());drawPiLines();};
+  $('#piPost').onclick=postPurchaseInvoice;
+  drawPiLines();openModal();
+}
+function drawPiLines(){
+  const box=$('#piRows');if(!box)return;
+  const prods=coProducts();const accSorted=ACC.filter(a=>a.name).slice().sort((a,b)=>a.name.localeCompare(b.name));
+  box.innerHTML=`<div style="display:grid;grid-template-columns:1.4fr 1.6fr 0.6fr 0.8fr 0.6fr 0.9fr 24px;gap:6px;font-size:11px;color:var(--txt-soft);font-weight:700;padding:0 2px 4px"><div>Item</div><div>Account (from item master)</div><div style="text-align:right">Qty</div><div style="text-align:right">Unit price</div><div style="text-align:right">VAT %</div><div style="text-align:right">Line total</div><div></div></div>`;
+  PINV_LINES.forEach((ln,i)=>{
+    const net=(+ln.qty||0)*(+ln.price||0),vat=net*(+ln.vat||0)/100,gross=net+vat;
+    const row=el('div');row.style.cssText='display:grid;grid-template-columns:1.4fr 1.6fr 0.6fr 0.8fr 0.6fr 0.9fr 24px;gap:6px;margin-bottom:6px;align-items:center';
+    row.innerHTML=`
+      <select data-i="${i}" data-k="productId" style="font-size:11px"><option value="">— custom —</option>${prods.map(p=>`<option value="${p.id}"${ln.productId===p.id?' selected':''}>${esc(p.code)} ${esc(p.name)}</option>`).join('')}</select>
+      ${(function(){const prod=coProducts().find(x=>x.id===ln.productId);if(prod){const tl=((PROD_TYPES.find(t=>t[0]===prod.type)||[])[1])||prod.type||'';return `<div style="font-size:11px;line-height:1.25;overflow:hidden;white-space:nowrap;text-overflow:ellipsis"><span class="st-tag ${prod.type==='inventory'?'st-approved':'st-draft'}" style="font-size:8px">${esc(tl)}</span> <span class="mono" title="Auto-assigned from item master">${esc(prod.glAccount||'⚠ no account')}</span></div>`;}return `<select data-i="${i}" data-k="glAccount" style="font-size:11px"><option value="">Select account…</option>${accSorted.map(a=>`<option value="${esc(a.name)}"${ln.glAccount===a.name?' selected':''}>${esc(a.name)}</option>`).join('')}</select>`;})()}
+      <input class="r" data-i="${i}" data-k="qty" inputmode="decimal" value="${ln.qty}" style="font-size:11px;text-align:right">
+      <input class="r" data-i="${i}" data-k="price" inputmode="decimal" value="${ln.price}" style="font-size:11px;text-align:right">
+      <input class="r" data-i="${i}" data-k="vat" inputmode="decimal" value="${ln.vat}" style="font-size:11px;text-align:right">
+      <div class="r mono" style="font-size:12px">${fmt(gross)}</div>
+      <button class="del" data-del="${i}">×</button>`;
+    box.appendChild(row);
+    if(ln.productId&&i===0){} // placeholder
+    if(!ln.productId){const s=row.querySelector('select[data-k=glAccount]');if(s)s.value=ln.glAccount;}
+    else{row.querySelector('select[data-k=productId]').value=ln.productId;}
+  });
+  box.querySelectorAll('select,input').forEach(inp=>{
+    inp.oninput=e=>{const i=+e.target.dataset.i,k=e.target.dataset.k;PINV_LINES[i][k]=e.target.value;
+      if(k==='productId'){const p=coProducts().find(x=>x.id===e.target.value);if(p){PINV_LINES[i].desc=p.name;PINV_LINES[i].price=p.price||0;PINV_LINES[i].vat=(p.vatRate!=null?p.vatRate:defaultVatRate());PINV_LINES[i].glAccount=p.glAccount||'';}drawPiLines();return;}
+      if(k==='qty'||k==='price'||k==='vat')drawPiTotals();};
+  });
+  box.querySelectorAll('.del').forEach(b=>b.onclick=()=>{if(PINV_LINES.length>1){PINV_LINES.splice(+b.dataset.del,1);drawPiLines();}});
+  drawPiTotals();
+}
+function piCompute(){let net=0,vat=0;PINV_LINES.forEach(ln=>{const n=(+ln.qty||0)*(+ln.price||0);net+=n;vat+=n*(+ln.vat||0)/100;});return {net,vat,gross:net+vat};}
+function drawPiTotals(){const t=piCompute();const el0=$('#piTotals');if(!el0)return;
+  el0.innerHTML=`<div class="ministat"><div class="m"><div class="l">Net</div><div class="v mono">${fmt(t.net)}</div></div><div class="m"><div class="l">Input VAT</div><div class="v mono">${fmt(t.vat)}</div></div><div class="m"><div class="l">Total payable</div><div class="v mono" style="font-weight:700">${fmt(t.gross)}</div></div></div>`;}
+async function postPurchaseInvoice(){
+  const vendor=$('#piVendor').value.trim(),date=$('#piDate').value,ref=$('#piRef').value.trim();
+  if(!vendor){toast('Enter a vendor.',true);return;}
+  if(isPeriodClosed && isPeriodClosed(periodOf?periodOf(date):date.slice(0,7))){toast('That period is closed.',true);return;}
+  const valid=PINV_LINES.filter(ln=>{const p=coProducts().find(x=>x.id===ln.productId);const acc=p?p.glAccount:ln.glAccount;return acc&&(+ln.qty||0)*(+ln.price||0)>0;});
+  if(!valid.length){toast('Add at least one line with an account, quantity and price.',true);return;}
+  const t=piCompute();const lines=[];let totVat=0;
+  const invItems=[];
+  valid.forEach(ln=>{const p=coProducts().find(x=>x.id===ln.productId);const acc=p?p.glAccount:ln.glAccount;const net=(+ln.qty||0)*(+ln.price||0);const vat=net*(+ln.vat||0)/100;totVat+=vat;
+    lines.push({accName:acc,desc:(p?p.name:ln.desc)||'Purchase',party:vendor,dr:+net.toFixed(2),cr:0});
+    if(p&&p.type==='inventory')invItems.push({p,qty:+ln.qty||0,price:+ln.price||0});});
+  if(totVat>0){const vacc=vatInAcc();if(vacc)lines.push({accName:vacc.name,desc:'Input VAT',party:vendor,dr:+totVat.toFixed(2),cr:0});else toast('No “VAT On Purchases” account — VAT booked into the payable.',true);}
+  const gross=lines.reduce((s,l)=>s+l.dr,0);
+  lines.push({accName:apAcc().name,desc:'Vendor invoice '+(ref||''),party:vendor,dr:0,cr:+gross.toFixed(2)});
+  const doc=nextSeq('bill','BILL-',5);
+  const je=await postSystemJE(date,doc,'Purchase invoice — '+vendor+(ref?(' ('+ref+')'):''),lines,{doctype:'Purchase Invoice'});
+  if(!je){toast('Could not post invoice.',true);return;}
+  // inventory receipts for inventory-type items
+  if(invItems.length){INV.moves=INV.moves||[];INV.items=INV.items||[];
+    invItems.forEach(x=>{let it=INV.items.find(y=>y.sku===x.p.code||y.name===x.p.name);
+      if(!it){it={id:'it_'+Date.now().toString(36)+Math.random().toString(36).slice(2,5),sku:x.p.code,name:x.p.name,category:'Purchased',uom:'ea',reorder:0};INV.items.push(it);}
+      INV.moves.push({id:'mv_'+Date.now()+'_'+Math.random().toString(36).slice(2,6),date,itemId:it.id,type:'GRN',warehouse:'Main',qtyIn:x.qty,qtyOut:0,unitCost:x.price,ref:doc,memo:'Purchase invoice '+vendor});});
+    try{await store.saveInv();}catch(e){}}
+  audit('Purchase invoice posted',doc,vendor+' · '+fmt(gross)+(totVat?(' incl VAT '+fmt(totVat)):''));
+  rebuild();closeModal();render();if(typeof txPulse==='function')txPulse();
+  toast('Purchase invoice '+doc+' posted — '+fmt(gross)+(totVat?(' (VAT '+fmt(totVat)+')'):'')+'.');
+}
+function renderPurchaseInvoice(v){
+  const head=el('div','viewhead');
+  head.innerHTML=`<div><h2>Purchase Invoices</h2><div class="desc">Enter vendor invoices with items, GL accounts and VAT. Posts to AP and input VAT; inventory items update stock.</div></div>
+    <div class="tools"><button class="btn sm" id="piItems">Manage items</button><button class="btn sm primary" id="piNew"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>New purchase invoice</button></div>`;
+  v.appendChild(head);
+  const bills=POSTED.filter(j=>j.doctype==='Purchase Invoice').slice().sort((a,b)=>a.date<b.date?1:-1);
+  const p=el('div','panel');p.innerHTML=`<div class="phd"><h3>Recent purchase invoices</h3><div class="meta">${bills.length}</div></div>`;
+  if(!bills.length)p.appendChild(el('div','empty','<div>No purchase invoices yet. Click “New purchase invoice” to enter one.</div>'));
+  else{const tbl=el('table');tbl.innerHTML=`<thead><tr><th>Date</th><th>Doc</th><th>Vendor</th><th>Memo</th><th class="r">Amount</th><th>Status</th></tr></thead>`;
+    const tb=el('tbody');bills.slice(0,200).forEach(j=>{const amt=(j.lines||[]).reduce((s,l)=>s+(+l.dr||0),0);const vend=(j.lines||[]).map(l=>l.party).filter(Boolean)[0]||'';
+      tb.innerHTML+=`<tr class="click" data-doc="${esc(j.doc)}"><td class="mono">${j.date}</td><td class="mono">${esc(j.doc)}</td><td>${esc(vend)}</td><td style="font-size:11px">${esc(j.memo||'')}</td><td class="r mono">${fmt(amt)}</td><td><span class="st-tag ${j.status==='posted'?'st-approved':'st-pending'}">${(j.status||'posted').toUpperCase()}</span></td></tr>`;});
+    tbl.appendChild(tb);p.appendChild(tbl);}
+  v.appendChild(p);
+  $('#piNew').onclick=()=>purchaseInvoiceModal();
+  $('#piItems').onclick=()=>go('products');
+  $$('#view tr[data-doc]').forEach(tr=>tr.onclick=()=>{const je=POSTED.find(j=>j.doc===tr.dataset.doc);if(je&&typeof openJE==='function')openJE(je,{viewOnly:true});});
+}
+
+/* ============================================================
+   PER-COMPANY CHART OF ACCOUNTS — setup, import, edit
+   ============================================================ */
+function minimalChart(){
+  const rows=[
+    ['Cash / Bank','ASSET','Cash In Bank - Nana Direct (Egypt)'],
+    ['Accounts Receivable','ASSET','Accounts Receivable/s'],
+    ['Inventory','ASSET','Inventory'],
+    ['VAT On Purchases','ASSET','VAT On Purchases'],
+    ['Prepaid Expenses','ASSET','Prepaid Expenses'],
+    ['Property and Equipment','ASSET','Property and Equipment'],
+    ['Accumulated Depreciation','ASSET','Accumulated Depreciation'],
+    ['Accounts Payable','LIABILITY','Accounts Payable/s'],
+    ['VAT/Tax Liability','LIABILITY','VAT/Tax Liability'],
+    ['Accruals and Provisions','LIABILITY','Accruals and Provisions'],
+    ['Share Capital','EQUITY','Equity'],
+    ['Retained Earnings','EQUITY','Equity'],
+    ['Revenue','REVENUE','Revenue'],
+    ['Other Income','REVENUE','Revenue'],
+    ['Cost of Sales','EXPENSE','Cost of Sales'],
+    ['Depreciation and Amortization','EXPENSE','Depreciation and Amortization'],
+    ['Salaries and Wages','EXPENSE','Operating Expenses'],
+    ['General and Administrative','EXPENSE','Operating Expenses'],
+    ['Selling and Distribution','EXPENSE','Operating Expenses'],
+  ];
+  return rows.map(([name,cls,root])=>({name,class:cls,root,path:[root,name],code:''}));
+}
+function activeCoa(){const c=COMPANIES.find(x=>x.id===CO);return c&&Array.isArray(c.coa)?c.coa:null;}
+function makeEditableCoa(){const c=COMPANIES.find(x=>x.id===CO);if(!c)return;if(!Array.isArray(c.coa)||!c.coa.length)c.coa=standardChart();persistCompanies();if(typeof csSchedule==='function')csSchedule();rebuild();render();}
+function coaAddModal(){
+  const coa=activeCoa();if(!coa){toast('Enable an editable chart first.',true);return;}
+  const roots=[...new Set(coa.map(a=>a.root))].sort();
+  $('#modalTitle').textContent='Add account';
+  $('#modalBody').innerHTML=`<div class="jgrid">
+    <label class="fld">Account name<input class="f" id="caName" style="max-width:none"></label>
+    <label class="fld">Class<select class="f" id="caClass" style="max-width:none">${['ASSET','LIABILITY','EQUITY','REVENUE','EXPENSE'].map(c=>`<option>${c}</option>`).join('')}</select></label>
+    <label class="fld">Group / root<input class="f" id="caRoot" list="caRoots" placeholder="e.g. Operating Expenses" style="max-width:none"><datalist id="caRoots">${roots.map(r=>`<option value="${esc(r)}">`).join('')}</datalist></label>
+    <label class="fld">Code (optional)<input class="f" id="caCode" style="max-width:none"></label>
+  </div>`;
+  $('#modalFoot').innerHTML=`<div style="margin-left:auto;display:flex;gap:10px"><button class="btn" id="caCancel">Cancel</button><button class="btn primary" id="caSave">Add account</button></div>`;
+  $('#caCancel').onclick=closeModal;
+  $('#caSave').onclick=()=>{const name=$('#caName').value.trim(),cls=$('#caClass').value,root=$('#caRoot').value.trim()||name,code=$('#caCode').value.trim();
+    if(!name){toast('Enter an account name.',true);return;}
+    if(coa.some(a=>a.name.toLowerCase()===name.toLowerCase())){toast('That account already exists.',true);return;}
+    coa.push({name,class:cls,root,path:[root,name],code});persistCompanies();if(typeof csSchedule==='function')csSchedule();audit('Account added',name,cls);rebuild();closeModal();render();toast('Account added.');};
+  openModal();
+}
+async function coaImportFile(file){
+  const coa=activeCoa();if(!coa){makeEditableCoa();}
+  const target=activeCoa();
+  try{
+    let rows;
+    if(/\.xlsx$/i.test(file.name)||/spreadsheetml/.test(file.type)){const s=await xlsxSheets(await file.arrayBuffer());rows=s.length?s[0].rows:[];}
+    else rows=csvParse(await file.text());
+    if(!rows.length){toast('File is empty.',true);return;}
+    // detect header
+    const first=rows[0].map(x=>String(x).trim().toLowerCase());
+    let ci={name:0,class:1,root:2,code:3};
+    if(first.some(h=>/name|account/.test(h))){ci.name=first.findIndex(h=>/name|account/.test(h));ci.class=first.findIndex(h=>/class|type/.test(h));ci.root=first.findIndex(h=>/root|group|parent|category/.test(h));ci.code=first.findIndex(h=>/code/.test(h));rows=rows.slice(1);}
+    const CLS={asset:'ASSET',liability:'LIABILITY',equity:'EQUITY',revenue:'REVENUE',income:'REVENUE',expense:'EXPENSE'};
+    let added=0,skip=0;const errs=[];
+    rows.forEach((r,i)=>{const name=(r[ci.name]||'').toString().trim();if(!name){return;}
+      let cls=(r[ci.class]!=null?r[ci.class]:'').toString().trim().toLowerCase();cls=CLS[cls]||(['ASSET','LIABILITY','EQUITY','REVENUE','EXPENSE'].includes(cls.toUpperCase())?cls.toUpperCase():'');
+      if(!cls){errs.push({ln:i+2,msg:'Unknown class for "'+name+'" — use Asset/Liability/Equity/Revenue/Expense'});return;}
+      const root=(ci.root>=0&&r[ci.root]?r[ci.root]:name).toString().trim();const code=(ci.code>=0&&r[ci.code]?r[ci.code]:'').toString().trim();
+      if(target.some(a=>a.name.toLowerCase()===name.toLowerCase())){skip++;return;}
+      target.push({name,class:cls,root,path:[root,name],code});added++;});
+    persistCompanies();if(typeof csSchedule==='function')csSchedule();audit('Chart imported',file.name,added+' accounts');rebuild();render();
+    toast('Imported '+added+' account(s)'+(skip?', '+skip+' already existed':'')+(errs.length?', '+errs.length+' skipped (bad class)':'')+'.');
+  }catch(e){toast('Could not import: '+((e&&e.message)||e),true);}
+}
+function renderCoaSetup(v){
+  const coa=activeCoa();const usingOwn=!!coa;
+  const chart=usingOwn?coa:DATA.accounts;
+  const head=el('div','viewhead');
+  head.innerHTML=`<div><h2>Chart of Accounts — Setup</h2><div class="desc">${usingOwn?('This company uses its <b>own</b> chart ('+chart.length+' accounts) — add, import or export below.'):'This company currently uses the <b>shared master</b> chart. Create an editable copy to customise it, or import your own.'}</div></div>
+    <div class="tools">${usingOwn?'<button class="btn sm" id="coaAdd">+ Account</button>':'<button class="btn sm primary" id="coaMake">Create editable copy</button>'}<label class="btn sm" style="cursor:pointer">Import CSV / Excel<input type="file" id="coaFile" accept=".csv,.xlsx" style="display:none"></label><button class="btn sm" id="coaExp">Export</button><button class="btn sm" id="coaTmpl">Template</button></div>`;
+  v.appendChild(head);
+  const note=el('div','note');note.innerHTML=`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01M11 12h1v4h1"/></svg><div>New companies get their own chart automatically. Import columns: <span class="mono">Name · Class · Root/Group · Code</span> (Class = Asset / Liability / Equity / Revenue / Expense).</div>`;
+  v.appendChild(note);
+  const byClass={};chart.forEach(a=>{(byClass[a.class]=byClass[a.class]||[]).push(a);});
+  ['ASSET','LIABILITY','EQUITY','REVENUE','EXPENSE'].forEach(cls=>{const list=byClass[cls];if(!list)return;
+    const p=el('div','panel');p.innerHTML=`<div class="phd"><h3>${cls.charAt(0)+cls.slice(1).toLowerCase()}</h3><div class="meta">${list.length}</div></div>`;
+    const tbl=el('table');tbl.innerHTML=`<thead><tr><th>Code</th><th>Account</th><th>Group / root</th>${usingOwn?'<th></th>':''}</tr></thead>`;
+    const tb=el('tbody');list.slice().sort((a,b)=>a.name.localeCompare(b.name)).forEach(a=>{tb.innerHTML+=`<tr><td class="mono">${esc(a.code||'')}</td><td>${esc(a.name)}</td><td class="muted" style="font-size:11px">${esc(a.root||'')}</td>${usingOwn?`<td class="r"><button class="del" data-rma="${esc(a.name)}">×</button></td>`:''}</tr>`;});
+    tbl.appendChild(tb);p.appendChild(tbl);v.appendChild(p);});
+  if($('#coaMake'))$('#coaMake').onclick=()=>{makeEditableCoa();toast('Editable chart created for this company.');};
+  if($('#coaAdd'))$('#coaAdd').onclick=coaAddModal;
+  $('#coaFile').onchange=e=>{const f=e.target.files[0];if(f)coaImportFile(f);e.target.value='';};
+  $('#coaExp').onclick=()=>exportCSV('chart_of_accounts',['Name','Class','Root','Code'],chart.map(a=>[a.name,a.class,a.root||'',a.code||'']));
+  $('#coaTmpl').onclick=()=>dlText('coa_template.csv',csvBuild(['Name','Class','Root','Code'],[['Cash at Bank','Asset','Cash & Bank','1000'],['Accounts Payable','Liability','Payables','2000'],['Sales Revenue','Revenue','Revenue','4000'],['Rent Expense','Expense','Operating Expenses','5100']]));
+  $$('#view [data-rma]').forEach(b=>b.onclick=()=>{const nm=b.dataset.rma;if(!confirm('Remove account "'+nm+'"? Existing postings keep the name but it will not be selectable.'))return;const arr=activeCoa();const i=arr.findIndex(a=>a.name===nm);if(i>=0)arr.splice(i,1);persistCompanies();if(typeof csSchedule==='function')csSchedule();rebuild();render();toast('Account removed.');});
 }
 
 (async function boot(){
