@@ -704,7 +704,7 @@ tr.click:hover{box-shadow:inset 3px 0 0 var(--accent)}
     </header>
     <div class="subbar">
       <div class="crumbs" id="crumbs"></div>
-      <div class="substatus"><span>Tie-out <b id="footBal">—</b></span><span id="footRows"></span></div>
+      <div class="substatus"><button id="refreshBtn" class="pclear" title="Refresh this page — recompute from the latest data">↻ Refresh</button><span>Tie-out <b id="footBal">—</b></span><span id="footRows"></span></div>
     </div>
     <div class="view" id="view"></div>
   </div>
@@ -1226,6 +1226,15 @@ function setCrumb(ctx){CRUMB_CTX=ctx||'';crumbs();}
 function render(){
   const v=$('#view');v.innerHTML='';
   crumbs();
+  // visible warning when a date filter is active (a common reason data "doesn't show")
+  if((PERIOD.from||PERIOD.to)&&CURRENT!=='dashboard'){
+    const banner=el('div');banner.style.cssText='margin:0 0 12px;padding:9px 14px;border:1px solid #e0a80f;background:#fff8e6;border-radius:8px;display:flex;align-items:center;gap:10px;font-size:12.5px;color:#7a5c00';
+    banner.innerHTML=`<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01M11 12h1v4h1"/></svg>
+      <span>Showing only <b>${esc(PERIOD.from||'inception')}</b> → <b>${esc(PERIOD.to||'latest')}</b>. Entries outside this range are hidden.</span>
+      <button class="btn sm" id="clrPeriodBanner" style="margin-left:auto">Show all dates</button>`;
+    v.appendChild(banner);
+    setTimeout(()=>{const c=$('#clrPeriodBanner');if(c)c.onclick=()=>{PERIOD.from='';PERIOD.to='';if($('#pFrom'))$('#pFrom').value='';if($('#pTo'))$('#pTo').value='';rebuild();render();};},0);
+  }
   // pick snapshot: as-at for position views, period for flow/record views
   const asAtViews=['trial','balance','accounts','banking','assetreg','vendors','ap','ar','inventory','depreciation','acquisitions'];
   useSnap(asAtViews.includes(CURRENT)?SNAP_ASAT:SNAP_PERIOD);
@@ -2428,7 +2437,8 @@ function openJE(existing,opts){
         <div><span class="b">Debits</span> <span class="v" id="jeTotDr">0.00</span></div>
         <div><span class="b">Credits</span> <span class="v" id="jeTotCr">0.00</span></div>
         <div><span class="b">Difference</span> <span class="v" id="jeDiff">0.00</span></div>
-      </div></div>`}
+      </div></div>
+      <div id="jeOrphan" style="display:none;margin-top:6px;font-size:12px;color:var(--neg,#c0392b)">⚠ A line has an amount but no account selected — pick an account so it counts and the entry balances.</div>`}
     <div class="attachbox" id="jeAttachBox">
       <div style="display:flex;align-items:center;justify-content:space-between">
         <span style="font-size:12px;font-weight:600;color:var(--txt-soft)">Attachments</span>
@@ -2554,11 +2564,15 @@ function drawJELines(locked){
 }
 let JE_DIMS=false;
 function recalcJE(){
-  const dr=JE_LINES.reduce((s,l)=>s+(+l.dr||0),0), cr=JE_LINES.reduce((s,l)=>s+(+l.cr||0),0);
+  const has=l=>!!l.accName;
+  const dr=JE_LINES.reduce((s,l)=>s+(has(l)?(+l.dr||0):0),0), cr=JE_LINES.reduce((s,l)=>s+(has(l)?(+l.cr||0):0),0);
   const diff=+(dr-cr).toFixed(2);
+  const orphan=JE_LINES.some(l=>!l.accName&&((+l.dr||0)>0||(+l.cr||0)>0));  // amount typed but no account picked
   $('#jeTotDr').textContent=fmt(dr);$('#jeTotCr').textContent=fmt(cr);
-  const de=$('#jeDiff');de.textContent=fmt(diff);de.className='v '+(Math.abs(diff)<0.005&&dr>0?'diff-ok':'diff-bad');
-  const post=$('#jePost');const ok=Math.abs(diff)<0.005&&dr>0;
+  const de=$('#jeDiff');de.textContent=fmt(diff);de.className='v '+((Math.abs(diff)<0.005&&dr>0&&!orphan)?'diff-ok':'diff-bad');
+  de.title=orphan?'A line has an amount but no account selected':'';
+  const warn=$('#jeOrphan');if(warn)warn.style.display=orphan?'block':'none';
+  const post=$('#jePost');const ok=Math.abs(diff)<0.005&&dr>0&&!orphan;
   if(post){post.disabled=!ok;post.style.opacity=ok?1:.5;post.style.cursor=ok?'pointer':'not-allowed';}
   return ok;
 }
@@ -2572,6 +2586,7 @@ async function postJE(existingId,doctype){
      .map(l=>({accName:l.accName,desc:l.desc||'',party:l.party||party0||'',dr:+l.dr||0,cr:+l.cr||0,bu:l.bu||'',loc:l.loc||'',dept:l.dept||'',emp:l.emp||''}));
   const dr=lines.reduce((s,l)=>s+l.dr,0), cr=lines.reduce((s,l)=>s+l.cr,0);
   if(!lines.length){toast('Add at least one line with an amount.',true);return;}
+  if(JE_LINES.some(l=>!l.accName&&((+l.dr||0)>0||(+l.cr||0)>0))){toast('A line has an amount but no account selected — pick an account for every line.',true);return;}
   if(Math.abs(dr-cr)>0.005){toast('Entry is out of balance by '+fmt(dr-cr)+'.',true);return;}
   if(!memo){toast('Add a memo so the entry is traceable.',true);return;}
   if(isPeriodClosed(date)){toast('Cannot post into closed period '+periodOf(date)+'. Reopen it first.',true);return;}
@@ -2647,6 +2662,11 @@ function applyPeriod(){
 $('#pFrom').onchange=applyPeriod;
 $('#pTo').onchange=applyPeriod;
 $('#pClear').onclick=()=>{$('#pFrom').value='';$('#pTo').value='';applyPeriod();};
+if($('#refreshBtn'))$('#refreshBtn').onclick=async()=>{
+  const btn=$('#refreshBtn');const old=btn.textContent;btn.textContent='↻ Refreshing…';btn.disabled=true;
+  try{ if(typeof csHydrate==='function'){try{await csHydrate();}catch(e){}} rebuild(); render(); }
+  finally{ btn.textContent=old;btn.disabled=false; if(typeof toast==='function')toast('Refreshed.'); }
+};
 
 /* ============================================================
    EXPORT
