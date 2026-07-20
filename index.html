@@ -351,6 +351,7 @@ label.fld{display:flex;flex-direction:column;gap:5px;font-size:12px;color:var(--
 /* JE editor */
 .jerows{border:1px solid var(--line);border-radius:9px;overflow:hidden;margin-top:6px}
 .jerow{display:grid;grid-template-columns:2.4fr 1.5fr 1fr 1fr 34px;gap:0;border-bottom:1px solid var(--line-2);align-items:stretch}
+.jerow.p6{grid-template-columns:2.1fr 1.35fr 1.35fr .95fr .95fr 34px}
 .jerow.hdr{background:#FAFBFC;font-size:10.5px;text-transform:uppercase;letter-spacing:.6px;color:var(--txt-faint);font-weight:600}
 .jerow.hdr>div{padding:9px 12px}
 .jerow>div{border-right:1px solid var(--line-2)}
@@ -1615,6 +1616,7 @@ function renderBalance(v){
   body.appendChild(stmtHeader('ASSETS'));
   const aTot=classSection(body,'ASSET');
   body.appendChild(stmtRow('Total assets',aTot,'total'));
+  ppeStatementRows(body);
   // Liabilities
   body.appendChild(stmtHeader('LIABILITIES'));
   const lTot=classSection(body,'LIABILITY');
@@ -1646,6 +1648,25 @@ function renderBalance(v){
   v.appendChild(panel);
   bindStmt(panel);
   $('#bsExport').onclick=()=>exportStatement('balance_sheet');$('#bsPrint').onclick=printReport;
+}
+function ppeStatementRows(body){
+  if(typeof ASSETS==='undefined'||!ASSETS.length)return;
+  const asOf=PERIOD.to||_maxDate();
+  const live=ASSETS.filter(a=>a.status!=='Disposed'); if(!live.length)return;
+  const groups={};
+  live.forEach(a=>{const k=a.category||'Uncategorised';const ad=assetAccumDep(a,asOf);(groups[k]||(groups[k]={cost:0,dep:0,n:0}));groups[k].cost+=a.cost;groups[k].dep+=ad;groups[k].n++;});
+  const cats=Object.keys(groups).sort(); if(!cats.length)return;
+  const h=el('div','srow sub');h.style.marginTop='6px';
+  h.innerHTML=`<div class="nm" style="font-size:10.5px;letter-spacing:.5px">PROPERTY, PLANT &amp; EQUIPMENT — COST &amp; ACCUMULATED DEPRECIATION BY TYPE</div><div class="amt"></div>`;
+  body.appendChild(h);
+  let tc=0,td=0;
+  cats.forEach(k=>{const g=groups[k];tc+=g.cost;td+=g.dep;
+    const cr=el('div','srow leaf');cr.innerHTML=`<div class="nm">${esc(k)} — cost<span class="muted" style="font-size:10px"> · ${g.n} asset${g.n>1?'s':''}</span></div><div class="amt mono">${fmt(g.cost)}</div>`;body.appendChild(cr);
+    const dr=el('div','srow leaf');dr.innerHTML=`<div class="nm" style="color:var(--txt-soft);padding-left:14px">Less: accumulated depreciation</div><div class="amt mono neg">(${fmt(g.dep)})</div>`;body.appendChild(dr);
+    const nr=el('div','srow leaf');nr.innerHTML=`<div class="nm" style="font-weight:600;padding-left:14px">${esc(k)} — net book value</div><div class="amt mono" style="font-weight:600">${fmt(g.cost-g.dep)}</div>`;body.appendChild(nr);
+  });
+  const tr=el('div','srow sub');tr.innerHTML=`<div class="nm">Net PP&amp;E (all types)</div><div class="amt mono">${fmt(tc-td)}</div>`;body.appendChild(tr);
+  const note=el('div','srow');note.innerHTML=`<div class="nm muted" style="font-size:10.5px;font-weight:400">Gross cost ${fmt(tc)} less accumulated depreciation ${fmt(td)} = net ${fmt(tc-td)}, reconciling to the PP&amp;E carried within Total assets above. Sourced from the fixed-asset register, as at ${esc(asOf||'latest')}.</div><div class="amt"></div>`;body.appendChild(note);
 }
 function stmtHeader(t){return el('div','srow sub',`<div class="nm">${t}</div><div class="amt"></div>`);}
 function stmtRow(name,amt,cls='leaf'){const r=el('div','srow '+cls);r.innerHTML=`<div class="nm">${esc(name)}</div><div class="amt ${amt<0?'neg':''}">${fmt(amt)}</div>`;return r;}
@@ -2609,21 +2630,31 @@ function resolveAccInput(s){s=(s||'').trim();if(!s)return '';
   // lenient: unique case-insensitive contains match
   const low=s.toLowerCase();const hits=ACC.filter(x=>acctDisplay(x).toLowerCase()===low||x.name.toLowerCase()===low);
   return hits.length===1?hits[0].name:'';}
+function partySuggest(){
+  const s=new Set();
+  try{(VENDORS||[]).forEach(v=>v&&v.name&&s.add(v.name));}catch(e){}
+  try{(CUSTOMERS||[]).forEach(c=>c&&c.name&&s.add(c.name));}catch(e){}
+  try{(USERS||[]).forEach(u=>u&&u.name&&s.add(u.name));}catch(e){}
+  try{POSTED.forEach(j=>(j.lines||[]).forEach(l=>{if(l.party)s.add(l.party);}));}catch(e){}
+  return Array.from(s).sort();
+}
 function drawJELines(locked){
   const box=$('#jeRows');box.innerHTML='';
   if(!locked){const tg=el('label','chk');tg.style.cssText='display:flex;align-items:center;gap:7px;font-size:12px;margin:0 0 8px;cursor:pointer';
     tg.innerHTML=`<input type="checkbox" id="jeDimTog" ${JE_DIMS?'checked':''}> Tag dimensions on each line — <span class="muted">Business line · Location · Department · Employee</span>`;
     box.appendChild(tg);
     box.insertAdjacentHTML('beforeend',`<datalist id="dlBu">${dimValues('bu').map(x=>`<option value="${esc(x)}">`).join('')}</datalist><datalist id="dlLoc">${dimValues('loc').map(x=>`<option value="${esc(x)}">`).join('')}</datalist><datalist id="dlDept">${dimValues('dept').map(x=>`<option value="${esc(x)}">`).join('')}</datalist><datalist id="dlEmp">${dimValues('emp').map(x=>`<option value="${esc(x)}">`).join('')}</datalist>`);}
-  box.appendChild(el('div','jerow hdr',`<div>Account</div><div>Line memo</div><div style="text-align:right">Debit</div><div style="text-align:right">Credit</div><div></div>`));
+  box.appendChild(el('div','jerow hdr p6',`<div>Account</div><div>Name / Party</div><div>Line memo</div><div style="text-align:right">Debit</div><div style="text-align:right">Credit</div><div></div>`));
   const accSorted=ACC.slice().sort((a,b)=>a.class.localeCompare(b.class)||a.name.localeCompare(b.name));
   box.insertAdjacentHTML('beforeend',`<datalist id="dlAcc">${accSorted.map(a=>`<option value="${esc(acctDisplay(a))}">`).join('')}</datalist>`);
+  box.insertAdjacentHTML('beforeend',`<datalist id="dlParty">${partySuggest().map(p=>`<option value="${esc(p)}">`).join('')}</datalist>`);
   const dis=locked?' disabled':'';
   JE_LINES.forEach((ln,i)=>{
-    const row=el('div','jerow');
+    const row=el('div','jerow p6');
     const accVal=ln.accName?acctDisplay(ACC_BY_NAME[ln.accName]||{name:ln.accName}):'';
     row.innerHTML=`
       <div><input class="accpick" list="dlAcc" data-i="${i}" data-k="accName" placeholder="Search code or name…" value="${esc(accVal)}"${dis} autocomplete="off"></div>
+      <div><input list="dlParty" data-i="${i}" data-k="party" placeholder="Vendor / customer / employee…" value="${esc(ln.party||'')}"${dis} autocomplete="off"></div>
       <div><input data-i="${i}" data-k="desc" placeholder="—" value="${esc(ln.desc)}"${dis}></div>
       <div><input class="r" data-i="${i}" data-k="dr" inputmode="decimal" placeholder="0.00" value="${ln.dr}"${dis}></div>
       <div><input class="r" data-i="${i}" data-k="cr" inputmode="decimal" placeholder="0.00" value="${ln.cr}"${dis}></div>
