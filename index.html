@@ -1045,9 +1045,6 @@ const MODULES=[
     {id:'journals',t:'Journal Entries',icon:'edit'},
     {id:'_newje',t:'Make Journal Entry',icon:'plus',action:'je'},
     {id:'periods',t:'Accounting Periods',icon:'scale'}]},
-  {id:'ap',label:'Payables',pages:[
-    {id:'ap',t:'AP Overview & Aging',icon:'users'},
-    {id:'soa',t:'Vendor Statement',icon:'user'}]},
   {id:'ar',label:'Receivables',pages:[
     {id:'ar',t:'AR Overview & Aging',icon:'users'}]},
   {id:'treasury',label:'Banks & Treasury',pages:[
@@ -1062,12 +1059,17 @@ const MODULES=[
   {id:'sales',label:'Sales',pages:[
     {id:'sales',t:'Revenue Analysis',icon:'trend'}]},
   {id:'purchases',label:'Purchases',pages:[
-    {id:'purchase_invoice',t:'Purchase Invoices',icon:'book'},
+    {id:'proccycle',t:'Purchase Documents',icon:'book'},
+    {id:'purchase_invoice',t:'Enter Vendor Bill',icon:'edit'},
+    {id:'_newpr',t:'New Requisition',icon:'plus',action:'newpr'},
+    {sep:1},
+    {id:'vendors',t:'Vendors',icon:'users'},
+    {id:'ap',t:'A/P & Aging',icon:'scale'},
+    {id:'soa',t:'Vendor Statement',icon:'user'},
+    {sep:1},
     {id:'products',t:'Items & Products',icon:'grid'},
-    {id:'purchases',t:'Purchase & VAT Analysis',icon:'book'}]},
-  {id:'procurement',label:'Procurement',pages:[
-    {id:'proccycle',t:'Procurement Cycle',icon:'edit'},
-    {id:'procurement',t:'Vendor Spend & Sourcing',icon:'users'}]},
+    {id:'purchases',t:'Purchase & VAT Analysis',icon:'trend'},
+    {id:'procurement',t:'Vendor Spend & Sourcing',icon:'trend'}]},
   {id:'inventory',label:'Inventory',pages:[
     {id:'inventory',t:'Inventory',icon:'asset'}]},
   {id:'crm',label:'CRM',pages:[
@@ -1162,7 +1164,7 @@ function buildMenu(){
       m.pages.forEach(p=>{ if(p.sep)return;
         const a=el('a','sb-link'+(p.id===CURRENT?' cur':''));a.href='#';
         a.innerHTML=`<span class="dotli"></span><span class="sb-linktx">${esc(p.t)}</span>`;
-        a.onclick=e=>{e.preventDefault();OPEN_MENU=m.id;const act=p.action,pid=p.id;if(act==='je'){openJE();}else go(pid);closeDrawer();};
+        a.onclick=e=>{e.preventDefault();OPEN_MENU=m.id;const act=p.action,pid=p.id;if(act==='je'){openJE();}else if(act==='newpr'){if(typeof procDocModal==='function')procDocModal(null);}else go(pid);closeDrawer();};
         const star=el('span','sb-star'+(isFavPage(p.id)?' on':''));star.textContent=isFavPage(p.id)?'★':'☆';star.title='Add to Favorites';
         star.onclick=e=>{e.preventDefault();e.stopPropagation();toggleFavPage(p.id,p.t,m.label);buildMenu();};
         a.appendChild(star);
@@ -3210,9 +3212,10 @@ async function disposeAsset(a,date,proceeds,cashName){
 const PROC_FLOW=['PR','PO','BILL','PMT'];
 const PROC_LABEL={PR:'Requisition',PO:'Purchase Order',BILL:'Vendor Bill',PMT:'Payment'};
 function renderProcCycle(v){
+  if(typeof PROCDOC_FILTER==='undefined')window.PROCDOC_FILTER='ALL';
   const head=el('div','viewhead');
-  head.innerHTML=`<div><h2>Procurement Cycle</h2><div class="desc">Requisition → Purchase Order → Vendor Bill → Payment. Bills and payments post to the GL; asset lines capitalize into Fixed Assets.</div></div>
-    <div class="tools"><button class="btn sm primary" id="newPR"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>New Requisition</button></div>`;
+  head.innerHTML=`<div><h2>Purchase Documents</h2><div class="desc">Full vendor cycle — Requisition → Purchase Order → Vendor Bill → Payment. Bills and payments post to the GL; item lines receive stock, asset lines capitalize, prepaid lines create amortization schedules.</div></div>
+    <div class="tools"><button class="btn sm" id="newPR"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>New Requisition</button><button class="btn sm primary" id="newBill"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4zM8 9h8M8 13h5"/></svg>Enter Vendor Bill</button></div>`;
   v.appendChild(head);
   const pipe=el('div','panel');
   pipe.innerHTML=`<div class="phd"><h3>Process</h3></div><div style="padding:16px 18px"><div class="pipe">
@@ -3220,7 +3223,7 @@ function renderProcCycle(v){
      <span class="stp done">2 · Purchase Order</span><span class="arw">→</span>
      <span class="stp done">3 · Vendor Bill <span class="attach-pill">GL</span></span><span class="arw">→</span>
      <span class="stp done">4 · Payment <span class="attach-pill">GL</span></span></div>
-     <div class="hint" style="margin-top:8px">Approvals apply automatically when a document total exceeds the current user's approval limit.</div></div>`;
+     <div class="hint" style="margin-top:8px">Requisitions start the cycle; you can also enter a Vendor Bill directly (no PR/PO). Approvals apply automatically when a total exceeds the current user's limit.</div></div>`;
   v.appendChild(pipe);
   const kp=el('div','kpis');
   const byType=t=>PROC.filter(d=>d.type===t);
@@ -3230,19 +3233,23 @@ function renderProcCycle(v){
     kpiCount('r','Payments',byType('PMT').length,'Settled');
   v.appendChild(kp);
   const panel=el('div','panel');
-  panel.innerHTML=`<div class="phd"><h3>Procurement Documents</h3><div class="meta">${PROC.length}</div></div>`;
-  if(!PROC.length){panel.appendChild(el('div','empty','<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 5h6M5 8h14l-1 12H6z"/></svg><div>No procurement documents yet. Start with a new requisition.</div>'));}
+  const FILT=[['ALL','All'],['PR','Requisitions'],['PO','Purchase Orders'],['BILL','Vendor Bills'],['PMT','Payments']];
+  panel.innerHTML=`<div class="phd"><h3>Documents</h3><div class="subtabs" id="procFilt" style="margin:0">${FILT.map(([k,l])=>`<button class="${PROCDOC_FILTER===k?'on':''}" data-f="${k}">${l}${k!=='ALL'?' <span class="muted">'+PROC.filter(d=>d.type===k).length+'</span>':''}</button>`).join('')}</div></div>`;
+  const list=PROC.filter(d=>PROCDOC_FILTER==='ALL'||d.type===PROCDOC_FILTER);
+  if(!list.length){panel.appendChild(el('div','empty','<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 5h6M5 8h14l-1 12H6z"/></svg><div>No documents in this view. Start with a new requisition or enter a vendor bill.</div>'));}
   else{
     const tbl=el('table');
     tbl.innerHTML=`<thead><tr><th>Document</th><th>Type</th><th>Date</th><th>Vendor</th><th class="r">Total</th><th>Status</th><th></th></tr></thead>`;
     const tb=el('tbody');
-    PROC.slice().reverse().forEach(d=>{tb.innerHTML+=`<tr class="click" data-id="${d.id}"><td class="mono">${esc(d.num)}</td>
+    list.slice().reverse().forEach(d=>{tb.innerHTML+=`<tr class="click" data-id="${d.id}"><td class="mono">${esc(d.num)}</td>
       <td>${PROC_LABEL[d.type]}</td><td class="mono">${d.date}</td><td>${esc(d.vendor||'—')}</td>
       <td class="r mono">${fmt(d.total)}</td><td><span class="st-tag st-${d.status}">${d.status.toUpperCase()}</span></td>
       <td class="r"><span class="lnk">Open →</span></td></tr>`;});
     tbl.appendChild(tb);panel.appendChild(tbl);
   }
   v.appendChild(panel);
+  $$('#procFilt [data-f]').forEach(b=>b.onclick=()=>{window.PROCDOC_FILTER=b.dataset.f;render();});
+  if($('#newBill'))$('#newBill').onclick=()=>{ if(typeof purchaseInvoiceModal==='function')purchaseInvoiceModal(); else go('purchase_invoice'); };
   $('#newPR').onclick=()=>procDocModal();
   $$('#view tr[data-id]').forEach(tr=>tr.onclick=()=>procDocModal(PROC.find(d=>d.id===tr.dataset.id)));
 }
@@ -7444,6 +7451,11 @@ async function postPurchaseInvoice(){
       INV.moves.push({id:'mv_'+Date.now()+'_'+Math.random().toString(36).slice(2,6),date,itemId:it.id,type:'GRN',warehouse:'Main',qtyIn:x.qty,qtyOut:0,unitCost:x.price,ref:doc,memo:'Purchase invoice '+vendor});});
     try{await store.saveInv();}catch(e){}}
   audit('Purchase invoice posted',doc,vendor+' · '+fmt(gross)+(totVat?(' incl VAT '+fmt(totVat)):''));
+  // register as a Vendor Bill document so it appears in the unified Purchase Documents list & AP
+  try{PROC.push({id:'pc_'+Date.now()+'_'+Math.random().toString(36).slice(2,6),type:'BILL',num:doc,date,vendor,memo:'Vendor bill'+(ref?(' — '+ref):''),
+     lines:valid.map(ln=>{const p=coProducts().find(x=>x.id===ln.productId);return {itemId:ln.productId||'',desc:(p?p.name:ln.desc)||'',accName:p?p.glAccount:ln.glAccount,amount:+(((+ln.qty||0)*(+ln.price||0)).toFixed(2)),qty:+ln.qty||1};}),
+     total:+gross.toFixed(2),vat:+totVat.toFixed(2),status:je.status==='pending'?'pending':'approved',by:CURRENT_USER,billJe:je.jeid,jelinks:[doc],direct:true});
+    await store.saveProc();}catch(e){}
   rebuild();closeModal();render();if(typeof txPulse==='function')txPulse();
   toast('Purchase invoice '+doc+' posted — '+fmt(gross)+(totVat?(' (VAT '+fmt(totVat)+')'):'')+'.');
 }
