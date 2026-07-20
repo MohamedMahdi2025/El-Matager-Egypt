@@ -1227,7 +1227,13 @@ function go(id,opts={}){
   if(opts.party!==undefined)SOA_PARTY=opts.party;
   CRUMB_CTX=(opts._back&&opts.crumb!==undefined)?opts.crumb:'';
   closeMenuLayer(); buildMenu(); render(); $('#view').scrollTop=0;
+  saveRoute();
 }
+function saveRoute(){try{localStorage.setItem('elmatager_route',JSON.stringify({page:CURRENT,acct:LEDGER_ACCT||'',party:(typeof SOA_PARTY!=='undefined'?(SOA_PARTY||''):''),co:(typeof CO!=='undefined'?(CO||''):''),from:PERIOD.from||'',to:PERIOD.to||''}));}catch(e){}}
+function restoreRoute(){try{const raw=localStorage.getItem('elmatager_route');if(!raw)return;const r=JSON.parse(raw);
+  if(r.from||r.to){PERIOD.from=r.from||'';PERIOD.to=r.to||'';if($('#pFrom'))$('#pFrom').value=PERIOD.from;if($('#pTo'))$('#pTo').value=PERIOD.to;}
+  if(r.page&&r.page!=='dashboard'){CURRENT=r.page;if(r.acct)LEDGER_ACCT=r.acct;if(r.party&&typeof SOA_PARTY!=='undefined')SOA_PARTY=r.party;}
+}catch(e){}}
 function goBack(){
   if(!NAV_STACK.length)return;
   const p=NAV_STACK.pop();
@@ -1282,6 +1288,32 @@ function render(){
     periods:renderPeriods,acquisitions:renderAcquisitions,proccycle:renderProcCycle,cycles:renderCycles,
     users:renderUsers,approvals:renderApprovals,roles:renderRolesMatrix,audit:renderAudit,amort:amortWorkspace,amort_detail:renderAmortDetail,amended:renderChangeHistory,companies:renderCompanies,reports_hub:renderReportsHub,import:renderImport,favorites:renderFavorites,dimensions:renderDimensions,pnl_dim:renderPnlDim,products:renderProducts,purchase_invoice:renderPurchaseInvoice,coasetup:renderCoaSetup,monthend:renderMonthEnd,crm:renderCRM,hr:renderHR,mfg:renderMfg,psa:renderProjects,eam:renderMaint,qms:renderQuality,tms:renderFleet,fsm:renderFieldSvc,grc:renderGRC,cloud:renderCloud}[CURRENT]||renderDashboard)(v);
   updateBalChip();
+  try{enableTableSort(v);}catch(e){}
+}
+function enableTableSort(root){
+  root=root||document.getElementById('view'); if(!root)return;
+  root.querySelectorAll('table').forEach(tbl=>{
+    const thead=tbl.tHead, tb=tbl.tBodies[0];
+    if(!thead||!tb||!thead.rows.length||tbl.dataset.sortWired)return;
+    tbl.dataset.sortWired='1';
+    const ths=Array.from(thead.rows[thead.rows.length-1].cells);
+    const parse=v=>{v=(v||'').trim();if(!v)return null;const neg=/^\(.*\)$/.test(v);const cleaned=v.replace(/[(),\sA-Za-z\u00A0]/g,'');if(cleaned&&/^-?[0-9.]+$/.test(cleaned)){const n=parseFloat(cleaned);if(!isNaN(n))return neg?-n:n;}return null;};
+    ths.forEach((th,ci)=>{
+      const label=(th.textContent||'').replace(/[▲▼]/g,'').trim();
+      if(!label)return;
+      th.style.cursor='pointer'; if(!th.title)th.title='Sort by '+label;
+      th.addEventListener('click',()=>{
+        const dir=(th.dataset.dir==='asc')?'desc':'asc';
+        ths.forEach(h=>{h.dataset.dir='';h.querySelectorAll('.sortarw').forEach(s=>s.remove());});
+        th.dataset.dir=dir;
+        const rows=Array.from(tb.rows).filter(r=>r.cells.length>ci&&!r.classList.contains('nosort'));
+        rows.sort((a,b)=>{const av=a.cells[ci].textContent,bv=b.cells[ci].textContent;const an=parse(av),bn=parse(bv);
+          let c;if(an!=null&&bn!=null)c=an-bn;else c=av.localeCompare(bv,undefined,{numeric:true,sensitivity:'base'});return dir==='asc'?c:-c;});
+        rows.forEach(r=>tb.appendChild(r));
+        const ar=document.createElement('span');ar.className='sortarw';ar.textContent=dir==='asc'?' ▲':' ▼';ar.style.cssText='font-size:9px;opacity:.7';th.appendChild(ar);
+      });
+    });
+  });
 }
 function updateBalChip(){
   const diff=+(FULLDR-FULLCR).toFixed(2);
@@ -1765,25 +1797,30 @@ function renderLedger(v){
   // Filter bar
   const fp=el('div','panel');
   const f=el('div','filters');f.style.padding='16px 18px';
-  const acctOpts=['<option value="">All accounts</option>']
-    .concat(ACC.slice().sort((a,b)=>a.name.localeCompare(b.name)).map(a=>`<option value="${esc(a.name)}"${LEDGER_ACCT===a.name?' selected':''}>${esc(a.name)}</option>`)).join('');
+  const accListGL=ACC.slice().sort((a,b)=>a.name.localeCompare(b.name)).map(a=>`<option value="${esc(acctDisplay(a))}">`).join('');
+  const curAccDisp=LEDGER_ACCT?acctDisplay(ACC_BY_NAME[LEDGER_ACCT]||{name:LEDGER_ACCT}):'';
   f.innerHTML=`
-    <label class="fld">Account<select id="fAcc" style="min-width:280px">${acctOpts}</select></label>
+    <label class="fld">Account<input class="f" id="fAcc" list="dlAccGL" placeholder="Type code or name… (blank = all)" value="${esc(curAccDisp)}" style="min-width:280px" autocomplete="off"><datalist id="dlAccGL">${accListGL}</datalist></label>
     <label class="fld">Type<select id="fType"><option value="">All</option>${D.type.filter(x=>x&&x!=='Type').map(t=>`<option${LEDGER_FILTERS.type===t?' selected':''}>${esc(t)}</option>`).join('')}</select></label>
     <label class="fld">Search text<input class="f" id="fText" placeholder="memo, party, doc…" value="${esc(LEDGER_FILTERS.text||'')}" style="min-width:220px"></label>
     <button class="btn sm ghost" id="fClear">Clear</button>
-    <button class="btn sm" id="fExport" style="margin-left:auto"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12m0 0 4-4m-4 4-4-4M5 21h14"/></svg>Export CSV</button>`;
+    <div style="margin-left:auto;display:flex;gap:8px">
+      <button class="btn sm" id="fExport" title="Export CSV"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12m0 0 4-4m-4 4-4-4M5 21h14"/></svg>CSV</button>
+      <button class="btn sm" id="fExcel" title="Export Excel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4zM9 8l6 8M15 8l-6 8"/></svg>Excel</button>
+      <button class="btn sm" id="fPDF" title="Print / save as PDF"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v8H6z"/></svg>PDF</button></div>`;
   fp.appendChild(f);v.appendChild(fp);
 
   const out=el('div');out.id='ledgerOut';v.appendChild(out);
   const draw=()=>{LEDGER_PAGE=0;drawLedger(out);};
-  $('#fAcc').onchange=e=>{LEDGER_ACCT=e.target.value||null;setCrumb(LEDGER_ACCT||'');draw();};
+  $('#fAcc').onchange=e=>{const nm=resolveAccInput(e.target.value);if(!e.target.value.trim()){LEDGER_ACCT=null;}else if(nm){LEDGER_ACCT=nm;e.target.value=acctDisplay(ACC_BY_NAME[nm]);}setCrumb(LEDGER_ACCT||'');draw();};
   ['fType','fText'].forEach(id=>{
     const map={fType:'type',fText:'text'};
     $('#'+id).oninput=e=>{LEDGER_FILTERS[map[id]]=e.target.value;draw();};
   });
   $('#fClear').onclick=()=>{LEDGER_FILTERS={};LEDGER_ACCT=null;go('ledger',{acct:null});};
   $('#fExport').onclick=()=>exportLedger();
+  if($('#fExcel'))$('#fExcel').onclick=()=>exportLedgerExcel();
+  if($('#fPDF'))$('#fPDF').onclick=()=>printReport();
   draw();
 }
 function ledgerFiltered(){
@@ -1826,7 +1863,8 @@ function drawLedger(out){
      <th style="width:92px">Date</th>${singleAcct?'':'<th>Account</th>'}<th style="width:120px">Type</th>
      <th style="width:120px">Doc #</th><th>Memo / Description</th><th>Name</th>
      <th class="r" style="width:110px">Debit</th><th class="r" style="width:110px">Credit</th>
-     ${singleAcct?'<th class="r" style="width:120px">Balance</th>':''}</tr></thead>`;
+     ${singleAcct?'<th class="r" style="width:120px">Balance</th>':''}
+     <th style="width:110px">Created by</th><th style="width:110px">Posted by</th><th style="width:100px">Posted date</th></tr></thead>`;
   const tb=el('tbody');
   // running balance only meaningful for single account, chronological
   let run=0; const start=LEDGER_PAGE*PAGE, slice=rows.slice(start,start+PAGE);
@@ -1838,6 +1876,7 @@ function drawLedger(out){
   slice.forEach((r,si)=>{
     const nm=r.party||'<span class="muted">—</span>';
     const memo=highlightRow(r);
+    const m=rowMeta(r);
     tb.innerHTML+=`<tr>
       <td class="mono" style="white-space:nowrap">${r.date||'—'}</td>
       ${singleAcct?'':`<td class="acctcell">${esc(r.acc.name)}<div class="p">${esc(r.acc.root)}</div></td>`}
@@ -1847,7 +1886,10 @@ function drawLedger(out){
       <td style="color:var(--txt-soft)">${esc(r.party)||'<span class="muted">—</span>'}</td>
       <td class="r mono">${r.dr?fmt(r.dr):'<span class="muted">·</span>'}</td>
       <td class="r mono">${r.cr?fmt(r.cr):'<span class="muted">·</span>'}</td>
-      ${singleAcct?`<td class="r mono" style="font-weight:600">${fmt(runFn(r))}</td>`:''}</tr>`;
+      ${singleAcct?`<td class="r mono" style="font-weight:600">${fmt(runFn(r))}</td>`:''}
+      <td style="font-size:11px">${esc(m.by)}</td>
+      <td style="font-size:11px">${esc(m.postedBy)}</td>
+      <td class="mono" style="font-size:11px">${m.postedDate||'<span class="muted">—</span>'}</td></tr>`;
   });
   tbl.appendChild(tb);panel.appendChild(tbl);
   setTimeout(()=>$$('#ledgerOut .doclink').forEach(c=>c.onclick=()=>{const r=slice[+c.dataset.ri];openEntry({jeid:r.jeid,doc:r.doc,date:r.date,rowRef:r});}),0);
@@ -1962,7 +2004,7 @@ function renderJournals(v){
     panel.appendChild(el('div','empty','<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 20h9M4 20l1-4L16 5l3 3L8 19z"/></svg><div>No manual entries yet. Post one to see it reflected everywhere instantly.</div>'));
   }else{
     const tbl=el('table');
-    tbl.innerHTML=`<thead><tr><th style="width:92px">Date</th><th style="width:80px">Period</th><th style="width:140px">Doc #</th><th>Memo</th><th style="width:96px">Status</th><th class="r">Lines</th><th class="r">Amount</th><th style="width:200px"></th></tr></thead>`;
+    tbl.innerHTML=`<thead><tr><th style="width:92px">Date</th><th style="width:80px">Period</th><th style="width:140px">Doc #</th><th>Memo</th><th style="width:96px">Status</th><th class="r">Lines</th><th class="r">Amount</th><th style="width:110px">Created by</th><th style="width:110px">Posted by</th><th style="width:100px">Posted date</th><th style="width:200px"></th></tr></thead>`;
     const tb=el('tbody');
     POSTED.slice().reverse().forEach(je=>{
       const amt=je.lines.reduce((s,l)=>s+(+l.dr||0),0);
@@ -1970,6 +2012,7 @@ function renderJournals(v){
       const stt=je.reversed?'reversed':(je.reversalOf?'reversal':(je.status||'posted'));
       const stCls={posted:'st-approved',reversal:'st-approved',pending:'st-pending',approved:'st-approved',reversed:'st-rejected',void:'st-rejected',draft:'st-draft'}[stt]||'st-draft';
       const stLbl={posted:'POSTED',reversal:'REVERSAL',pending:'PENDING',approved:'APPROVED',reversed:'REVERSED',void:'VOID',draft:'DRAFT'}[stt]||stt.toUpperCase();
+      const pd=(je.postedAt||je.createdAt||'');const pby=(je.approvals&&je.approvals.length?(je.approvals[je.approvals.length-1].by||je.by):je.by)||je.by||'—';
       tb.innerHTML+=`<tr class="click" data-view="${je.jeid}"><td class="mono">${je.date}</td>
         <td><span class="tag ${closed?'expense':'revenue'}">${closed?'Closed':'Open'}</span></td>
         <td class="mono doclink" style="font-size:12px">${esc(je.doc)}</td>
@@ -1977,6 +2020,9 @@ function renderJournals(v){
         <td><span class="st-tag ${stCls}">${stLbl}</span></td>
         <td class="r mono">${je.lines.length}</td>
         <td class="r mono">${fmt(amt)}</td>
+        <td style="font-size:11px">${esc(je.by||'—')}</td>
+        <td style="font-size:11px">${esc(pby)}</td>
+        <td class="mono" style="font-size:11px">${pd?String(pd).slice(0,10):'<span class="muted">—</span>'}</td>
         <td class="r" onclick="event.stopPropagation()"><button class="btn sm ghost" data-log="${esc(je.doc)}" title="History / log — who, when, what">🕑 Log</button><button class="btn sm ghost" data-view="${je.jeid}">${closed?'View':'Edit'}</button>${(closed||je.reversed||je.status!=='posted')?'':`<button class="btn sm danger" data-del="${je.jeid}">Reverse</button>`}</td></tr>`;
     });
     tbl.appendChild(tb);panel.appendChild(tbl);
@@ -2798,7 +2844,7 @@ $('#btnPost').onclick=()=>openJE();
 function applyPeriod(){
   PERIOD.from=$('#pFrom').value||'';PERIOD.to=$('#pTo').value||'';
   $('#periodCtl').classList.toggle('active',!!(PERIOD.from||PERIOD.to));
-  computeSnaps();render();
+  computeSnaps();render();saveRoute();
 }
 $('#pFrom').onchange=applyPeriod;
 $('#pTo').onchange=applyPeriod;
@@ -2838,10 +2884,34 @@ function exportCSV(name,headers,rows){
   a.href=URL.createObjectURL(blob);a.download=name+co+'.csv';a.click();URL.revokeObjectURL(a.href);
   toast('Exported '+name+'.csv');
 }
+function rowMeta(r){
+  if(r&&r.jeid){const je=POSTED.find(j=>j.jeid===r.jeid);if(je){
+    const pd=(je.postedAt||je.createdAt||'');
+    const pby=(je.approvals&&je.approvals.length?(je.approvals[je.approvals.length-1].by||je.by):je.by)||je.by||'—';
+    return {by:je.by||'—',postedBy:pby,postedDate:pd?String(pd).slice(0,10):''};}}
+  if(r&&r.edited)return {by:'(edited)',postedBy:(typeof CURRENT_USER!=='undefined'?CURRENT_USER:'—')||'—',postedDate:''};
+  return {by:'Imported',postedBy:'Imported',postedDate:''};
+}
+function exportExcel(name,headers,rows){
+  const e=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const th='<tr>'+headers.map(h=>`<th style="background:#1f3a5f;color:#fff;border:1px solid #ccc;padding:4px 8px;text-align:left;font-family:Arial">${e(h)}</th>`).join('')+'</tr>';
+  const body=rows.map(r=>'<tr>'+r.map(c=>{const s=String(c==null?'':c);const isNum=s!==''&&/^-?[\d,]*\.?\d+$/.test(s.replace(/,/g,''));
+    return `<td style="border:1px solid #ddd;padding:3px 8px;font-family:Arial;${isNum?'text-align:right':''}">${e(c)}</td>`;}).join('')+'</tr>').join('');
+  const html=`<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel"><head><meta charset="utf-8"></head><body><table border="1">${th}${body}</table></body></html>`;
+  const co=(typeof activeCoProfile==='function'&&activeCoProfile().name)?(' - '+activeCoProfile().name):'';
+  const blob=new Blob(['\ufeff'+html],{type:'application/vnd.ms-excel'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name+co+'.xls';a.click();URL.revokeObjectURL(a.href);
+  toast('Exported '+name+'.xls (opens in Excel)');
+}
 function exportLedger(){
   const rows=ledgerFiltered().sort((a,b)=>a.date<b.date?-1:1)
-    .map(r=>[r.date,r.acc.name,r.acc.class,r.type,r.doc,r.memo,r.desc,r.party,r.bu,r.dept,r.loc,r.dr||'',r.cr||'']);
-  exportCSV('general_ledger',['Date','Account','Class','Type','Doc','Memo','Description','Name','Business Unit','Department','Location','Debit','Credit'],rows);
+    .map(r=>{const m=rowMeta(r);return [r.date,r.acc.name,r.acc.class,r.type,r.doc,r.memo,r.desc,r.party,r.bu,r.dept,r.loc,r.dr||'',r.cr||'',m.by,m.postedBy,m.postedDate];});
+  exportCSV('general_ledger',['Date','Account','Class','Type','Doc','Memo','Description','Name','Business Unit','Department','Location','Debit','Credit','Created by','Posted by','Posted date'],rows);
+}
+function exportLedgerExcel(){
+  const rows=ledgerFiltered().sort((a,b)=>a.date<b.date?-1:1)
+    .map(r=>{const m=rowMeta(r);return [r.date,r.acc.name,r.acc.class,r.type,r.doc,r.memo,r.desc,r.party,r.bu,r.dept,r.loc,r.dr||'',r.cr||'',m.by,m.postedBy,m.postedDate];});
+  exportExcel('general_ledger',['Date','Account','Class','Type','Doc','Memo','Description','Name','Business Unit','Department','Location','Debit','Credit','Created by','Posted by','Posted date'],rows);
 }
 function exportSOA(){
   if(!SOA_PARTY)return;let run=0;
@@ -3936,6 +4006,7 @@ async function doLogout(){
 function enterApp(){
   $('#login').classList.add('hide');
   $('#app').style.display='';
+  restoreRoute();
   buildMenu();buildUserSwitcher();render();
 }
 function wireLogin(){
@@ -5942,10 +6013,15 @@ function docKey(doc,date){ return (doc||'')+'|'+(date||''); }
 function canEditHistory(){ return can('reverse',{module:'financial'}); }   // Controller / CFO / Admin
 function effectiveBaseWith(edits){
   const keys=Object.keys(edits||{}); if(!keys.length) return BASE;
-  const ov=new Set(keys);
-  const kept=BASE.filter(r=>!ov.has(docKey(r.doc,r.date)));
+  // keep only the most recent override per document (guards against legacy duplicate keys from date moves)
+  const byDoc={};
+  keys.forEach(k=>{const e=edits[k];if(!e)return;const d=e.doc||k.split('|')[0];const st=(e.editedAt||e.voidedAt||'');
+    if(!byDoc[d]||st>=((edits[byDoc[d]].editedAt||edits[byDoc[d]].voidedAt||'')))byDoc[d]=k;});
+  const useKeys=Object.keys(byDoc).map(d=>byDoc[d]);
+  const ovDocs=new Set(Object.keys(byDoc));
+  const kept=BASE.filter(r=>!ovDocs.has(r.doc));   // drop ALL base rows for any edited/voided doc, then re-add once
   const extra=[];
-  keys.forEach(k=>{ const e=edits[k]; if(!e||e.mode==='delete')return;
+  useKeys.forEach(k=>{ const e=edits[k]; if(!e||e.mode==='delete')return;
     const doc=e.doc||k.split('|')[0], date=e.date||k.split('|')[1];
     (e.lines||[]).forEach(l=>{ const acc=ACC_BY_NAME[l.accName]; if(!acc)return;
       extra.push({acc,type:'Journal (edited)',date,doc,memo:l.memo||'',desc:l.memo||'',party:l.party||'',bu:'',dept:'',loc:'',dr:+l.dr||0,cr:+l.cr||0,src:'GL',jeid:null,edited:true}); });
@@ -5997,19 +6073,24 @@ function editHistorical(doc,date){
     if(!cl.length){toast('Add at least one line.',true);return;}
     if(Math.abs(dr-cr)>0.005){toast('Entry is out of balance by '+fmt(dr-cr)+'.',true);return;}
     if(isPeriodClosed(curDate)){toast('Target period is closed.',true);return;}
-    GL_EDITS[docKey(doc,date)]={mode:'edit',doc,date:curDate,lines:cl.map(l=>({accName:l.accName,memo:l.memo||'',party:l.party||'',dr:+l.dr||0,cr:+l.cr||0})),editedBy:CURRENT_USER,editedAt:new Date().toISOString()};
-    await saveGLEdits(); audit('Historical entry edited',doc,fmt(dr)); rebuild(); closeModal(); render(); toast('Historical entry '+doc+' updated across all reports.');
+    clearDocEdits(doc);   // drop any prior override(s) for this voucher so changing the date MOVES it, never duplicates
+    const bkey=docKey(doc,baseDateOf(doc,date));
+    GL_EDITS[bkey]={mode:'edit',doc,date:curDate,lines:cl.map(l=>({accName:l.accName,memo:l.memo||'',party:l.party||'',dr:+l.dr||0,cr:+l.cr||0})),editedBy:CURRENT_USER,editedAt:new Date().toISOString()};
+    await saveGLEdits(); audit('Historical entry edited',doc,fmt(dr)+(curDate!==date?(' · date '+date+' → '+curDate):'')); rebuild(); closeModal(); render(); toast('Historical entry '+doc+' updated across all reports.');
   };
   openModal();
 }
+function baseDateOf(doc,fallback){const r=BASE.find(x=>x.doc===doc);return r?r.date:fallback;}
+function clearDocEdits(doc){Object.keys(GL_EDITS).forEach(k=>{const e=GL_EDITS[k];if((e&&e.doc===doc)||k.split('|')[0]===doc)delete GL_EDITS[k];});}
 async function voidHistorical(doc,date){
   if(!canEditHistory()){toast('Not authorized to void historical entries.',true);return;}
   if(isPeriodClosed(date)){toast('Period is closed. Reopen it first.',true);return;}
   if(!confirm(`Void historical entry ${doc}?\nIt will be removed from the ledger and all statements. The original import stays in the Audit Log.`))return;
-  GL_EDITS[docKey(doc,date)]={mode:'delete',doc,date,voidedBy:CURRENT_USER,voidedAt:new Date().toISOString()};
+  clearDocEdits(doc);
+  GL_EDITS[docKey(doc,baseDateOf(doc,date))]={mode:'delete',doc,date,voidedBy:CURRENT_USER,voidedAt:new Date().toISOString()};
   await saveGLEdits(); audit('Historical entry voided',doc,''); rebuild(); closeModal(); render(); toast('Historical entry '+doc+' voided.');
 }
-function isEditedDoc(doc,date){const e=GL_EDITS[docKey(doc,date)];return e?e.mode:null;}
+function isEditedDoc(doc,date){for(const k in GL_EDITS){const e=GL_EDITS[k];if(e&&e.doc===doc)return e.mode;}return null;}
 
 /* ============================================================
    PREPAID & AMORTIZATION  (NetSuite-style recognition schedules)
