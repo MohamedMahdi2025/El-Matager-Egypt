@@ -1135,12 +1135,34 @@ function openMenuLayer(){}   /* legacy no-op — navigation is now an inline lef
 function closeMenuLayer(){}  /* legacy no-op */
 function buildMenu(){
   const bar=$('#menubar'); if(!bar)return; bar.innerHTML='';
-  const favItem=el('div','sb-item'+(CURRENT==='favorites'?' active':''));
+  const favN=(typeof FAVORITES!=='undefined')?FAVORITES.length:0;
+  const favExpanded=favN>0&&OPEN_MENU==='__fav';
+  const favItem=el('div','sb-item'+(CURRENT==='favorites'?' active':'')+(favExpanded?' expanded':''));
   favItem.style.setProperty('--i',0);
   favItem.innerHTML=`<button type="button" class="sb-btn">
     <svg class="sb-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-    <span class="sb-lbl">Favorites</span>${(typeof FAVORITES!=='undefined'&&FAVORITES.length)?`<span style="margin-left:auto;font-size:10px;font-weight:700;background:var(--accent);color:#fff;border-radius:9px;padding:1px 7px">${FAVORITES.length}</span>`:''}</button>`;
-  favItem.querySelector('.sb-btn').onclick=()=>{OPEN_MENU=null;go('favorites');closeDrawer();};
+    <span class="sb-lbl">Favorites</span>${favN?`<span style="margin-left:auto;font-size:10px;font-weight:700;background:var(--accent);color:#fff;border-radius:9px;padding:1px 7px">${favN}</span>`:''}
+    ${favN?'<svg class="sb-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="m6 9 6 6 6-6"/></svg>':''}</button>`;
+  const favBtn=favItem.querySelector('.sb-btn');
+  if(!favN){ favBtn.onclick=()=>{OPEN_MENU=null;go('favorites');closeDrawer();}; }
+  else{
+    favBtn.onclick=()=>{OPEN_MENU=(OPEN_MENU==='__fav'?null:'__fav');buildMenu();};
+    const sub=el('div','sb-sub');
+    const all=el('a','sb-link'+(CURRENT==='favorites'?' cur':''));all.href='#';
+    all.innerHTML=`<span class="dotli"></span><span class="sb-linktx">All favorites</span>`;
+    all.onclick=e=>{e.preventDefault();OPEN_MENU='__fav';go('favorites');closeDrawer();};
+    sub.appendChild(all);
+    FAVORITES.forEach((f,idx)=>{
+      const a=el('a','sb-link'+((CURRENT===f.page&&CURRENT!=='favorites')?' cur':''));a.href='#';
+      a.innerHTML=`<span class="dotli"></span><span class="sb-linktx">${esc(f.label)}</span>`;
+      a.onclick=e=>{e.preventDefault();OPEN_MENU='__fav';openFav(f);closeDrawer();};
+      const star=el('span','sb-star on');star.textContent='★';star.title='Remove from Favorites';
+      star.onclick=e=>{e.preventDefault();e.stopPropagation();FAVORITES.splice(idx,1);saveFav();if(typeof csSchedule==='function')csSchedule();buildMenu();if(CURRENT==='favorites')render();toast('Removed from Favorites.');};
+      a.appendChild(star);
+      sub.appendChild(a);
+    });
+    favItem.appendChild(sub);
+  }
   bar.appendChild(favItem);
   const curMod=PAGE_MODULE[CURRENT];
   MODULES.forEach((m,i)=>{
@@ -1190,15 +1212,25 @@ document.addEventListener('click',e=>{
 });
 
 let CRUMB_CTX='';   // drill context (account / party) shown as last crumb
+let NAV_STACK=[];   // navigation history for the Back button
 function go(id,opts={}){
   const mid=pageModuleId(id);
   if(mid && currentUser() && !canSeeModule(currentUser(),mid)){
     toast('You don’t have access to that area.',true); id='dashboard';
   }
+  if(!opts._back && CURRENT && CURRENT!==id){
+    NAV_STACK.push({id:CURRENT,acct:LEDGER_ACCT,party:(typeof SOA_PARTY!=='undefined'?SOA_PARTY:undefined),crumb:CRUMB_CTX});
+    if(NAV_STACK.length>30)NAV_STACK.shift();
+  }
   CURRENT=id; if(opts.acct!==undefined)LEDGER_ACCT=opts.acct;
   if(opts.party!==undefined)SOA_PARTY=opts.party;
-  CRUMB_CTX='';
+  CRUMB_CTX=(opts._back&&opts.crumb!==undefined)?opts.crumb:'';
   closeMenuLayer(); buildMenu(); render(); $('#view').scrollTop=0;
+}
+function goBack(){
+  if(!NAV_STACK.length)return;
+  const p=NAV_STACK.pop();
+  go(p.id,{_back:true,acct:p.acct,party:p.party,crumb:p.crumb});
 }
 function crumbs(){
   const mod=PAGE_MODULE[CURRENT], parts=[];
@@ -1211,7 +1243,10 @@ function crumbs(){
   }else{
     parts.push(`<span class="sep">›</span><span class="cur">${esc(title)}</span>`);
   }
-  const c=$('#crumbs');c.innerHTML=parts.join('');
+  const c=$('#crumbs');
+  const backTitle=NAV_STACK.length?(PAGE_TITLE[NAV_STACK[NAV_STACK.length-1].id]||'previous page'):'';
+  c.innerHTML=(NAV_STACK.length?`<a href="#" id="crBack" style="font-weight:700;color:var(--accent);margin-right:4px" title="Back to ${esc(backTitle)}">← Back</a><span class="sep">·</span>`:'')+parts.join('');
+  if($('#crBack'))$('#crBack').onclick=e=>{e.preventDefault();goBack();};
   $$('#crumbs a[data-cr]').forEach(a=>a.onclick=e=>{e.preventDefault();go(a.dataset.cr);});
   try{favControls();}catch(e){}
 }
@@ -1564,6 +1599,8 @@ function renderTrial(v){
 /* ============================================================
    BALANCE SHEET
    ============================================================ */
+function coFiscalStartMonth(){const c=(typeof COMPANIES!=='undefined')?COMPANIES.find(x=>x.id===CO):null;return (c&&+c.fiscalStart)?+c.fiscalStart:1;}
+function fyStartFor(asOfISO){const fm=coFiscalStartMonth();let [y,m]=(asOfISO||todayISO()).split('-').map(Number);let sy=(m<fm)?y-1:y;return sy+'-'+String(fm).padStart(2,'0')+'-01';}
 function renderBalance(v){
   setCtx('Balance Sheet','as at '+(PERIOD.to||'latest'));
   const T=classTotals();
@@ -1582,18 +1619,28 @@ function renderBalance(v){
   body.appendChild(stmtHeader('LIABILITIES'));
   const lTot=classSection(body,'LIABILITY');
   body.appendChild(stmtRow('Total liabilities',lTot,'sub'));
-  // Equity
+  // Equity — split net income into retained earnings brought forward (prior years) vs current-year result
   body.appendChild(stmtHeader('EQUITY'));
   const eTot=classSection(body,'EQUITY');
-  body.appendChild(stmtRow('Retained earnings (net income for period)',T.ni,'leaf'));
-  body.appendChild(stmtRow('Total equity',eTot+T.ni,'sub'));
-  body.appendChild(stmtRow('Total liabilities & equity',lTot+eTot+T.ni,'total'));
+  const asOf=PERIOD.to||_maxDate();
+  const fyS=fyStartFor(asOf);
+  let pRev=0,pExp=0,cRev=0,cExp=0;
+  ROWS.forEach(r=>{if(!r.acc||!r.date||r.date>asOf)return;const cls=r.acc.class;const prior=r.date<fyS;
+    if(cls==='REVENUE'){const a=(r.cr||0)-(r.dr||0);if(prior)pRev+=a;else cRev+=a;}
+    else if(cls==='EXPENSE'){const a=(r.dr||0)-(r.cr||0);if(prior)pExp+=a;else cExp+=a;}});
+  const priorRE=+(pRev-pExp).toFixed(2), curNI=+(cRev-cExp).toFixed(2);
+  const fyYear=fyS.slice(0,4);const fyLabel=(coFiscalStartMonth()>1)?(fyYear+'/'+(+fyYear+1)):fyYear;
+  if(Math.abs(priorRE)>0.005)body.appendChild(stmtRow('Retained earnings — brought forward',priorRE,'leaf'));
+  body.appendChild(stmtRow('Net '+(curNI<0?'loss':'income')+' for the year ('+fyLabel+')',curNI,'leaf'));
+  const totEq=eTot+priorRE+curNI;
+  body.appendChild(stmtRow('Total equity',totEq,'sub'));
+  body.appendChild(stmtRow('Total liabilities & equity',lTot+totEq,'total'));
   // check
-  const chk=Math.abs(aTot-(lTot+eTot+T.ni))<0.01;
+  const chk=Math.abs(aTot-(lTot+totEq))<0.01;
   const c=el('div','summ');
   c.innerHTML=`<div class="it"><div class="l">Total Assets</div><div class="v">${fmt(aTot)}</div></div>
-    <div class="it"><div class="l">Liabilities + Equity</div><div class="v">${fmt(lTot+eTot+T.ni)}</div></div>
-    <div class="it"><div class="l">Balance check</div><div class="v ${chk?'pos':'neg'}">${chk?'✓ balanced':'✗ '+fmt(aTot-(lTot+eTot+T.ni))}</div></div>`;
+    <div class="it"><div class="l">Liabilities + Equity</div><div class="v">${fmt(lTot+totEq)}</div></div>
+    <div class="it"><div class="l">Balance check</div><div class="v ${chk?'pos':'neg'}">${chk?'✓ balanced':'✗ '+fmt(aTot-(lTot+totEq))}</div></div>`;
   panel.appendChild(c);
   panel.appendChild(body);
   v.appendChild(panel);
@@ -1839,6 +1886,27 @@ function drawSOA(out){
 /* ============================================================
    JOURNAL ENTRIES (posted manual + source JE index)
    ============================================================ */
+function txnLogModal(doc){
+  doc=doc||'';
+  const events=(typeof AUDIT!=='undefined'?AUDIT:[]).filter(a=>a&&(a.ref===doc||(doc&&(a.ref||'').indexOf(doc)>=0)||(doc&&(a.detail||'').indexOf(doc)>=0)))
+     .slice().sort((a,b)=>(a.ts||'').localeCompare(b.ts||''));
+  $('#modalTitle').textContent='History — '+doc;
+  const body=$('#modalBody');
+  if(!events.length){
+    body.innerHTML=`<div class="empty" style="padding:22px 16px"><div>No log entries recorded for <b>${esc(doc)}</b> yet.<br><br><span class="muted" style="font-size:12px">Actions such as create, submit for approval, post, edit, reverse and void are recorded here with the user, date and time.</span></div></div>`;
+  }else{
+    const rows=events.map(function(e){var d=new Date(e.ts);
+      return `<tr><td class="mono" style="font-size:11px;white-space:nowrap">${d.toLocaleDateString()}<div class="muted">${d.toLocaleTimeString()}</div></td>
+        <td style="font-weight:600">${esc(e.action)}</td>
+        <td>${esc(e.user)}<div class="muted" style="font-size:10px">${esc(e.role||'')}</div></td>
+        <td style="font-size:11px">${esc(e.detail||'')}</td></tr>`;}).join('');
+    body.innerHTML=`<div class="hint" style="margin:0 0 8px">Every recorded action for this transaction, oldest first — date, time, user and what happened.</div>
+      <div class="panel" style="box-shadow:none"><table><thead><tr><th style="width:110px">Date / time</th><th style="width:170px">Action</th><th style="width:150px">User</th><th>Detail</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+  }
+  $('#modalFoot').innerHTML=`<div style="margin-left:auto"><button class="btn" id="txnLogClose">Close</button></div>`;
+  $('#txnLogClose').onclick=closeModal;
+  openModal();
+}
 function renderJournals(v){
   setCtx('Journal Entries','manual postings');
   const head=el('div','viewhead');
@@ -1861,12 +1929,13 @@ function renderJournals(v){
         <td class="mono doclink" style="font-size:12px">${esc(je.doc)}</td>
         <td>${esc(je.memo)}</td><td class="r mono">${je.lines.length}</td>
         <td class="r mono">${fmt(amt)}</td>
-        <td class="r" onclick="event.stopPropagation()"><button class="btn sm ghost" data-view="${je.jeid}">${closed?'View':'Edit'}</button>${closed?'':`<button class="btn sm danger" data-del="${je.jeid}">Reverse</button>`}</td></tr>`;
+        <td class="r" onclick="event.stopPropagation()"><button class="btn sm ghost" data-log="${esc(je.doc)}" title="History / log — who, when, what">🕑 Log</button><button class="btn sm ghost" data-view="${je.jeid}">${closed?'View':'Edit'}</button>${closed?'':`<button class="btn sm danger" data-del="${je.jeid}">Reverse</button>`}</td></tr>`;
     });
     tbl.appendChild(tb);panel.appendChild(tbl);
   }
   v.appendChild(panel);
   $('#jNew').onclick=()=>openJE();
+  $$('#view [data-log]').forEach(b=>b.onclick=()=>txnLogModal(b.dataset.log));
   $$('#view [data-del]').forEach(b=>b.onclick=()=>reverseJE(b.dataset.del));
   $$('#view [data-view]').forEach(b=>b.onclick=()=>{const je=POSTED.find(x=>x.jeid===b.dataset.view);openJE(je);});
 }
@@ -2462,12 +2531,12 @@ function openJE(existing,opts){
   }else{
     foot.innerHTML=`<div class="hint" style="margin:0">Approval limit: ${userLimit()===Infinity?'unlimited':fmt(userLimit())} · acting as ${esc(currentUser()?currentUser().name:'—')}</div>
       <div style="margin-left:auto;display:flex;gap:10px">
-      ${editing?`<button class="btn danger" id="jeReverse">Reverse entry</button>`:''}
+      ${editing?`<button class="btn" id="jeHist">History</button><button class="btn danger" id="jeReverse">Reverse entry</button>`:''}
       <button class="btn" id="jeCancel">Cancel</button>
       <button class="btn primary" id="jePost">${editing?'Save changes':'Post transaction'}</button></div>`;
     $('#jeCancel').onclick=closeModal;
     $('#jePost').onclick=()=>postJE(editing?existing.jeid:null,doctype);
-    if(editing)$('#jeReverse').onclick=()=>{reverseJE(existing.jeid);};
+    if(editing){$('#jeReverse').onclick=()=>{reverseJE(existing.jeid);};if($('#jeHist'))$('#jeHist').onclick=()=>txnLogModal(existing.doc);}
   }
   openModal();
 }
@@ -2517,8 +2586,9 @@ function openEntry(ref){
       <tfoot><tr style="border-top:2px solid var(--header);font-weight:700;background:#f4f6f8"><td colspan="3" style="padding:9px 14px">Total</td><td class="r mono">${fmt(dr)}</td><td class="r mono">${fmt(cr)}</td></tr></tfoot></table></div>`;
   const canEd=canEditHistory()&&!closed&&doc;
   $('#modalFoot').innerHTML=`<div class="hint" style="margin:0">${lines.length} line${lines.length===1?'':'s'} · ${Math.abs(dr-cr)<0.005?'balanced':'net '+fmt(dr-cr)}</div>
-     <div style="margin-left:auto;display:flex;gap:10px">${canEd?`<button class="btn danger" id="jeVoidH">Void</button><button class="btn primary" id="jeEditH">Edit entry</button>`:''}<button class="btn" id="jeCancel">Close</button></div>`;
+     <div style="margin-left:auto;display:flex;gap:10px">${canEd?`<button class="btn danger" id="jeVoidH">Void</button><button class="btn primary" id="jeEditH">Edit entry</button>`:''}<button class="btn" id="jeHistH">History</button><button class="btn" id="jeCancel">Close</button></div>`;
   $('#jeCancel').onclick=closeModal;
+  if($('#jeHistH'))$('#jeHistH').onclick=()=>txnLogModal(doc);
   if(canEd){$('#jeEditH').onclick=()=>editHistorical(doc,date);$('#jeVoidH').onclick=()=>voidHistorical(doc,date);}
   openModal();
 }
@@ -2527,6 +2597,13 @@ function nextJEDoc(){
   return 'JE-M-'+String(max+1).padStart(5,'0');
 }
 function dimValues(key){const s=new Set((typeof coDims==='function'?(coDims()[key]||[]):[]));(typeof BASE!=='undefined'?BASE:[]).forEach(r=>{if(r[key])s.add(r[key]);});(typeof POSTED!=='undefined'?POSTED:[]).forEach(j=>(j.lines||[]).forEach(l=>{if(l&&l[key])s.add(l[key]);}));return [...s].filter(Boolean).sort();}
+function acctDisplay(a){if(!a)return '';return (a.code?a.code+' · ':'')+(a.name||'');}
+function resolveAccInput(s){s=(s||'').trim();if(!s)return '';
+  let a=ACC.find(x=>acctDisplay(x)===s)||ACC.find(x=>x.name===s)||ACC.find(x=>String(x.code||'')===s);
+  if(a)return a.name;
+  // lenient: unique case-insensitive contains match
+  const low=s.toLowerCase();const hits=ACC.filter(x=>acctDisplay(x).toLowerCase()===low||x.name.toLowerCase()===low);
+  return hits.length===1?hits[0].name:'';}
 function drawJELines(locked){
   const box=$('#jeRows');box.innerHTML='';
   if(!locked){const tg=el('label','chk');tg.style.cssText='display:flex;align-items:center;gap:7px;font-size:12px;margin:0 0 8px;cursor:pointer';
@@ -2534,19 +2611,19 @@ function drawJELines(locked){
     box.appendChild(tg);
     box.insertAdjacentHTML('beforeend',`<datalist id="dlBu">${dimValues('bu').map(x=>`<option value="${esc(x)}">`).join('')}</datalist><datalist id="dlLoc">${dimValues('loc').map(x=>`<option value="${esc(x)}">`).join('')}</datalist><datalist id="dlDept">${dimValues('dept').map(x=>`<option value="${esc(x)}">`).join('')}</datalist><datalist id="dlEmp">${dimValues('emp').map(x=>`<option value="${esc(x)}">`).join('')}</datalist>`);}
   box.appendChild(el('div','jerow hdr',`<div>Account</div><div>Line memo</div><div style="text-align:right">Debit</div><div style="text-align:right">Credit</div><div></div>`));
-  const opts=ACC.slice().sort((a,b)=>a.class.localeCompare(b.class)||a.name.localeCompare(b.name))
-     .map(a=>`<option value="${esc(a.name)}">${a.code?esc(a.code)+' · ':''}${esc(a.name)}</option>`).join('');
+  const accSorted=ACC.slice().sort((a,b)=>a.class.localeCompare(b.class)||a.name.localeCompare(b.name));
+  box.insertAdjacentHTML('beforeend',`<datalist id="dlAcc">${accSorted.map(a=>`<option value="${esc(acctDisplay(a))}">`).join('')}</datalist>`);
   const dis=locked?' disabled':'';
   JE_LINES.forEach((ln,i)=>{
     const row=el('div','jerow');
+    const accVal=ln.accName?acctDisplay(ACC_BY_NAME[ln.accName]||{name:ln.accName}):'';
     row.innerHTML=`
-      <div><select data-i="${i}" data-k="accName"${dis}><option value="">Select account…</option>${opts}</select></div>
+      <div><input class="accpick" list="dlAcc" data-i="${i}" data-k="accName" placeholder="Search code or name…" value="${esc(accVal)}"${dis} autocomplete="off"></div>
       <div><input data-i="${i}" data-k="desc" placeholder="—" value="${esc(ln.desc)}"${dis}></div>
       <div><input class="r" data-i="${i}" data-k="dr" inputmode="decimal" placeholder="0.00" value="${ln.dr}"${dis}></div>
       <div><input class="r" data-i="${i}" data-k="cr" inputmode="decimal" placeholder="0.00" value="${ln.cr}"${dis}></div>
       <div>${locked?'':`<button class="del" data-del="${i}" title="Remove line">×</button>`}</div>`;
     box.appendChild(row);
-    row.querySelector('select').value=ln.accName;
     if(JE_DIMS){const dr=el('div','jedims');dr.style.cssText='display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:-2px 0 8px;padding:0 2px';
       dr.innerHTML=['bu','loc','dept','emp'].map(k=>dimField(i,k,ln,dis)).join('');
       box.appendChild(dr);}
@@ -2554,26 +2631,32 @@ function drawJELines(locked){
   if(locked)return;
   const tog=$('#jeDimTog');if(tog)tog.onchange=e=>{JE_DIMS=e.target.checked;drawJELines(false);};
   $$('#jeRows select,#jeRows input:not([type=checkbox])').forEach(inp=>{
+    const k0=inp.dataset.k;
+    if(k0==='accName'){
+      inp.oninput=e=>{const i=+e.target.dataset.i;JE_LINES[i].accName=resolveAccInput(e.target.value);recalcJE();};
+      inp.onchange=e=>{const i=+e.target.dataset.i;const nm=resolveAccInput(e.target.value);JE_LINES[i].accName=nm;if(nm)e.target.value=acctDisplay(ACC_BY_NAME[nm]);recalcJE();};
+      return;
+    }
     inp.oninput=e=>{const i=+e.target.dataset.i,k=e.target.dataset.k;if(i==null||!k)return;JE_LINES[i][k]=e.target.value;
       if(k==='dr'&&e.target.value)JE_LINES[i].cr='';if(k==='cr'&&e.target.value)JE_LINES[i].dr='';
       if(k==='dr'||k==='cr')recalcJE();};
-    if(inp.dataset.k==='dr'||inp.dataset.k==='cr')inp.onblur=()=>drawJELines()&recalcJE();
+    if(inp.dataset.k==='dr'||inp.dataset.k==='cr')inp.onblur=e=>{const i=+e.target.dataset.i,k=e.target.dataset.k;const n=jeNum(e.target.value);JE_LINES[i][k]=n?String(n):'';drawJELines();recalcJE();};
   });
   $$('#jeRows .del').forEach(b=>b.onclick=()=>{if(JE_LINES.length>1){JE_LINES.splice(+b.dataset.del,1);drawJELines();recalcJE();}});
   recalcJE();
 }
 let JE_DIMS=false;
+function jeNum(v){const n=parseFloat(String(v==null?'':v).replace(/[,\s]/g,''));return isNaN(n)?0:n;}
 function recalcJE(){
   const has=l=>!!l.accName;
-  const dr=JE_LINES.reduce((s,l)=>s+(has(l)?(+l.dr||0):0),0), cr=JE_LINES.reduce((s,l)=>s+(has(l)?(+l.cr||0):0),0);
+  const dr=JE_LINES.reduce((s,l)=>s+(has(l)?jeNum(l.dr):0),0), cr=JE_LINES.reduce((s,l)=>s+(has(l)?jeNum(l.cr):0),0);
   const diff=+(dr-cr).toFixed(2);
-  const orphan=JE_LINES.some(l=>!l.accName&&((+l.dr||0)>0||(+l.cr||0)>0));  // amount typed but no account picked
+  const orphan=JE_LINES.some(l=>!l.accName&&(jeNum(l.dr)>0||jeNum(l.cr)>0));  // amount typed but no account picked
   $('#jeTotDr').textContent=fmt(dr);$('#jeTotCr').textContent=fmt(cr);
   const de=$('#jeDiff');de.textContent=fmt(diff);de.className='v '+((Math.abs(diff)<0.005&&dr>0&&!orphan)?'diff-ok':'diff-bad');
-  de.title=orphan?'A line has an amount but no account selected':'';
   const warn=$('#jeOrphan');if(warn)warn.style.display=orphan?'block':'none';
   const post=$('#jePost');const ok=Math.abs(diff)<0.005&&dr>0&&!orphan;
-  if(post){post.disabled=!ok;post.style.opacity=ok?1:.5;post.style.cursor=ok?'pointer':'not-allowed';}
+  if(post){post.style.opacity=ok?1:.6;}   // keep clickable — postJE explains the reason if not ready
   return ok;
 }
 async function postJE(existingId,doctype){
@@ -2582,12 +2665,12 @@ async function postJE(existingId,doctype){
   const _editDoc=existingId?((POSTED.find(x=>x.jeid===existingId)||{}).doc||$('#jeDoc').value.trim()):'';
   const doc=existingId?_editDoc:nextDocCommit(doctype||'Journal (Manual)');
   const party0=($('#jeParty')&&$('#jeParty').value.trim())||'';
-  const lines=JE_LINES.filter(l=>l.accName&&((+l.dr||0)>0||(+l.cr||0)>0))
-     .map(l=>({accName:l.accName,desc:l.desc||'',party:l.party||party0||'',dr:+l.dr||0,cr:+l.cr||0,bu:l.bu||'',loc:l.loc||'',dept:l.dept||'',emp:l.emp||''}));
+  const lines=JE_LINES.filter(l=>l.accName&&(jeNum(l.dr)>0||jeNum(l.cr)>0))
+     .map(l=>({accName:l.accName,desc:l.desc||'',party:l.party||party0||'',dr:jeNum(l.dr),cr:jeNum(l.cr),bu:l.bu||'',loc:l.loc||'',dept:l.dept||'',emp:l.emp||''}));
   const dr=lines.reduce((s,l)=>s+l.dr,0), cr=lines.reduce((s,l)=>s+l.cr,0);
-  if(!lines.length){toast('Add at least one line with an amount.',true);return;}
-  if(JE_LINES.some(l=>!l.accName&&((+l.dr||0)>0||(+l.cr||0)>0))){toast('A line has an amount but no account selected — pick an account for every line.',true);return;}
-  if(Math.abs(dr-cr)>0.005){toast('Entry is out of balance by '+fmt(dr-cr)+'.',true);return;}
+  if(JE_LINES.some(l=>!l.accName&&(jeNum(l.dr)>0||jeNum(l.cr)>0))){toast('A line has an amount but no account selected — pick an account for every line with a value.',true);return;}
+  if(!lines.length){toast('Add at least one line with an account and a debit or credit amount.',true);return;}
+  if(Math.abs(dr-cr)>0.005){toast('Entry is out of balance by '+fmt(dr-cr)+' — debits must equal credits.',true);return;}
   if(!memo){toast('Add a memo so the entry is traceable.',true);return;}
   if(isPeriodClosed(date)){toast('Cannot post into closed period '+periodOf(date)+'. Reopen it first.',true);return;}
   const attachments=JE_ATTACH.map(a=>({...a}));
