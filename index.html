@@ -3241,9 +3241,10 @@ function renderProcCycle(v){
     const tbl=el('table');
     tbl.innerHTML=`<thead><tr><th>Document</th><th>Type</th><th>Date</th><th>Vendor</th><th class="r">Total</th><th>Status</th><th></th></tr></thead>`;
     const tb=el('tbody');
-    list.slice().reverse().forEach(d=>{tb.innerHTML+=`<tr class="click" data-id="${d.id}"><td class="mono">${esc(d.num)}</td>
+    list.slice().reverse().forEach(d=>{const badge=(d.type==='BILL'&&d.payStatus)?('<span class="st-tag st-'+(d.payStatus==='paid'?'approved':(d.payStatus==='partial'?'pending':'draft'))+'">'+d.payStatus.toUpperCase()+'</span>'):('<span class="st-tag st-'+d.status+'">'+d.status.toUpperCase()+'</span>');
+      tb.innerHTML+=`<tr class="click" data-id="${d.id}"><td class="mono">${esc(d.num)}</td>
       <td>${PROC_LABEL[d.type]}</td><td class="mono">${d.date}</td><td>${esc(d.vendor||'—')}</td>
-      <td class="r mono">${fmt(d.total)}</td><td><span class="st-tag st-${d.status}">${d.status.toUpperCase()}</span></td>
+      <td class="r mono">${fmt(d.total)}</td><td>${badge}</td>
       <td class="r"><span class="lnk">Open →</span></td></tr>`;});
     tbl.appendChild(tb);panel.appendChild(tbl);
   }
@@ -3339,19 +3340,27 @@ function procDocModal(doc){
   const foot=$('#modalFoot');const acts=[];
   if(!editing||doc.status==='draft'||doc.status==='rejected'){acts.push('<button class="btn primary" id="prSave">Save requisition</button>');}
   if(editing){
-    if(doc.type==='PR'&&(doc.status==='approved'||doc.status==='draft'))acts.push('<button class="btn" id="prToPO">Convert to PO</button>');
+    if(doc.type==='PR'&&(doc.status==='approved'||doc.status==='draft')&&!doc.converted)acts.push('<button class="btn" id="prToPO">Convert to PO</button>');
+    if(doc.type==='PR'&&doc.converted)acts.push('<span class="st-tag st-approved" style="align-self:center">Converted → '+esc(doc.childNum||'')+'</span>');
     if(doc.type==='PR'&&doc.status==='pending')acts.push('<span class="st-tag st-pending" style="align-self:center">Awaiting approval</span>');
-    if(doc.type==='PO'&&doc.status==='approved')acts.push('<button class="btn" id="prToBill">Receive &amp; Bill</button>');
+    if(doc.type==='PO'&&doc.status==='approved'&&!doc.billed)acts.push('<button class="btn" id="prToBill">Receive &amp; Bill</button>');
+    if(doc.type==='PO'&&doc.billed)acts.push('<span class="st-tag st-approved" style="align-self:center">Billed → '+esc(doc.childNum||'')+'</span>');
     if(doc.type==='PO'&&doc.status==='pending')acts.push('<span class="st-tag st-pending" style="align-self:center">Awaiting approval</span>');
-    if(doc.type==='BILL'&&doc.status!=='paid')acts.push('<button class="btn" id="prToPay">Pay</button>');
+    if(doc.type==='BILL'&&(doc.payStatus||'open')!=='paid')acts.push('<button class="btn primary" id="prToPay">Pay bill</button>');
+    if(doc.type==='BILL'&&doc.payStatus==='paid')acts.push('<span class="st-tag st-approved" style="align-self:center">Paid in full</span>');
   }
-  foot.innerHTML=`<div class="hint" style="margin:0">${editing?('Status: '+doc.status.toUpperCase()):'Requisition starts the cycle.'}</div>
+  const chainBits=[];
+  if(doc&&doc.fromNum)chainBits.push('From '+esc(doc.fromNum));
+  if(doc&&doc.childNum)chainBits.push('→ '+esc(doc.childNum));
+  if(doc&&doc.type==='BILL')chainBits.push('Paid '+fmt(doc.paidAmount||0)+' / '+fmt(doc.total)+((doc.payStatus&&doc.payStatus!=='open')?(' ('+doc.payStatus+')'):''));
+  const pays=editing&&doc.type==='BILL'?procChildren(doc).filter(d=>d.type==='PMT'):[];
+  foot.innerHTML=`<div class="hint" style="margin:0">${editing?('Status: '+doc.status.toUpperCase()+(chainBits.length?(' · '+chainBits.join(' · ')):'')):'Requisition starts the cycle.'}</div>
     <div style="margin-left:auto;display:flex;gap:10px">${acts.join('')}<button class="btn" id="prClose">Close</button></div>`;
   $('#prClose').onclick=closeModal;
   $('#prSave')&&($('#prSave').onclick=()=>savePR(editing?doc:null));
   $('#prToPO')&&($('#prToPO').onclick=()=>advanceProc(doc,'PO'));
   $('#prToBill')&&($('#prToBill').onclick=()=>advanceProc(doc,'BILL'));
-  $('#prToPay')&&($('#prToPay').onclick=()=>advanceProc(doc,'PMT'));
+  $('#prToPay')&&($('#prToPay').onclick=()=>payBillModal(doc));
   openModal();
   window.__procRead=readLines;
   async function savePR(existing){
@@ -3371,51 +3380,80 @@ function procDocModal(doc){
     toast(needsApproval(total)?'Requisition submitted for approval.':'Requisition saved & approved.');
   }
 }
-async function advanceProc(doc,toType){
+function pcid(){return 'pc_'+Date.now()+'_'+Math.random().toString(36).slice(2,6);}
+function procChildren(doc){return PROC.filter(d=>d.fromId===doc.id);}
+async function advanceProc(doc,toType,payAmt){
+  const prods=(typeof coProducts==='function'?coProducts():[]);
   if(toType==='PO'){
-    const total=doc.total;doc.type='PO';doc.num=nextSeq('po','PO-',5);doc.status=needsApproval(total)?'pending':'approved';
-    await store.saveProc();closeModal();render();toast(needsApproval(total)?'PO created — awaiting approval.':'Purchase order created.');return;
+    const total=doc.total;
+    const po={id:pcid(),type:'PO',num:nextSeq('po','PO-',5),date:doc.date,vendor:doc.vendor,memo:doc.memo,
+      lines:doc.lines.map(l=>({...l})),total,status:needsApproval(total)?'pending':'approved',by:CURRENT_USER,
+      fromId:doc.id,fromNum:doc.num,jelinks:[]};
+    PROC.push(po);doc.converted=true;doc.childNum=po.num;
+    if(typeof audit==='function')audit('PO created from '+doc.num,doc.vendor,fmt(total));
+    await store.saveProc();closeModal();render();procDocModal(po);
+    toast(needsApproval(total)?'PO '+po.num+' created — awaiting approval.':'Purchase order '+po.num+' created (requisition '+doc.num+' kept).');return;
   }
   if(toType==='BILL'){
-    // post bill: Dr each line account (item/prepaid/custom, dimension-tagged), Cr AP total
     const ap=apAcc();if(!ap){toast('No Accounts Payable control account found.',true);return;}
     if(doc.lines.some(l=>l.prepaid))ensurePrepaidAcc();
-    const prods=(typeof coProducts==='function'?coProducts():[]);
-    const jlines=doc.lines.map(l=>{
-      const it=l.itemId?prods.find(p=>p.id===l.itemId):null;
-      let acct = l.prepaid ? (prepaidAcc()||{}).name : (it? it.glAccount : l.accName);
-      if(!acct)acct=l.accName||(depExpenseAcc()||{}).name;
-      return {accName:acct,desc:l.desc||(it?it.name:acct),party:doc.vendor,dr:l.amount,cr:0,bu:l.bu||'',loc:l.loc||'',dept:l.dept||''};
-    });
-    jlines.push({accName:ap.name,desc:'Bill '+doc.num,party:doc.vendor,dr:0,cr:doc.total});
+    const jlines=doc.lines.map(l=>{const it=l.itemId?prods.find(p=>p.id===l.itemId):null;let acct=l.prepaid?(prepaidAcc()||{}).name:(it?it.glAccount:l.accName);if(!acct)acct=l.accName||(depExpenseAcc()||{}).name;
+      return {accName:acct,desc:l.desc||(it?it.name:acct),party:doc.vendor,dr:l.amount,cr:0,bu:l.bu||'',loc:l.loc||'',dept:l.dept||''};});
+    jlines.push({accName:ap.name,desc:'Bill from '+doc.num,party:doc.vendor,dr:0,cr:doc.total});
     const je=await postSystemJE(doc.date,nextSeq('bill','BILL-',5),'Vendor bill — '+(doc.vendor||''),jlines,{doctype:'Vendor Bill'});
     if(!je)return;
-    doc.type='BILL';doc.num=je.doc;doc.status=je.status==='pending'?'pending':'approved';doc.billJe=je.jeid;doc.jelinks=(doc.jelinks||[]).concat(je.doc);
+    const bill={id:pcid(),type:'BILL',num:je.doc,date:doc.date,vendor:doc.vendor,memo:doc.memo,
+      lines:doc.lines.map(l=>({...l})),total:doc.total,status:je.status==='pending'?'pending':'approved',
+      payStatus:'open',paidAmount:0,by:CURRENT_USER,billJe:je.jeid,fromId:doc.id,fromNum:doc.num,jelinks:[je.doc]};
+    PROC.push(bill);doc.billed=true;doc.childNum=je.doc;
     // capitalize asset lines
-    doc.lines.forEach(l=>{if(l.capitalize&&!l.prepaid){const accName=l.itemId?((prods.find(p=>p.id===l.itemId)||{}).glAccount):l.accName;const ca=ACC_BY_NAME[accName];if(ca){const code=nextAssetCode();
+    bill.lines.forEach(l=>{if(l.capitalize&&!l.prepaid){const accName=l.itemId?((prods.find(p=>p.id===l.itemId)||{}).glAccount):l.accName;const ca=ACC_BY_NAME[accName];if(ca){const code=nextAssetCode();
       ASSETS.push({id:'as_'+Date.now()+'_'+Math.random().toString(36).slice(2,6),code,barcode:code,name:l.desc||ca.name,
-        category:ca.name,acqDate:doc.date,cost:l.amount,lifeMonths:LIFE_DEFAULT[ca.root]||LIFE_DEFAULT[ca.name]||60,
-        salvage:0,method:'SL',status:'Active',postedDepThrough:addMonths((doc.date||todayISO()).slice(0,7)+'-01',-1),depExpAcc:(depExpenseAcc()||{}).name,accumDepAcc:(accumDepAcc()||{}).name,sourceDoc:je.doc,sourceKey:doc.date+'|'+ca.name+'|'+je.doc+'|'+l.amount.toFixed(2)});}}});
-    // inventory receipts for inventory-type items
-    doc.lines.forEach(l=>{if(!l.prepaid&&!l.capitalize&&l.itemId){const it=prods.find(p=>p.id===l.itemId);if(it&&it.type==='inventory')billItemGRN(it,l,doc);}});
-    // prepaid → amortization schedule (Dr Prepaid now; recognizes to the item/expense account over N months)
-    doc.lines.forEach(l=>{if(l.prepaid&&typeof AMORT!=='undefined'){const it=l.itemId?prods.find(p=>p.id===l.itemId):null;
-      const def=(prepaidAcc()||{}).name, exp=(it&&it.glAccount)||l.accName||(depExpenseAcc()||{}).name;
-      if(def&&exp){AMORT.schedules.push({id:amid(),name:(l.desc||(it?it.name:'Prepaid'))+' — '+doc.num,type:'prepaid',source:{kind:'bill',ref:doc.id,doc:doc.num},total:l.amount,method:'straight-line',term:+l.pmonths||12,startDate:doc.date,deferredAcct:def,expenseAcct:exp,createdBy:CURRENT_USER,createdAt:new Date().toISOString(),entries:genAmortEntries(l.amount,+l.pmonths||12,doc.date)});}}});
+        category:ca.name,acqDate:bill.date,cost:l.amount,lifeMonths:LIFE_DEFAULT[ca.root]||LIFE_DEFAULT[ca.name]||60,
+        salvage:0,method:'SL',status:'Active',postedDepThrough:addMonths((bill.date||todayISO()).slice(0,7)+'-01',-1),depExpAcc:(depExpenseAcc()||{}).name,accumDepAcc:(accumDepAcc()||{}).name,sourceDoc:je.doc,sourceKey:bill.date+'|'+ca.name+'|'+je.doc+'|'+l.amount.toFixed(2)});}}});
+    // inventory receipts
+    bill.lines.forEach(l=>{if(!l.prepaid&&!l.capitalize&&l.itemId){const it=prods.find(p=>p.id===l.itemId);if(it&&it.type==='inventory')billItemGRN(it,l,bill);}});
+    // prepaid → amortization schedule
+    bill.lines.forEach(l=>{if(l.prepaid&&typeof AMORT!=='undefined'){const it=l.itemId?prods.find(p=>p.id===l.itemId):null;const def=(prepaidAcc()||{}).name,exp=(it&&it.glAccount)||l.accName||(depExpenseAcc()||{}).name;
+      if(def&&exp){AMORT.schedules.push({id:amid(),name:(l.desc||(it?it.name:'Prepaid'))+' — '+bill.num,type:'prepaid',source:{kind:'bill',ref:bill.id,doc:bill.num},total:l.amount,method:'straight-line',term:+l.pmonths||12,startDate:bill.date,deferredAcct:def,expenseAcct:exp,createdBy:CURRENT_USER,createdAt:new Date().toISOString(),entries:genAmortEntries(l.amount,+l.pmonths||12,bill.date)});}}});
     if(typeof AMORT!=='undefined'&&typeof saveAmort==='function')await saveAmort();
     if(typeof store.saveInv==='function')await store.saveInv();
-    await store.saveAssets();await store.saveProc();closeModal();render();
-    const extras=[];if(doc.lines.some(l=>l.capitalize&&!l.prepaid))extras.push('assets capitalized');if(doc.lines.some(l=>!l.prepaid&&!l.capitalize&&l.itemId&&(prods.find(p=>p.id===l.itemId)||{}).type==='inventory'))extras.push('stock received');if(doc.lines.some(l=>l.prepaid))extras.push('amortization scheduled');
-    toast('Bill posted to GL'+(extras.length?' · '+extras.join(', '):'')+(je.status==='pending'?' (pending approval)':''));return;
+    await store.saveAssets();await store.saveProc();closeModal();render();procDocModal(bill);
+    const extras=[];if(bill.lines.some(l=>l.capitalize&&!l.prepaid))extras.push('assets capitalized');if(bill.lines.some(l=>!l.prepaid&&!l.capitalize&&l.itemId&&(prods.find(p=>p.id===l.itemId)||{}).type==='inventory'))extras.push('stock received');if(bill.lines.some(l=>l.prepaid))extras.push('amortization scheduled');
+    toast('Vendor bill '+bill.num+' posted (PO '+doc.num+' kept)'+(extras.length?' · '+extras.join(', '):'')+(je.status==='pending'?' (pending approval)':''));return;
   }
   if(toType==='PMT'){
     const ap=apAcc(),cash=cashAcc();if(!ap||!cash){toast('Missing AP/cash account.',true);return;}
+    const remaining=+((doc.total||0)-(doc.paidAmount||0)).toFixed(2);
+    let amt=(payAmt!=null)?+payAmt:remaining;if(!(amt>0)){toast('Nothing to pay.',true);return;}if(amt>remaining+0.005)amt=remaining;
     const je=await postSystemJE(todayISO(),nextSeq('pmt','PMT-',5),'Payment — '+(doc.vendor||''),
-      [{accName:ap.name,desc:'Settle '+doc.num,party:doc.vendor,dr:doc.total,cr:0},
-       {accName:cash.name,desc:'Payment '+doc.num,party:doc.vendor,dr:0,cr:doc.total}],{doctype:'Vendor Payment'});
-    if(!je)return;doc.type='PMT';doc.num=je.doc;doc.status='paid';doc.payJe=je.jeid;doc.jelinks=(doc.jelinks||[]).concat(je.doc);
-    await store.saveProc();closeModal();render();toast('Payment posted'+(je.status==='pending'?' (pending approval)':''));return;
+      [{accName:ap.name,desc:'Settle '+doc.num,party:doc.vendor,dr:amt,cr:0},
+       {accName:cash.name,desc:'Payment '+doc.num,party:doc.vendor,dr:0,cr:amt}],{doctype:'Vendor Payment'});
+    if(!je)return;
+    const pmt={id:pcid(),type:'PMT',num:je.doc,date:todayISO(),vendor:doc.vendor,memo:'Payment for '+doc.num,
+      lines:[],total:amt,status:'paid',by:CURRENT_USER,payJe:je.jeid,fromId:doc.id,fromNum:doc.num,jelinks:[je.doc]};
+    PROC.push(pmt);
+    doc.paidAmount=+((doc.paidAmount||0)+amt).toFixed(2);
+    doc.payStatus=(doc.paidAmount>=(doc.total||0)-0.005)?'paid':'partial';
+    if(typeof audit==='function')audit('Payment '+je.doc,doc.vendor,fmt(amt)+' against '+doc.num);
+    await store.saveProc();closeModal();render();procDocModal(doc);
+    toast('Payment '+je.doc+' posted ('+fmt(amt)+')'+(doc.payStatus==='paid'?' — bill fully paid':' — '+fmt((doc.total||0)-doc.paidAmount)+' remaining')+(je.status==='pending'?' (pending approval)':''));return;
   }
+}
+function payBillModal(doc){
+  const remaining=+((doc.total||0)-(doc.paidAmount||0)).toFixed(2);
+  $('#modalTitle').textContent='Pay bill '+doc.num;
+  $('#modalBody').innerHTML=`<div class="jgrid">
+    <div class="fld"><span>Vendor</span><div class="roval">${esc(doc.vendor||'—')}</div></div>
+    <div class="fld"><span>Bill total</span><div class="roval mono">${fmt(doc.total)}</div></div>
+    <div class="fld"><span>Already paid</span><div class="roval mono">${fmt(doc.paidAmount||0)}</div></div>
+    <div class="fld"><span>Remaining</span><div class="roval mono">${fmt(remaining)}</div></div>
+    <label class="fld" style="grid-column:1/-1">Payment amount<input class="f" id="payAmt" inputmode="decimal" value="${remaining.toFixed(2)}" style="max-width:none"></label>
+  </div><div class="hint" style="margin-top:8px">A separate Payment document is created and posted to the GL; this bill stays and is marked paid or partially paid.</div>`;
+  $('#modalFoot').innerHTML=`<div style="margin-left:auto;display:flex;gap:10px"><button class="btn" id="payCancel">Cancel</button><button class="btn primary" id="payGo">Post payment</button></div>`;
+  $('#payCancel').onclick=()=>procDocModal(doc);
+  $('#payGo').onclick=()=>{const a=+$('#payAmt').value||0;if(!(a>0)){toast('Enter a payment amount.',true);return;}if(a>remaining+0.005){toast('Amount exceeds the remaining balance.',true);return;}advanceProc(doc,'PMT',a);};
+  openModal();
 }
 
 /* ============================================================
@@ -7454,7 +7492,7 @@ async function postPurchaseInvoice(){
   // register as a Vendor Bill document so it appears in the unified Purchase Documents list & AP
   try{PROC.push({id:'pc_'+Date.now()+'_'+Math.random().toString(36).slice(2,6),type:'BILL',num:doc,date,vendor,memo:'Vendor bill'+(ref?(' — '+ref):''),
      lines:valid.map(ln=>{const p=coProducts().find(x=>x.id===ln.productId);return {itemId:ln.productId||'',desc:(p?p.name:ln.desc)||'',accName:p?p.glAccount:ln.glAccount,amount:+(((+ln.qty||0)*(+ln.price||0)).toFixed(2)),qty:+ln.qty||1};}),
-     total:+gross.toFixed(2),vat:+totVat.toFixed(2),status:je.status==='pending'?'pending':'approved',by:CURRENT_USER,billJe:je.jeid,jelinks:[doc],direct:true});
+     total:+gross.toFixed(2),vat:+totVat.toFixed(2),status:je.status==='pending'?'pending':'approved',payStatus:'open',paidAmount:0,by:CURRENT_USER,billJe:je.jeid,jelinks:[doc],direct:true});
     await store.saveProc();}catch(e){}
   rebuild();closeModal();render();if(typeof txPulse==='function')txPulse();
   toast('Purchase invoice '+doc+' posted — '+fmt(gross)+(totVat?(' (VAT '+fmt(totVat)+')'):'')+'.');
