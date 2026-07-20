@@ -1650,23 +1650,45 @@ function renderBalance(v){
   $('#bsExport').onclick=()=>exportStatement('balance_sheet');$('#bsPrint').onclick=printReport;
 }
 function ppeStatementRows(body){
-  if(typeof ASSETS==='undefined'||!ASSETS.length)return;
   const asOf=PERIOD.to||_maxDate();
-  const live=ASSETS.filter(a=>a.status!=='Disposed'); if(!live.length)return;
-  const groups={};
-  live.forEach(a=>{const k=a.category||'Uncategorised';const ad=assetAccumDep(a,asOf);(groups[k]||(groups[k]={cost:0,dep:0,n:0}));groups[k].cost+=a.cost;groups[k].dep+=ad;groups[k].n++;});
-  const cats=Object.keys(groups).sort(); if(!cats.length)return;
+  // Branch A — fixed-asset register populated: break out cost / accumulated depreciation per asset type
+  const live=(typeof ASSETS!=='undefined')?ASSETS.filter(a=>a.status!=='Disposed'):[];
+  if(live.length){
+    const groups={};
+    live.forEach(a=>{const k=a.category||'Uncategorised';const ad=assetAccumDep(a,asOf);(groups[k]||(groups[k]={cost:0,dep:0,n:0}));groups[k].cost+=a.cost;groups[k].dep+=ad;groups[k].n++;});
+    const cats=Object.keys(groups).sort(); if(!cats.length)return;
+    const h=el('div','srow sub');h.style.marginTop='6px';
+    h.innerHTML=`<div class="nm" style="font-size:10.5px;letter-spacing:.5px">PROPERTY, PLANT &amp; EQUIPMENT — COST &amp; ACCUMULATED DEPRECIATION BY TYPE</div><div class="amt"></div>`;
+    body.appendChild(h);
+    let tc=0,td=0;
+    cats.forEach(k=>{const g=groups[k];tc+=g.cost;td+=g.dep;
+      const cr=el('div','srow leaf');cr.innerHTML=`<div class="nm">${esc(k)} — cost<span class="muted" style="font-size:10px"> · ${g.n} asset${g.n>1?'s':''}</span></div><div class="amt mono">${fmt(g.cost)}</div>`;body.appendChild(cr);
+      const dr=el('div','srow leaf');dr.innerHTML=`<div class="nm" style="color:var(--txt-soft);padding-left:14px">Less: accumulated depreciation</div><div class="amt mono neg">(${fmt(g.dep)})</div>`;body.appendChild(dr);
+      const nr=el('div','srow leaf');nr.innerHTML=`<div class="nm" style="font-weight:600;padding-left:14px">${esc(k)} — net book value</div><div class="amt mono" style="font-weight:600">${fmt(g.cost-g.dep)}</div>`;body.appendChild(nr);
+    });
+    const tr=el('div','srow sub');tr.innerHTML=`<div class="nm">Net PP&amp;E (all types)</div><div class="amt mono">${fmt(tc-td)}</div>`;body.appendChild(tr);
+    const note=el('div','srow');note.innerHTML=`<div class="nm muted" style="font-size:10.5px;font-weight:400">Gross cost ${fmt(tc)} less accumulated depreciation ${fmt(td)} = net ${fmt(tc-td)}, reconciling to the PP&amp;E carried within Total assets above. Sourced from the fixed-asset register, as at ${esc(asOf||'latest')}.</div><div class="amt"></div>`;body.appendChild(note);
+    return;
+  }
+  // Branch B — chart-based (imported data): group fixed-asset COST sections with the ACCUMULATED DEPRECIATION / amortization contra sections
+  if(typeof SECSTATE==='undefined')return;
+  const costRe=/propert|plant|equipment|fixture|furnitur|vehicle|machin|right.?of.?use|\brou\b|lease.?hold|building|\bland\b/i;
+  const contraRe=/accumulat.*deprec|accumulat.*amort|accum\.?\s*dep|accum\.?\s*amort|depreciation$/i;
+  const roots=Object.keys(SECSTATE).filter(r=>SECSTATE[r].class==='ASSET');
+  const contraRoots=roots.filter(r=>contraRe.test(r));
+  const costRoots=roots.filter(r=>costRe.test(r)&&!contraRe.test(r));
+  if(!costRoots.length&&!contraRoots.length)return;
   const h=el('div','srow sub');h.style.marginTop='6px';
-  h.innerHTML=`<div class="nm" style="font-size:10.5px;letter-spacing:.5px">PROPERTY, PLANT &amp; EQUIPMENT — COST &amp; ACCUMULATED DEPRECIATION BY TYPE</div><div class="amt"></div>`;
+  h.innerHTML=`<div class="nm" style="font-size:10.5px;letter-spacing:.5px">FIXED ASSETS — COST &amp; ACCUMULATED DEPRECIATION</div><div class="amt"></div>`;
   body.appendChild(h);
-  let tc=0,td=0;
-  cats.forEach(k=>{const g=groups[k];tc+=g.cost;td+=g.dep;
-    const cr=el('div','srow leaf');cr.innerHTML=`<div class="nm">${esc(k)} — cost<span class="muted" style="font-size:10px"> · ${g.n} asset${g.n>1?'s':''}</span></div><div class="amt mono">${fmt(g.cost)}</div>`;body.appendChild(cr);
-    const dr=el('div','srow leaf');dr.innerHTML=`<div class="nm" style="color:var(--txt-soft);padding-left:14px">Less: accumulated depreciation</div><div class="amt mono neg">(${fmt(g.dep)})</div>`;body.appendChild(dr);
-    const nr=el('div','srow leaf');nr.innerHTML=`<div class="nm" style="font-weight:600;padding-left:14px">${esc(k)} — net book value</div><div class="amt mono" style="font-weight:600">${fmt(g.cost-g.dep)}</div>`;body.appendChild(nr);
-  });
-  const tr=el('div','srow sub');tr.innerHTML=`<div class="nm">Net PP&amp;E (all types)</div><div class="amt mono">${fmt(tc-td)}</div>`;body.appendChild(tr);
-  const note=el('div','srow');note.innerHTML=`<div class="nm muted" style="font-size:10.5px;font-weight:400">Gross cost ${fmt(tc)} less accumulated depreciation ${fmt(td)} = net ${fmt(tc-td)}, reconciling to the PP&amp;E carried within Total assets above. Sourced from the fixed-asset register, as at ${esc(asOf||'latest')}.</div><div class="amt"></div>`;body.appendChild(note);
+  let cost=0,contra=0;
+  costRoots.forEach(r=>{const bal=secBalance(r);cost+=bal;
+    const row=el('div','srow leaf');row.innerHTML=`<div class="nm">${esc(r)} — cost</div><div class="amt mono ${bal<0?'neg':''}">${fmt(bal)}</div>`;body.appendChild(row);});
+  contraRoots.forEach(r=>{const bal=secBalance(r);contra+=bal;
+    const row=el('div','srow leaf');row.innerHTML=`<div class="nm" style="color:var(--txt-soft);padding-left:14px">Less: ${esc(r)}</div><div class="amt mono neg">(${fmt(Math.abs(bal))})</div>`;body.appendChild(row);});
+  const net=cost+contra;   // contra balances are already negative
+  const tr=el('div','srow sub');tr.innerHTML=`<div class="nm">Net fixed assets</div><div class="amt mono ${net<0?'neg':''}">${fmt(net)}</div>`;body.appendChild(tr);
+  const note=el('div','srow');note.innerHTML=`<div class="nm muted" style="font-size:10.5px;font-weight:400">Groups the fixed-asset cost accounts with the accumulated depreciation / amortization contra (already included in Total assets above). Because the imported chart holds a single accumulated-depreciation account, it isn't split by asset type — add per-type accumulated-depreciation accounts, or use the Fixed-Asset register, to break it down further.</div><div class="amt"></div>`;body.appendChild(note);
 }
 function stmtHeader(t){return el('div','srow sub',`<div class="nm">${t}</div><div class="amt"></div>`);}
 function stmtRow(name,amt,cls='leaf'){const r=el('div','srow '+cls);r.innerHTML=`<div class="nm">${esc(name)}</div><div class="amt ${amt<0?'neg':''}">${fmt(amt)}</div>`;return r;}
