@@ -1044,7 +1044,8 @@ const MODULES=[
     {sep:1},
     {id:'journals',t:'Journal Entries',icon:'edit'},
     {id:'_newje',t:'Make Journal Entry',icon:'plus',action:'je'},
-    {id:'periods',t:'Accounting Periods',icon:'scale'}]},
+    {id:'periods',t:'Accounting Periods',icon:'scale'},
+    {id:'monthend',t:'Month-End Close',icon:'scale'}]},
   {id:'ar',label:'Receivables',pages:[
     {id:'ar',t:'AR Overview & Aging',icon:'users'}]},
   {id:'treasury',label:'Banks & Treasury',pages:[
@@ -1060,6 +1061,8 @@ const MODULES=[
     {id:'sales',t:'Revenue Analysis',icon:'trend'}]},
   {id:'purchases',label:'Purchases',pages:[
     {id:'proccycle',t:'Purchase Documents',icon:'book'},
+    {id:'_pos',t:'Purchase Orders',icon:'list',action:'pos'},
+    {id:'_newpo',t:'New Purchase Order',icon:'plus',action:'newpo'},
     {id:'purchase_invoice',t:'Enter Vendor Bill',icon:'edit'},
     {id:'_newpr',t:'New Requisition',icon:'plus',action:'newpr'},
     {sep:1},
@@ -1164,7 +1167,7 @@ function buildMenu(){
       m.pages.forEach(p=>{ if(p.sep)return;
         const a=el('a','sb-link'+(p.id===CURRENT?' cur':''));a.href='#';
         a.innerHTML=`<span class="dotli"></span><span class="sb-linktx">${esc(p.t)}</span>`;
-        a.onclick=e=>{e.preventDefault();OPEN_MENU=m.id;const act=p.action,pid=p.id;if(act==='je'){openJE();}else if(act==='newpr'){if(typeof procDocModal==='function')procDocModal(null);}else go(pid);closeDrawer();};
+        a.onclick=e=>{e.preventDefault();OPEN_MENU=m.id;const act=p.action,pid=p.id;if(act==='je'){openJE();}else if(act==='newpr'){if(typeof procDocModal==='function')procDocModal(null);}else if(act==='newpo'){if(typeof procDocModal==='function')procDocModal(null,'PO');}else if(act==='pos'){window.PROCDOC_FILTER='PO';go('proccycle');}else go(pid);closeDrawer();};
         const star=el('span','sb-star'+(isFavPage(p.id)?' on':''));star.textContent=isFavPage(p.id)?'★':'☆';star.title='Add to Favorites';
         star.onclick=e=>{e.preventDefault();e.stopPropagation();toggleFavPage(p.id,p.t,m.label);buildMenu();};
         a.appendChild(star);
@@ -1232,7 +1235,7 @@ function render(){
     ap:(v)=>withEnqRender(v,'ap',renderAP),ar:(v)=>withEnqRender(v,'ar',renderAR),cashflow:renderCashFlow,depreciation:(v)=>withEnqRender(v,'depreciation',renderDepreciation),
     sales:(v)=>withEnqRender(v,'sales',renderSales),purchases:(v)=>withEnqRender(v,'purchases',renderPurchases),procurement:(v)=>withEnqRender(v,'procurement',renderProcurement),inventory:renderInventory,
     periods:renderPeriods,acquisitions:renderAcquisitions,proccycle:renderProcCycle,cycles:renderCycles,
-    users:renderUsers,approvals:renderApprovals,roles:renderRolesMatrix,audit:renderAudit,amort:amortWorkspace,amort_detail:renderAmortDetail,amended:renderChangeHistory,companies:renderCompanies,reports_hub:renderReportsHub,import:renderImport,favorites:renderFavorites,dimensions:renderDimensions,pnl_dim:renderPnlDim,products:renderProducts,purchase_invoice:renderPurchaseInvoice,coasetup:renderCoaSetup,crm:renderCRM,hr:renderHR,mfg:renderMfg,psa:renderProjects,eam:renderMaint,qms:renderQuality,tms:renderFleet,fsm:renderFieldSvc,grc:renderGRC,cloud:renderCloud}[CURRENT]||renderDashboard)(v);
+    users:renderUsers,approvals:renderApprovals,roles:renderRolesMatrix,audit:renderAudit,amort:amortWorkspace,amort_detail:renderAmortDetail,amended:renderChangeHistory,companies:renderCompanies,reports_hub:renderReportsHub,import:renderImport,favorites:renderFavorites,dimensions:renderDimensions,pnl_dim:renderPnlDim,products:renderProducts,purchase_invoice:renderPurchaseInvoice,coasetup:renderCoaSetup,monthend:renderMonthEnd,crm:renderCRM,hr:renderHR,mfg:renderMfg,psa:renderProjects,eam:renderMaint,qms:renderQuality,tms:renderFleet,fsm:renderFieldSvc,grc:renderGRC,cloud:renderCloud}[CURRENT]||renderDashboard)(v);
   updateBalChip();
 }
 function updateBalChip(){
@@ -3215,7 +3218,7 @@ function renderProcCycle(v){
   if(typeof PROCDOC_FILTER==='undefined')window.PROCDOC_FILTER='ALL';
   const head=el('div','viewhead');
   head.innerHTML=`<div><h2>Purchase Documents</h2><div class="desc">Full vendor cycle — Requisition → Purchase Order → Vendor Bill → Payment. Bills and payments post to the GL; item lines receive stock, asset lines capitalize, prepaid lines create amortization schedules.</div></div>
-    <div class="tools"><button class="btn sm" id="newPR"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>New Requisition</button><button class="btn sm primary" id="newBill"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4zM8 9h8M8 13h5"/></svg>Enter Vendor Bill</button></div>`;
+    <div class="tools"><button class="btn sm" id="newPR"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>New Requisition</button><button class="btn sm" id="newPO"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5h6M5 8h14l-1 12H6z"/></svg>New Purchase Order</button><button class="btn sm primary" id="newBill"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4zM8 9h8M8 13h5"/></svg>Enter Vendor Bill</button></div>`;
   v.appendChild(head);
   const pipe=el('div','panel');
   pipe.innerHTML=`<div class="phd"><h3>Process</h3></div><div style="padding:16px 18px"><div class="pipe">
@@ -3252,13 +3255,15 @@ function renderProcCycle(v){
   $$('#procFilt [data-f]').forEach(b=>b.onclick=()=>{window.PROCDOC_FILTER=b.dataset.f;render();});
   if($('#newBill'))$('#newBill').onclick=()=>{ if(typeof purchaseInvoiceModal==='function')purchaseInvoiceModal(); else go('purchase_invoice'); };
   $('#newPR').onclick=()=>procDocModal();
+  if($('#newPO'))$('#newPO').onclick=()=>procDocModal(null,'PO');
   $$('#view tr[data-id]').forEach(tr=>tr.onclick=()=>procDocModal(PROC.find(d=>d.id===tr.dataset.id)));
 }
-function procDocModal(doc){
+function procDocModal(doc,startType){
   const editing=!!doc;
+  const newType=editing?doc.type:(startType==='PO'?'PO':'PR');
   let PROC_ATTACH = editing&&doc.attachments ? doc.attachments.map(a=>({...a})) : [];
   const isPR=!editing||doc.type==='PR';
-  $('#modalTitle').textContent=editing?(PROC_LABEL[doc.type]+' '+doc.num):'New Purchase Requisition';
+  $('#modalTitle').textContent=editing?(PROC_LABEL[doc.type]+' '+doc.num):(newType==='PO'?'New Purchase Order':'New Purchase Requisition');
   const blankPRLine=()=>({itemId:'',desc:'',accName:'',amount:'',qty:1,capitalize:false,prepaid:false,pmonths:12,bu:'',loc:'',dept:''});
   const lines=editing?doc.lines.map(l=>({...blankPRLine(),...l})):[blankPRLine()];
   const vendors=Object.keys(PARTY).filter(p=>/^VEN-/i.test(p)).sort();
@@ -3338,7 +3343,7 @@ function procDocModal(doc){
   if(!readOnly)$('#prAdd')&&($('#prAdd').onclick=()=>{readLines();lines.push(blankPRLine());$('#prLines').innerHTML=linesHtml();bind();recalc();});
   // footer actions depend on status/type
   const foot=$('#modalFoot');const acts=[];
-  if(!editing||doc.status==='draft'||doc.status==='rejected'){acts.push('<button class="btn primary" id="prSave">Save requisition</button>');}
+  if(!editing||doc.status==='draft'||doc.status==='rejected'){acts.push('<button class="btn primary" id="prSave">'+(newType==='PO'?'Save purchase order':'Save requisition')+'</button>');}
   if(editing){
     if(doc.type==='PR'&&(doc.status==='approved'||doc.status==='draft')&&!doc.converted)acts.push('<button class="btn" id="prToPO">Convert to PO</button>');
     if(doc.type==='PR'&&doc.converted)acts.push('<span class="st-tag st-approved" style="align-self:center">Converted → '+esc(doc.childNum||'')+'</span>');
@@ -3373,11 +3378,12 @@ function procDocModal(doc){
       existing.attachments=PROC_ATTACH.map(a=>({...a}));
       existing.status=needsApproval(total)?'pending':'approved';}
     else{const chain=(typeof APPROVALS_ON!=='undefined'&&APPROVALS_ON)?approvalChain(total):[];
-      PROC.push({id:'pc_'+Date.now()+'_'+Math.random().toString(36).slice(2,6),type:'PR',num:nextSeq('pr','PR-',5),
+      const num=newType==='PO'?nextSeq('po','PO-',5):nextSeq('pr','PR-',5);
+      PROC.push({id:'pc_'+Date.now()+'_'+Math.random().toString(36).slice(2,6),type:newType,num,
       date,vendor,memo,lines:cl,total,attachments:PROC_ATTACH.map(a=>({...a})),status:chain.length?'pending':'approved',needChain:chain,approvals:[],by:CURRENT_USER,jelinks:[]});
-      if(typeof audit==='function')audit(chain.length?'PR submitted':'PR created',vendor,fmt(total));}
+      if(typeof audit==='function')audit(chain.length?(newType+' submitted'):(newType+' created'),vendor,fmt(total));}
     await store.saveProc();closeModal();render();
-    toast(needsApproval(total)?'Requisition submitted for approval.':'Requisition saved & approved.');
+    toast(needsApproval(total)?(newType==='PO'?'Purchase order submitted for approval.':'Requisition submitted for approval.'):(newType==='PO'?'Purchase order saved & approved.':'Requisition saved & approved.'));
   }
 }
 function pcid(){return 'pc_'+Date.now()+'_'+Math.random().toString(36).slice(2,6);}
@@ -5876,7 +5882,7 @@ function amortWorkspace(v){
   const canDo=canActIn(currentUser(),'amort')||canActIn(currentUser(),'financial');
   const head=el('div','viewhead');
   head.innerHTML=`<div><h2>Prepaid & Amortization</h2><div class="desc">Recognition schedules that amortize prepaid/deferred balances to expense monthly — NetSuite-style. Source from bills, journal entries or manual entry.</div></div>
-    ${canDo?'<div class="tools"><button class="btn sm primary" id="amNew"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>New schedule</button></div>':''}`;
+    ${canDo?'<div class="tools"><button class="btn sm" id="amRun"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 17l6-6 4 4 8-8"/></svg>Run Amortization</button><button class="btn sm primary" id="amNew"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>New schedule</button></div>':''}`;
   v.appendChild(head);
   const cutoff=todayISO().slice(0,7);
   const totDef=AMORT.schedules.reduce((t,s)=>t+amRemaining(s),0);
@@ -5907,6 +5913,7 @@ function amortWorkspace(v){
     tbl.appendChild(tb);panel.appendChild(tbl);}
   v.appendChild(panel);
   if(canDo&&$('#amNew'))$('#amNew').onclick=()=>amortModal();
+  if(canDo&&$('#amRun'))$('#amRun').onclick=()=>runAmortModal();
   if($('#amRunAll'))$('#amRunAll').onclick=()=>postAmortDue(cutoff);
   $$('#view [data-open]').forEach(b=>b.onclick=()=>{AMORT_VIEW=b.dataset.open;go('amort_detail');});
 }
@@ -5959,10 +5966,101 @@ async function postAmortOne(sid,index,cutoff){
   if(typeof txPulse==='function'&&n)txPulse();
   toast(n?('Posted '+n+' recognition entr'+(n>1?'ies':'y')+' ('+fmt(tot)+').'):'Nothing due to post (check open periods).',!n);
 }
+/* ============================================================
+   MONTH-END CLOSE — run depreciation (all assets) + post
+   amortization (all schedules) from one place, by month.
+   ============================================================ */
+function renderMonthEnd(v){
+  const canDo=canActIn(currentUser(),'financial')||canActIn(currentUser(),'amort')||isAdmin(currentUser());
+  if(typeof ME_MONTH==='undefined'||!ME_MONTH)window.ME_MONTH=(typeof cutoffMonth==='function'?addMonths(cutoffMonth(),1):todayISO().slice(0,7));
+  const head=el('div','viewhead');
+  head.innerHTML=`<div><h2>Month-End Close</h2><div class="desc">Run the recurring period-end postings for the whole company from one place — depreciation for every asset and amortization for every prepaid/deferred schedule, through the month you choose. Skips already-posted and closed periods.</div></div>`;
+  v.appendChild(head);
+  // month selector
+  const sel=el('div','panel');
+  sel.innerHTML=`<div class="phd"><h3>Period</h3></div><div style="padding:14px 16px;display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+    <label class="fld" style="margin:0"><span>Post through month</span><input type="month" id="meMonth" class="f" value="${ME_MONTH}" style="max-width:180px"></label>
+    <div class="hint" style="margin:0">${PERIOD_STATUS[ME_MONTH]==='closed'?'<b class="neg">This period is closed.</b> ':''}Everything up to and including this month will be posted.</div></div>`;
+  v.appendChild(sel);
+
+  // Depreciation card
+  const cu=(typeof catchUpPlan==='function')?catchUpPlan(ME_MONTH):{monthsPost:0,totalPost:0,skipped:0};
+  const activeAssets=ASSETS.filter(a=>a.status!=='Disposed').length;
+  const depCard=el('div','panel');
+  depCard.innerHTML=`<div class="phd"><h3>Depreciation — all assets</h3><div class="meta">${activeAssets} active</div></div>
+    <div style="padding:14px 16px">
+      <div class="ministat"><div class="m"><div class="l">Outstanding months</div><div class="v">${cu.monthsPost}</div></div>
+        <div class="m"><div class="l">Total to post</div><div class="v">${fmt(cu.totalPost)}</div></div>
+        <div class="m"><div class="l">Closed months skipped</div><div class="v ${cu.skipped?'neg':''}">${cu.skipped||0}</div></div></div>
+      <div style="display:flex;gap:10px;margin-top:12px">${canDo?`<button class="btn primary" id="meDep"${cu.monthsPost?'':' disabled'}>Run depreciation through ${ME_MONTH}</button>`:'<span class="hint">View only.</span>'}
+        <button class="btn" id="meDepOpen">Open Asset Register</button></div>
+      <div class="hint" style="margin-top:8px">Posts one balanced entry per month (Dr Depreciation Expense / Cr Accumulated Depreciation) for every active asset, and marks each asset depreciated through ${ME_MONTH}.</div></div>`;
+  v.appendChild(depCard);
+
+  // Amortization card
+  const amDue=AMORT.schedules.reduce((t,s)=>t+(s.entries||[]).filter(e=>!e.posted&&e.period<=ME_MONTH).reduce((x,e)=>x+e.amount,0),0);
+  const amCnt=AMORT.schedules.reduce((t,s)=>t+(s.entries||[]).filter(e=>!e.posted&&e.period<=ME_MONTH).length,0);
+  const amSched=AMORT.schedules.filter(s=>(s.entries||[]).some(e=>!e.posted&&e.period<=ME_MONTH)).length;
+  const amCard=el('div','panel');
+  amCard.innerHTML=`<div class="phd"><h3>Amortization — all schedules</h3><div class="meta">${AMORT.schedules.length} schedules</div></div>
+    <div style="padding:14px 16px">
+      <div class="ministat"><div class="m"><div class="l">Entries due</div><div class="v">${amCnt}</div></div>
+        <div class="m"><div class="l">Total to post</div><div class="v">${fmt(amDue)}</div></div>
+        <div class="m"><div class="l">Schedules affected</div><div class="v">${amSched}</div></div></div>
+      <div style="display:flex;gap:10px;margin-top:12px">${canDo?`<button class="btn primary" id="meAmort"${amCnt?'':' disabled'}>Post amortization through ${ME_MONTH}</button>`:'<span class="hint">View only.</span>'}
+        <button class="btn" id="meAmortOpen">Open Amortization</button></div>
+      <div class="hint" style="margin-top:8px">Posts one entry per schedule for each month due (Dr expense / Cr prepaid-deferred) across all schedules.</div></div>`;
+  v.appendChild(amCard);
+
+  // Run both
+  if(canDo&&(cu.monthsPost||amCnt)){const both=el('div','panel');
+    both.innerHTML=`<div style="padding:14px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap"><div class="hint" style="margin:0"><b>One click:</b> post depreciation and amortization together through ${ME_MONTH} (${fmt((cu.totalPost||0)+(amDue||0))}).</div>
+      <button class="btn primary" id="meBoth" style="margin-left:auto">Run month-end close</button></div>`;
+    v.appendChild(both);}
+
+  $('#meMonth').onchange=()=>{window.ME_MONTH=$('#meMonth').value||ME_MONTH;render();};
+  if($('#meDepOpen'))$('#meDepOpen').onclick=()=>go('assetreg');
+  if($('#meAmortOpen'))$('#meAmortOpen').onclick=()=>go('amort');
+  if($('#meDep'))$('#meDep').onclick=async()=>{const m=$('#meMonth').value||ME_MONTH;if(typeof catchUpDepreciation==='function')await catchUpDepreciation(m);};
+  if($('#meAmort'))$('#meAmort').onclick=async()=>{const m=$('#meMonth').value||ME_MONTH;if(typeof postAmortDue==='function')await postAmortDue(m);};
+  if($('#meBoth'))$('#meBoth').onclick=async()=>{const m=$('#meMonth').value||ME_MONTH;
+    if(typeof catchUpDepreciation==='function')await catchUpDepreciation(m);
+    if(typeof postAmortDue==='function')await postAmortDue(m);
+    toast('Month-end close complete for '+m+'.');};
+}
+
+function runAmortModal(){  if(!(canActIn(currentUser(),'amort')||canActIn(currentUser(),'financial'))){toast('You are not authorized to post recognition.',true);return;}
+  const cur=todayISO().slice(0,7);
+  const dueThrough=m=>AMORT.schedules.reduce((t,s)=>t+(s.entries||[]).filter(e=>!e.posted&&e.period<=m).reduce((x,e)=>x+e.amount,0),0);
+  const cntThrough=m=>AMORT.schedules.reduce((t,s)=>t+(s.entries||[]).filter(e=>!e.posted&&e.period<=m).length,0);
+  $('#modalTitle').textContent='Run Amortization';
+  $('#modalBody').innerHTML=`<label class="fld">Post monthly recognition through<input class="f" type="month" id="amMonth" value="${cur}" style="max-width:none"></label>
+    <div class="hint" style="margin-top:8px">Posts one entry per schedule for every month up to and including the selected month (Dr expense / Cr prepaid-deferred), skipping already-posted and closed periods — the same way Run Depreciation works.</div>
+    <div class="roval mono" id="amDueAmt" style="margin-top:10px"></div>`;
+  $('#modalFoot').innerHTML=`<div style="margin-left:auto;display:flex;gap:10px"><button class="btn" id="amCancel">Cancel</button><button class="btn primary" id="amGo">Post monthly entries</button></div>`;
+  const refresh=()=>{const m=$('#amMonth').value||cur;$('#amDueAmt').textContent='Due to post through '+m+': '+fmt(dueThrough(m))+' · '+cntThrough(m)+' entr'+(cntThrough(m)===1?'y':'ies');};
+  refresh();
+  $('#amMonth').oninput=refresh;
+  $('#amCancel').onclick=closeModal;
+  $('#amGo').onclick=async()=>{const m=$('#amMonth').value||cur;closeModal();await postAmortDue(m);};
+  openModal();
+}
 async function postAmortDue(cutoff){
-  let total=0;
-  for(const s of AMORT.schedules){ await postAmortOne(s.id,null,cutoff); }
-  toast('Month-end recognition complete.');
+  if(!(canActIn(currentUser(),'amort')||canActIn(currentUser(),'financial'))){toast('Not authorized to post recognition.',true);return;}
+  let n=0,tot=0,closed=0;
+  for(const s of AMORT.schedules){
+    for(const e of (s.entries||[])){
+      if(e.posted||e.period>cutoff)continue;
+      if(isPeriodClosed(e.date)){closed++;continue;}
+      const je=await postSystemJE(e.date,'AMORT-'+(s.name.slice(0,10))+'-'+e.period,'Amortization: '+s.name+' ('+e.period+')',
+        [{accName:s.expenseAcct,desc:'Amortization '+e.period,party:'',dr:e.amount,cr:0},
+         {accName:s.deferredAcct,desc:'Amortization '+e.period,party:'',dr:0,cr:e.amount}],{amortId:s.id,amortPeriod:e.period});
+      if(je){e.posted=true;e.jeid=je.jeid;n++;tot+=e.amount;}
+    }
+  }
+  await saveAmort(); if(n&&typeof audit==='function')audit('Amortization run',cutoff,n+' entries · '+fmt(tot)); rebuild(); render();
+  if(typeof txPulse==='function'&&n)txPulse();
+  toast(n?('Posted '+n+' amortization entr'+(n>1?'ies':'y')+' ('+fmt(tot)+') through '+cutoff+'.'):('Nothing due to post through '+cutoff+(closed?' — '+closed+' in closed periods':'')+'.'),!n);
 }
 function amortModal(){
   if(!(canActIn(currentUser(),'amort')||canActIn(currentUser(),'financial'))){toast('You are not authorized to create schedules.',true);return;}
