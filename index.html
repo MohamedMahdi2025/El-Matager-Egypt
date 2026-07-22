@@ -2565,6 +2565,7 @@ function drawSearch(out){
    JOURNAL ENTRY EDITOR (modal)
    ============================================================ */
 let JE_LINES=[];
+let JE_SCHED={};   // per-line recognition-schedule config (amortization / depreciation) set on the manual entry
 let JE_ATTACH=[];
 const TX_TYPES=[
   {t:'Journal (Manual)',prefix:'JE-M-',seq:'je'},
@@ -2617,6 +2618,7 @@ function openJE(existing,opts){
         <div><span class="b">Difference</span> <span class="v" id="jeDiff">0.00</span></div>
       </div></div>
       <div id="jeOrphan" style="display:none;margin-top:6px;font-size:12px;color:var(--neg,#c0392b)">⚠ A line has an amount but no account selected — pick an account so it counts and the entry balances.</div>`}
+    <div id="jeSchedBox" style="display:none;margin:12px 0;padding:10px 12px;border:1px dashed var(--line);border-radius:10px;background:var(--panel-2,#f7fafd)"></div>
     <div class="attachbox" id="jeAttachBox">
       <div style="display:flex;align-items:center;justify-content:space-between">
         <span style="font-size:12px;font-weight:600;color:var(--txt-soft)">Attachments</span>
@@ -2627,6 +2629,7 @@ function openJE(existing,opts){
     ${locked?'':`<div class="hint" id="jeHint" style="margin-top:8px">Entry must balance before posting. Totals above your approval limit route for approval automatically.</div>`}`;
   drawJELines(locked);
   drawAttach(locked);
+  if(!locked){JE_SCHED={};jeSchedPanel();}
   if(!locked){
     $('#jeAdd').onclick=()=>{JE_LINES.push(blankLine());drawJELines(false);};
     const fileInp=$('#jeFile');if(fileInp)fileInp.onchange=e=>handleAttach(e.target.files);
@@ -2776,7 +2779,56 @@ function recalcJE(){
   const warn=$('#jeOrphan');if(warn)warn.style.display=orphan?'block':'none';
   const post=$('#jePost');const ok=Math.abs(diff)<0.005&&dr>0&&!orphan;
   if(post){post.style.opacity=ok?1:.6;}   // keep clickable — postJE explains the reason if not ready
+  try{jeSchedPanel();}catch(e){}
   return ok;
+}
+function jeSchedPanel(){
+  const box=$('#jeSchedBox'); if(!box)return;
+  const start0=($('#jeDate')&&$('#jeDate').value)||todayISO();
+  const faRoots=['Property and Equipment','Right of Use Assets'];
+  const elig=[];
+  JE_LINES.forEach((l,i)=>{
+    if(!l.accName)return; const acc=ACC_BY_NAME[l.accName]; if(!acc)return; const amt=jeNum(l.dr); if(amt<=0)return;
+    const isPrepaid=acc.class==='ASSET'&&(/prepaid|deferred/i.test(acc.name)||l.accName===((typeof prepaidAcc==='function'&&prepaidAcc())||{}).name);
+    const isFA=acc.class==='ASSET'&&(faRoots.indexOf(acc.root)>=0||/property|equipment|right of use|fixture|furnitur|vehicle|machin|building/i.test(acc.name));
+    if(isPrepaid)elig.push({i,kind:'amort',acc,amt});
+    else if(isFA)elig.push({i,kind:'fa',acc,amt});
+  });
+  // drop configs for lines no longer eligible
+  Object.keys(JE_SCHED).forEach(k=>{if(!elig.some(e=>e.i==k))delete JE_SCHED[k];});
+  if(!elig.length){box.style.display='none';box.innerHTML='';return;}
+  box.style.display='';
+  const expOpts=ACC.filter(a=>a.class==='EXPENSE').map(a=>`<option value="${esc(acctDisplay(a))}">`).join('');
+  const rows=elig.map(e=>{
+    const s=JE_SCHED[e.i]||(JE_SCHED[e.i]={kind:e.kind,on:false,start:start0,months:e.kind==='fa'?(LIFE_DEFAULT[e.acc.name]||LIFE_DEFAULT[e.acc.root]||60):12,expAcc:''});
+    s.kind=e.kind;
+    const endYM=addMonths((s.start||start0).slice(0,7)+'-01',(+s.months||1)-1).slice(0,7);
+    const startYM=(s.start||start0).slice(0,7);
+    if(e.kind==='amort'){
+      return `<div style="margin-bottom:6px"><label style="display:flex;gap:6px;align-items:center;font-size:12px;cursor:pointer"><input type="checkbox" data-sk="on" data-i="${e.i}" ${s.on?'checked':''} style="width:auto">Create <b>amortization schedule</b> for ${esc(e.acc.name)} · ${fmt(e.amt)}</label>
+        ${s.on?`<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:6px;align-items:flex-end">
+          <label class="fld" style="margin:0">From (service starts)<input type="date" data-sk="start" data-i="${e.i}" value="${esc(s.start)}"></label>
+          <label class="fld" style="margin:0">Months<input class="r" data-sk="months" data-i="${e.i}" inputmode="numeric" value="${s.months}" style="width:70px"></label>
+          <label class="fld" style="margin:0">To<div class="roval" style="padding:6px 10px">${startYM} → ${endYM}</div></label>
+          <label class="fld" style="margin:0;min-width:200px">Expense account<input list="dlAccExpJE" data-sk="expAcc" data-i="${e.i}" value="${esc(s.expAcc)}" placeholder="Search expense…" autocomplete="off"></label></div>`:''}</div>`;
+    }
+    return `<div style="margin-bottom:6px"><label style="display:flex;gap:6px;align-items:center;font-size:12px;cursor:pointer"><input type="checkbox" data-sk="on" data-i="${e.i}" ${s.on?'checked':''} style="width:auto">Create <b>fixed asset &amp; depreciation</b> for ${esc(e.acc.name)} · ${fmt(e.amt)}</label>
+      ${s.on?`<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:6px;align-items:flex-end">
+        <label class="fld" style="margin:0">In service from<input type="date" data-sk="start" data-i="${e.i}" value="${esc(s.start)}"></label>
+        <label class="fld" style="margin:0">Useful life (months)<input class="r" data-sk="months" data-i="${e.i}" inputmode="numeric" value="${s.months}" style="width:80px"></label>
+        <label class="fld" style="margin:0">Depreciation<div class="roval" style="padding:6px 10px">${addMonths(startYM+'-01',1).slice(0,7)} → ${endYM}</div></label></div>`:''}</div>`;
+  }).join('');
+  box.innerHTML=`<div style="font-size:11px;font-weight:700;letter-spacing:.5px;color:var(--txt-soft);text-transform:uppercase;margin-bottom:8px">Recognition schedules</div>${rows}
+    <div class="hint" style="margin:4px 0 0">Created when the entry is <b>posted</b>. If the amount needs approval, it materializes once the entry is fully approved. The deferral/cost is already booked by this entry — only the monthly recognition is scheduled.</div>
+    <datalist id="dlAccExpJE">${expOpts}</datalist>`;
+  box.querySelectorAll('[data-sk]').forEach(inp=>{
+    const i=+inp.dataset.i,k=inp.dataset.sk;
+    inp.onchange=()=>{const s=JE_SCHED[i];if(!s)return;
+      if(k==='on')s.on=inp.checked;
+      else if(k==='expAcc')s.expAcc=resolveAccInput(inp.value)||inp.value;
+      else s[k]=inp.value;
+      jeSchedPanel();};
+  });
 }
 async function postJE(existingId,doctype){
   if(rmeta(currentUser()).readonly){toast('Your role is read-only and cannot post transactions.',true);return;}
@@ -2793,28 +2845,60 @@ async function postJE(existingId,doctype){
   if(!memo){toast('Add a memo so the entry is traceable.',true);return;}
   if(isPeriodClosed(date)){toast('Cannot post into closed period '+periodOf(date)+'. Reopen it first.',true);return;}
   const attachments=JE_ATTACH.map(a=>({...a}));
+  const autoSched=[];
+  Object.keys(JE_SCHED).forEach(k=>{const s=JE_SCHED[k];const l=JE_LINES[+k];if(s&&s.on&&l&&l.accName&&jeNum(l.dr)>0){
+    autoSched.push({kind:s.kind,acct:l.accName,amount:jeNum(l.dr),start:s.start||date,months:+s.months||(s.kind==='fa'?60:12),expAcc:s.expAcc||''});}});
+  let theJe;
   if(existingId){
     const je=POSTED.find(x=>x.jeid===existingId);
     if(je.status==='posted' && !isAdmin(currentUser()) && rmeta(currentUser()).rank<80){toast('Posted entries can only be corrected by Reversal.',true);return;}
     if(isPeriodClosed(je.date)){toast('Original period is closed — entry cannot be changed.',true);return;}
     je.date=date;je.doc=doc;je.memo=memo;je.lines=lines;je.attachments=attachments;je.amount=dr;
     if(je.status!=='pending')je.status='posted';
-    bumpSeqFor(doc); audit('JE edited',doc,memo+' · '+fmt(dr));
+    if(autoSched.length&&!je.autoSchedDone)je.autoSched=autoSched;
+    theJe=je; bumpSeqFor(doc); audit('JE edited',doc,memo+' · '+fmt(dr));
   }else{
     const chain=(typeof APPROVALS_ON!=='undefined'&&APPROVALS_ON)?approvalChain(dr):[];
     const status=chain.length?'pending':'posted';
-    POSTED.push({jeid:'je_'+Date.now()+'_'+Math.random().toString(36).slice(2,7),date,doc,memo,lines,
+    const nj={jeid:'je_'+Date.now()+'_'+Math.random().toString(36).slice(2,7),date,doc,memo,lines,
       doctype:doctype||'Journal (Manual)',attachments,status,by:CURRENT_USER,amount:dr,
-      needChain:chain,approvals:[],createdAt:new Date().toISOString()});
-    bumpSeqFor(doc);
+      needChain:chain,approvals:[],createdAt:new Date().toISOString()};
+    if(autoSched.length)nj.autoSched=autoSched;
+    POSTED.push(nj); theJe=nj; bumpSeqFor(doc);
     audit(status==='pending'?'JE submitted for approval':'JE posted',doc,memo+' · '+fmt(dr));
   }
-  await store.save(); await store.saveAssets(); rebuild(); closeModal();
+  if(theJe&&theJe.status==='posted'&&theJe.autoSched&&theJe.autoSched.length&&!theJe.autoSchedDone){jeMaterializeSchedules(theJe);}
+  await store.save(); await store.saveAssets(); if(typeof saveAmort==='function')await saveAmort(); rebuild(); closeModal();
   const chain2=(typeof APPROVALS_ON!=='undefined'&&APPROVALS_ON)?approvalChain(dr):[];
   const pend=chain2.length&&!existingId;
   if(!pend)txPulse();
   toast(existingId?'Entry updated — reports refreshed.':(pend?('Submitted for approval ('+fmt(dr)+') — requires '+chain2.map(l=>LEVEL_LABEL[l]).join(' → ')+'.'):'Transaction posted — reflected across all reports.'));
   render();
+}
+function jeMaterializeSchedules(je){
+  if(!je||!je.autoSched||!je.autoSched.length||je.autoSchedDone)return;
+  let made=0;
+  je.autoSched.forEach(c=>{
+    if(c.kind==='amort'){
+      const exp=c.expAcc||((ACC.find(a=>a.class==='EXPENSE'&&!/deprec|amort/i.test(a.name))||{}).name);
+      if(!exp)return;
+      AMORT.schedules.push({id:amid(),name:(je.memo||'Prepaid')+' — '+je.doc,type:'prepaid',source:{kind:'je',ref:je.jeid,doc:je.doc},
+        total:c.amount,method:'straight-line',term:c.months,startDate:c.start,billDate:je.date,
+        deferredAcct:c.acct,expenseAcct:exp,createdBy:CURRENT_USER,createdAt:new Date().toISOString(),
+        entries:genAmortEntries(c.amount,c.months,c.start)});
+      made++;
+    } else if(c.kind==='fa'){
+      const code=(typeof nextAssetCode==='function')?nextAssetCode():('FA-'+(ASSETS.length+1));
+      ASSETS.push({id:'as_'+Date.now()+'_'+Math.random().toString(36).slice(2,6),code,barcode:code,
+        name:(je.memo||c.acct).slice(0,60),category:c.acct,acqDate:c.start,cost:c.amount,lifeMonths:c.months,salvage:0,method:'SL',
+        status:'Active',postedDepThrough:addMonths((c.start||todayISO()).slice(0,7)+'-01',-1),
+        depExpAcc:(typeof depExpenseAcc==='function')?depExpenseAcc():null,accumDepAcc:(typeof accumDepAcc==='function')?accumDepAcc():null,
+        sourceDoc:je.doc,sourceKey:'je:'+je.jeid});
+      made++;
+    }
+  });
+  je.autoSchedDone=true;
+  if(made&&typeof audit==='function')audit('Recognition schedule created',je.doc,made+' schedule(s)');
 }
 function bumpSeqFor(doc){for(const t of TX_TYPES){if(t.prefix!=='JE-M-'&&doc.indexOf(t.prefix)===0){const n=+doc.slice(t.prefix.length);if(n>(SEQ[t.seq]||0))SEQ[t.seq]=n;}}}
 async function reverseJE(jeid){
@@ -2992,7 +3076,14 @@ function assetCostAccs(){return ACC.filter(a=>['Property and Equipment','Right o
 function cutoffMonth(){return _maxDate().slice(0,7);}
 
 /* ---- approval helpers ---- */
-function currentUser(){return USERS.find(u=>u.id===CURRENT_USER)||USERS[0];}
+function baseRoleOf(u){return normRole((u&&(u._baseRole||u.role))||'');}
+function userCompanies(u){u=u||currentUser();if(typeof COMPANIES==='undefined')return [];
+  if(!u||baseRoleOf(u)==='Administrator'||!Array.isArray(u.companies))return COMPANIES.slice();
+  return COMPANIES.filter(c=>u.companies.indexOf(c.id)>=0);}
+function canSeeCompany(u,coId){return userCompanies(u).some(c=>c.id===coId);}
+function currentUser(){const u=USERS.find(x=>x.id===CURRENT_USER)||USERS[0];if(!u)return u;
+  if(u.coRole&&typeof CO!=='undefined'&&u.coRole[CO]&&normRole(u.coRole[CO])!==normRole(u.role)){return Object.assign({},u,{role:u.coRole[CO],_baseRole:u.role});}
+  return u;}
 function userLimit(){const u=currentUser();return u?u.limit:Infinity;}
 function needsApproval(amount){return APPROVALS_ON && amount>userLimit()+0.005 && !(currentUser()&&currentUser().role==='Administrator');}
 
@@ -3780,6 +3871,13 @@ function userModal(u){
   <div style="margin-top:14px"><div style="font-size:12px;font-weight:600;color:var(--txt-soft);margin-bottom:6px">Operational module manager (grants full access to those modules)</div>
     <div class="mgrgrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px">
       ${OPMODS.map(([id,nm])=>`<label class="userpick" style="font-size:12px"><input type="checkbox" class="uMgr" value="${id}" ${mgr.indexOf(id)>=0?'checked':''} style="width:auto"> ${nm}</label>`).join('')}
+    </div></div>
+  <div style="margin-top:14px"><div style="font-size:12px;font-weight:600;color:var(--txt-soft);margin-bottom:6px">Company access &amp; role per company <span class="muted" style="font-weight:400">— untick a company to hide it entirely from this user. Leave the per-company role blank to use the main role above.</span></div>
+    <div style="display:grid;gap:6px;max-height:200px;overflow:auto;border:1px solid var(--line-2);border-radius:8px;padding:8px">
+      ${(typeof COMPANIES!=='undefined'?COMPANIES:[]).map(c=>{const list=(editing&&Array.isArray(u.companies))?u.companies:null;const allowed=(list===null)?true:list.indexOf(c.id)>=0;const cr=(editing&&u.coRole&&u.coRole[c.id])?u.coRole[c.id]:'';
+        return `<div style="display:flex;gap:8px;align-items:center">
+          <label class="userpick" style="flex:1;font-size:12px"><input type="checkbox" class="uCo" value="${c.id}" ${allowed?'checked':''} style="width:auto"> ${esc(c.name)}</label>
+          <select class="uCoRole" data-co="${c.id}" style="max-width:180px;font-size:12px"><option value="">— main role —</option>${ROLES.map(r=>`<option value="${r}"${cr===r?' selected':''}>${r}</option>`).join('')}</select></div>`;}).join('')}
     </div></div>`;
   $('#modalFoot').innerHTML=`<div style="margin-left:auto;display:flex;gap:10px">${editing&&u.id!=='u_admin'?'<button class="btn danger" id="uDel">Delete</button>':''}<button class="btn" id="uCancel">Cancel</button><button class="btn primary" id="uSave">Save</button></div>`;
   const showDesc=()=>{const r=$('#uRole').value;const m=ROLE_META[r];$('#uRoleDesc').innerHTML=m?('<b>'+r+':</b> '+m.desc+' · default limit '+(m.limit===Infinity?'unlimited':fmt(m.limit))+' EGP'):'';};
@@ -3792,8 +3890,11 @@ function userModal(u){
     const password=$('#uPass').value.trim()||'Welcome@2025';
     const active=$('#uActive').value==='1';
     const modMgr=$$('.uMgr').filter(c=>c.checked).map(c=>c.value);
-    if(editing){u.name=name;u.role=role;u.limit=limit;u.email=email;u.password=password;u.active=active;u.modMgr=modMgr;audit('User updated',name,role);}
-    else {USERS.push({id:'u_'+Date.now(),name,role,limit,active,email,password,modMgr});audit('User created',name,role);}
+    const cos=$$('.uCo').filter(c=>c.checked).map(c=>c.value);
+    const companies=(typeof COMPANIES!=='undefined'&&cos.length===COMPANIES.length)?null:cos; // all ticked = full access (null)
+    const coRole={};$$('.uCoRole').forEach(s=>{if(s.value&&cos.indexOf(s.dataset.co)>=0)coRole[s.dataset.co]=s.value;});
+    if(editing){u.name=name;u.role=role;u.limit=limit;u.email=email;u.password=password;u.active=active;u.modMgr=modMgr;if(companies===null)delete u.companies;else u.companies=companies;u.coRole=coRole;audit('User updated',name,role);}
+    else {USERS.push({id:'u_'+Date.now(),name,role,limit,active,email,password,modMgr,companies:companies===null?undefined:companies,coRole});audit('User created',name,role);}
     await store.saveUsers();closeModal();buildUserSwitcher();buildMenu();render();toast('User saved');};
   if(editing&&u.id!=='u_admin')$('#uDel').onclick=async()=>{if(USERS.length<=1){toast('At least one user required.',true);return;}USERS=USERS.filter(x=>x.id!==u.id);if(CURRENT_USER===u.id)CURRENT_USER=USERS[0].id;audit('User removed',u.name,'');await store.saveUsers();closeModal();buildUserSwitcher();render();toast('User removed');};
   openModal();
@@ -3849,6 +3950,7 @@ async function decide(token,approve){
     audit('Approved · '+LEVEL_LABEL[lv],it.num,'');
     if(fullyApproved(doc)){
       doc.status=(kind==='JE')?'posted':'approved';
+      if(kind==='JE'&&doc.autoSched&&doc.autoSched.length&&!doc.autoSchedDone){jeMaterializeSchedules(doc);}
       audit((kind==='JE')?'JE posted (approved)':'PO approved',it.num,fmt(it.amount));
       toast('Fully approved — '+it.num+(kind==='JE'?' posted to the ledger.':' approved.'));
     }else{
@@ -3858,7 +3960,7 @@ async function decide(token,approve){
     doc.status='rejected'; audit('Rejected',it.num,'');
     toast('Document '+it.num+' rejected.');
   }
-  if(kind==='JE')await store.save(); else await store.saveProc();
+  if(kind==='JE'){await store.save();await store.saveAssets();if(typeof saveAmort==='function')await saveAmort();} else await store.saveProc();
   rebuild();render();
 }
 
@@ -3977,7 +4079,9 @@ function buildUserSwitcher(){
   const u=currentUser();if(!u){host.innerHTML='';return;}
   host.innerHTML=`<div class="avatar">${initials(u.name)}</div>
     <select id="userSel" title="Acting user">${USERS.map(x=>`<option value="${x.id}"${x.id===CURRENT_USER?' selected':''}>${esc(x.name)} · ${x.role}</option>`).join('')}</select>`;
-  $('#userSel').onchange=async e=>{CURRENT_USER=e.target.value;await store.saveCfg();buildUserSwitcher();if(['approvals','users'].includes(CURRENT))render();toast('Acting as '+currentUser().name);};
+  $('#userSel').onchange=async e=>{CURRENT_USER=e.target.value;await store.saveCfg();
+    try{const allowed=userCompanies(currentUser());if(allowed.length&&!allowed.some(c=>c.id===CO)){CO=allowed[0].id;rebuild();}}catch(err){}
+    buildUserSwitcher();buildMenu();render();toast('Acting as '+currentUser().name);};
   if(typeof buildCoSwitcher==='function')buildCoSwitcher();
   if(typeof buildScopeSwitcher==='function')buildScopeSwitcher();
   if(typeof applyCoBranding==='function')applyCoBranding();
@@ -4028,6 +4132,7 @@ function enterApp(){
   $('#login').classList.add('hide');
   $('#app').style.display='';
   restoreRoute();
+  try{const allowed=userCompanies(currentUser());if(allowed.length&&!allowed.some(c=>c.id===CO)){CO=allowed[0].id;if(typeof rebuild==='function')rebuild();}}catch(e){}
   buildMenu();buildUserSwitcher();render();
 }
 function wireLogin(){
@@ -6470,6 +6575,7 @@ function markDirtyCompany(){try{captureActive();persistCoBlob(CO);}catch(e){}}
 async function switchCompany(id){
   if(id===CO)return;
   if(!COMPANIES.some(c=>c.id===id)){toast('Company not found.',true);return;}
+  if(!isAdmin(currentUser())&&!canSeeCompany(currentUser(),id)){toast('You do not have access to that company.',true);return;}
   _coSwitching=true;
   captureActive();await persistCoBlob(CO);
   CO=id; if(!CO_DATA[id])CO_DATA[id]=emptyCompanyData();
@@ -6516,13 +6622,20 @@ function buildCoSwitcher(){
   const host=$('#whoami'); if(!host)return;
   let chip=$('#coChip');
   if(!chip){chip=el('select','cochip');chip.id='coChip';chip.title='Active company';host.parentNode.insertBefore(chip,host);}
-  chip.innerHTML=COMPANIES.map(c=>`<option value="${c.id}"${c.id===CO?' selected':''}>${esc(c.name)}</option>`).join('')+(isAdmin(currentUser())?'<option value="__manage">⚙ Manage companies…</option>':'');
+  const allowed=userCompanies(currentUser());
+  if(!allowed.length){chip.innerHTML='<option>(no company access)</option>';chip.disabled=true;return;}
+  chip.disabled=false;
+  chip.innerHTML=allowed.map(c=>`<option value="${c.id}"${c.id===CO?' selected':''}>${esc(c.name)}</option>`).join('')+(isAdmin(currentUser())?'<option value="__manage">⚙ Manage companies…</option>':'');
   chip.onchange=e=>{const v=e.target.value;if(v==='__manage'){chip.value=CO;go('companies');}else switchCompany(v);};
 }
 function buildScopeSwitcher(){
   const host=$('#whoami'); if(!host)return;
   let chip=$('#scopeChip');
   if(!chip){chip=el('select','cochip');chip.id='scopeChip';chip.title='Reporting scope';chip.style.maxWidth='150px';const co=$('#coChip');host.parentNode.insertBefore(chip,co||host);}
+  const allowed=userCompanies(currentUser());
+  const canConsol=isAdmin(currentUser())||(typeof COMPANIES!=='undefined'&&allowed.length===COMPANIES.length);
+  if(!canConsol){chip.style.display='none';if(REPORT_SCOPE==='consolidated'){REPORT_SCOPE='company';}return;}
+  chip.style.display='';
   chip.innerHTML=`<option value="company"${REPORT_SCOPE==='company'?' selected':''}>▦ This company</option><option value="consolidated"${REPORT_SCOPE==='consolidated'?' selected':''}>▧ Consolidated</option>`;
   chip.onchange=e=>{REPORT_SCOPE=e.target.value;rebuild();buildMenu();render();toast(REPORT_SCOPE==='consolidated'?'Consolidated view — all '+COMPANIES.length+' companies combined':'Single-company view — '+coName(CO));};
 }
