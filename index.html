@@ -252,10 +252,9 @@ td.mono,th.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
 .login-brand:after{content:"";position:absolute;left:-140px;bottom:-160px;width:420px;height:420px;border-radius:50%;background:radial-gradient(circle,rgba(47,136,208,.18),transparent 70%)}
 .login-brand .lgb{position:relative;z-index:2;max-width:440px}
 .login-brand .mark{display:flex;align-items:center;gap:12px;margin-bottom:38px}
-.login-brand .mark .glyph{width:52px;height:52px;border-radius:13px;flex:none;box-shadow:0 8px 24px rgba(0,0,0,.3)}
-.login-brand .mark .nm{font-size:19px;font-weight:700;letter-spacing:.2px}
-.login-brand .mark .nm small{display:block;font-size:11.5px;color:#9db4c9;font-weight:500;letter-spacing:.3px}
-.login-brand .mark .nm small.byline{font-size:9px;color:#6d879e;margin-top:1px;letter-spacing:.5px}
+.login-brand .mark .glyph{width:54px;height:54px;border-radius:14px;flex:none;box-shadow:0 10px 28px rgba(0,0,0,.35)}
+.login-brand .mark .nm .bn{display:block;font-family:Georgia,'Iowan Old Style','Times New Roman',serif;font-weight:700;font-style:italic;font-size:25px;letter-spacing:.3px;line-height:1.05;background:linear-gradient(92deg,#ffffff 30%,#84c9ff);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent}
+.login-brand .mark .nm small{display:block;font-size:10.5px;color:#9db4c9;font-weight:700;letter-spacing:1.6px;text-transform:uppercase;margin-top:5px}
 .login-brand h1{font-size:34px;line-height:1.18;font-weight:700;letter-spacing:-.6px;margin:0 0 16px}
 .login-brand p{font-size:15px;line-height:1.6;color:#c2d3e2;margin:0 0 30px}
 .login-brand .feat{display:flex;flex-direction:column;gap:13px}
@@ -486,16 +485,16 @@ tr.click:hover{background:var(--accent-soft) !important}
 @keyframes aurora{0%,100%{background-position:0% 0%,100% 0%,50% 100%}50%{background-position:40% 30%,60% 20%,40% 80%}}
 .nsHeader,.subbar,.view{position:relative;z-index:1}
 
-#sidebar{width:240px;flex:none;display:flex;flex-direction:column;overflow:hidden;z-index:40;
+#sidebar{width:240px;flex:none;display:flex;flex-direction:column;overflow-y:auto;overflow-x:hidden;z-index:40;
   background:linear-gradient(180deg,#1b2e42,#132436 55%,#0d1b29);border-right:1px solid rgba(255,255,255,.06)}
-.menubar::-webkit-scrollbar{width:8px}.menubar::-webkit-scrollbar-thumb{background:#2b4763;border-radius:4px}
-.sb-brand{display:flex;align-items:center;gap:11px;padding:16px 16px 12px;flex:none;position:relative;z-index:5;
-  background:#182838;box-shadow:0 8px 16px -10px rgba(0,0,0,.7);border-bottom:1px solid rgba(255,255,255,.07)}
+#sidebar::-webkit-scrollbar{width:9px}#sidebar::-webkit-scrollbar-thumb{background:#2b4763;border-radius:4px}#sidebar::-webkit-scrollbar-track{background:transparent}
+.sb-brand{display:flex;align-items:center;gap:11px;padding:16px 16px 12px;position:sticky;top:0;z-index:30;
+  background:#182838;box-shadow:0 8px 16px -10px rgba(0,0,0,.75);border-bottom:1px solid rgba(255,255,255,.07)}
 .sb-brand .logo{width:38px;height:38px;flex:none}
-.sb-brand-tx{color:#fff;font-weight:700;font-size:15.5px;line-height:1.15}
-.sb-brand-tx span{display:block;font-size:10px;color:#8ba6bf;font-weight:600;letter-spacing:.8px;text-transform:uppercase}
-.sb-brand-tx em{display:block;font-style:normal;font-size:8px;color:#5f7a94;font-weight:500;letter-spacing:.4px;margin-top:2px}
-.menubar{display:flex;flex-direction:column;gap:2px;padding:6px 10px 22px;flex:1 1 auto;min-height:0;overflow-y:auto;overflow-x:hidden;background:none;border:none}
+.sb-brand-tx{line-height:1.1}
+.sb-brand-tx .bn{display:block;font-family:Georgia,'Iowan Old Style','Times New Roman',serif;font-weight:700;font-style:italic;font-size:16.5px;letter-spacing:.3px;background:linear-gradient(92deg,#ffffff 25%,#84c9ff);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent}
+.sb-brand-tx span{display:block;font-size:9px;color:#8ba6bf;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin-top:3px}
+.menubar{display:flex;flex-direction:column;gap:2px;padding:6px 10px 22px;overflow:visible;background:none;border:none;height:auto;min-height:0}
 .sb-item{border-radius:10px;animation:sbIn .4s cubic-bezier(.2,.8,.3,1) both;animation-delay:calc(var(--i,0)*22ms)}
 @keyframes sbIn{from{opacity:0;transform:translateX(-14px)}to{opacity:1;transform:none}}
 .sb-btn{width:100%;display:flex;align-items:center;gap:11px;padding:10px 12px;border:none;background:none;color:#c4d4e2;
@@ -644,7 +643,7 @@ tr.click:hover{box-shadow:inset 3px 0 0 var(--accent)}
 <div id="login" class="hide">
   <div class="login-brand">
     <div class="lgb">
-      <div class="mark"><svg class="glyph" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Best Books Online"><defs><linearGradient id="bblgL" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#4f9bff"/><stop offset="1" stop-color="#173a7a"/></linearGradient></defs><rect x="2.5" y="2.5" width="43" height="43" rx="12" fill="url(#bblgL)"/><path d="M24 15.4c-3.2-1.9-6.9-2.1-10.2-1.1-.6.18-1 .74-1 1.36v16.9c0 .84.8 1.46 1.62 1.25 3.1-.79 6.4-.46 9.58 1.3" fill="#fff"/><path d="M24 15.4c3.2-1.9 6.9-2.1 10.2-1.1.6.18 1 .74 1 1.36v16.9c0 .84-.8 1.46-1.62 1.25-3.1-.79-6.4-.46-9.58 1.3" fill="#cfe0fb"/><path d="M24 15.4v20.9" stroke="#173a7a" stroke-width="1.3"/><polyline points="14.6,29 18.6,25 22,26.6 26.6,20.4 31.6,22.8" fill="none" stroke="#34d399" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/><circle cx="31.6" cy="22.8" r="1.9" fill="#34d399"/></svg><div class="nm">Best Books Online<small>ERP System · Ledger Console</small><small class="byline">by Mahdi</small></div></div>
+      <div class="mark"><svg class="glyph" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Best Books Online"><defs><linearGradient id="bbNewL" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#6d5efc"/><stop offset="1" stop-color="#00b3d6"/></linearGradient><linearGradient id="bbBarL" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#dff3ff"/></linearGradient></defs><rect x="2.5" y="2.5" width="43" height="43" rx="13" fill="url(#bbNewL)"/><rect x="12" y="27" width="6.5" height="9.5" rx="2.2" fill="url(#bbBarL)"/><rect x="20.75" y="21" width="6.5" height="15.5" rx="2.2" fill="url(#bbBarL)"/><rect x="29.5" y="14.5" width="6.5" height="22" rx="2.2" fill="url(#bbBarL)"/><line x1="13.6" y1="30" x2="16.9" y2="30" stroke="#6d5efc" stroke-width="1.1" stroke-linecap="round"/><line x1="22.35" y1="24" x2="25.65" y2="24" stroke="#6d5efc" stroke-width="1.1" stroke-linecap="round"/><line x1="31.1" y1="17.6" x2="34.4" y2="17.6" stroke="#00b3d6" stroke-width="1.1" stroke-linecap="round"/><path d="M38 8.4l.95 2.35 2.35.95-2.35.95-.95 2.35-.95-2.35-2.35-.95 2.35-.95z" fill="#ffd54a"/></svg><div class="nm"><b class="bn">Best Books Online</b><small>ERP System · Ledger Console</small></div></div>
       <h1>The financial control center for Best Books Online.</h1>
       <p>General ledger, payables &amp; receivables, treasury, fixed assets, procurement and reporting — one connected system.</p>
       <div class="feat">
@@ -684,7 +683,7 @@ tr.click:hover{box-shadow:inset 3px 0 0 var(--accent)}
 <div id="app">
   <div class="scrim" id="scrim"></div>
   <aside id="sidebar">
-    <div class="sb-brand"><svg class="logo" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Best Books Online"><defs><linearGradient id="bblg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#4f9bff"/><stop offset="1" stop-color="#173a7a"/></linearGradient></defs><rect x="2.5" y="2.5" width="43" height="43" rx="12" fill="url(#bblg)"/><path d="M24 15.4c-3.2-1.9-6.9-2.1-10.2-1.1-.6.18-1 .74-1 1.36v16.9c0 .84.8 1.46 1.62 1.25 3.1-.79 6.4-.46 9.58 1.3" fill="#fff"/><path d="M24 15.4c3.2-1.9 6.9-2.1 10.2-1.1.6.18 1 .74 1 1.36v16.9c0 .84-.8 1.46-1.62 1.25-3.1-.79-6.4-.46-9.58 1.3" fill="#cfe0fb"/><path d="M24 15.4v20.9" stroke="#173a7a" stroke-width="1.3"/><polyline points="14.6,29 18.6,25 22,26.6 26.6,20.4 31.6,22.8" fill="none" stroke="#34d399" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/><circle cx="31.6" cy="22.8" r="1.9" fill="#34d399"/></svg><div class="sb-brand-tx">Best Books Online<span>ERP System</span><em>by Mahdi</em></div></div>
+    <div class="sb-brand"><svg class="logo" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Best Books Online"><defs><linearGradient id="bbNew" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#6d5efc"/><stop offset="1" stop-color="#00b3d6"/></linearGradient><linearGradient id="bbBar" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#dff3ff"/></linearGradient></defs><rect x="2.5" y="2.5" width="43" height="43" rx="13" fill="url(#bbNew)"/><rect x="12" y="27" width="6.5" height="9.5" rx="2.2" fill="url(#bbBar)"/><rect x="20.75" y="21" width="6.5" height="15.5" rx="2.2" fill="url(#bbBar)"/><rect x="29.5" y="14.5" width="6.5" height="22" rx="2.2" fill="url(#bbBar)"/><line x1="13.6" y1="30" x2="16.9" y2="30" stroke="#6d5efc" stroke-width="1.1" stroke-linecap="round"/><line x1="22.35" y1="24" x2="25.65" y2="24" stroke="#6d5efc" stroke-width="1.1" stroke-linecap="round"/><line x1="31.1" y1="17.6" x2="34.4" y2="17.6" stroke="#00b3d6" stroke-width="1.1" stroke-linecap="round"/><path d="M38 8.4l.95 2.35 2.35.95-2.35.95-.95 2.35-.95-2.35-2.35-.95 2.35-.95z" fill="#ffd54a"/></svg><div class="sb-brand-tx"><b class="bn">Best Books Online</b><span>ERP System</span></div></div>
     <nav class="menubar" id="menubar"></nav>
   </aside>
   <div id="main">
@@ -1841,12 +1840,23 @@ function ledgerFiltered(){
   return rows;
 }
 let LEDGER_PAGE=0;const PAGE=200;
+let LEDGER_SORT={col:'date',dir:'asc'};
+function ledgerSortKey(r,col){
+  if(col==='cby'||col==='pby'||col==='pdate'){const m=rowMeta(r);return col==='cby'?(m.by||''):col==='pby'?(m.postedBy||''):(m.postedDate||'');}
+  switch(col){case 'date':return r.date||'';case 'acct':return r.acc.name||'';case 'type':return r.type||'';case 'doc':return r.doc||'';
+    case 'memo':return (r.memo||r.desc||'');case 'name':return r.party||'';case 'dr':return r.dr||0;case 'cr':return r.cr||0;case 'bal':return r._bal||0;}
+  return '';
+}
 function drawLedger(out){
   out.innerHTML='';
   let rows=ledgerFiltered();
-  // sort by date then account
-  rows=rows.slice().sort((a,b)=>(a.date<b.date?-1:a.date>b.date?1:0)|| a.acc.name.localeCompare(b.acc.name));
   const singleAcct=!!LEDGER_ACCT;
+  // chronological pass — stamp each row's true running balance so re-sorting the display never breaks the balance meaning
+  const chron=rows.slice().sort((a,b)=>(a.date<b.date?-1:a.date>b.date?1:0)||a.acc.name.localeCompare(b.acc.name));
+  if(singleAcct){const cl=ACC_BY_NAME[LEDGER_ACCT].class;const dirAsset=(cl==='ASSET'||cl==='EXPENSE');let rb=0;chron.forEach(r=>{rb+=dirAsset?(r.dr-r.cr):(r.cr-r.dr);r._bal=rb;});}
+  // apply the chosen sort for display (whole filtered dataset, not just the visible page)
+  const sc=LEDGER_SORT.col,sd=(LEDGER_SORT.dir==='desc')?-1:1;
+  rows=chron.slice().sort((a,b)=>{const av=ledgerSortKey(a,sc),bv=ledgerSortKey(b,sc);let c;if(typeof av==='number'&&typeof bv==='number')c=av-bv;else c=String(av).localeCompare(String(bv),undefined,{numeric:true,sensitivity:'base'});return c!==0?c*sd:((a.date<b.date?-1:a.date>b.date?1:0));});
   const totDr=rows.reduce((s,r)=>s+r.dr,0), totCr=rows.reduce((s,r)=>s+r.cr,0);
 
   const panel=el('div','panel');
@@ -1863,20 +1873,15 @@ function drawLedger(out){
   if(!rows.length){panel.appendChild(el('div','empty','<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z"/></svg><div>No postings match these filters.</div>'));out.appendChild(panel);return;}
 
   const tbl=el('table');
+  const arw=c=>LEDGER_SORT.col===c?`<span class="sortarw" style="font-size:9px;opacity:.75">${LEDGER_SORT.dir==='asc'?' ▲':' ▼'}</span>`:'';
   tbl.innerHTML=`<thead><tr>
-     <th style="width:92px">Date</th>${singleAcct?'':'<th>Account</th>'}<th style="width:120px">Type</th>
-     <th style="width:120px">Doc #</th><th>Memo / Description</th><th>Name</th>
-     <th class="r" style="width:110px">Debit</th><th class="r" style="width:110px">Credit</th>
-     ${singleAcct?'<th class="r" style="width:120px">Balance</th>':''}
-     <th style="width:110px">Created by</th><th style="width:110px">Posted by</th><th style="width:100px">Posted date</th></tr></thead>`;
+     <th data-col="date" style="width:92px;cursor:pointer">Date${arw('date')}</th>${singleAcct?'':`<th data-col="acct" style="cursor:pointer">Account${arw('acct')}</th>`}<th data-col="type" style="width:120px;cursor:pointer">Type${arw('type')}</th>
+     <th data-col="doc" style="width:120px;cursor:pointer">Doc #${arw('doc')}</th><th data-col="memo" style="cursor:pointer">Memo / Description${arw('memo')}</th><th data-col="name" style="cursor:pointer">Name${arw('name')}</th>
+     <th class="r" data-col="dr" style="width:110px;cursor:pointer">Debit${arw('dr')}</th><th class="r" data-col="cr" style="width:110px;cursor:pointer">Credit${arw('cr')}</th>
+     ${singleAcct?`<th class="r" data-col="bal" style="width:120px;cursor:pointer">Balance${arw('bal')}</th>`:''}
+     <th data-col="cby" style="width:110px;cursor:pointer">Created by${arw('cby')}</th><th data-col="pby" style="width:110px;cursor:pointer">Posted by${arw('pby')}</th><th data-col="pdate" style="width:100px;cursor:pointer">Posted date${arw('pdate')}</th></tr></thead>`;
   const tb=el('tbody');
-  // running balance only meaningful for single account, chronological
-  let run=0; const start=LEDGER_PAGE*PAGE, slice=rows.slice(start,start+PAGE);
-  if(singleAcct){ // compute running from beginning up to slice start
-    const cl=ACC_BY_NAME[LEDGER_ACCT].class; const dirAsset=(cl==='ASSET'||cl==='EXPENSE');
-    for(let i=0;i<start;i++)run+=dirAsset?(rows[i].dr-rows[i].cr):(rows[i].cr-rows[i].dr);
-    var runFn=(r)=>{run+=dirAsset?(r.dr-r.cr):(r.cr-r.dr);return run;};
-  }
+  const start=LEDGER_PAGE*PAGE, slice=rows.slice(start,start+PAGE);
   slice.forEach((r,si)=>{
     const nm=r.party||'<span class="muted">—</span>';
     const memo=highlightRow(r);
@@ -1890,13 +1895,19 @@ function drawLedger(out){
       <td style="color:var(--txt-soft)">${esc(r.party)||'<span class="muted">—</span>'}</td>
       <td class="r mono">${r.dr?fmt(r.dr):'<span class="muted">·</span>'}</td>
       <td class="r mono">${r.cr?fmt(r.cr):'<span class="muted">·</span>'}</td>
-      ${singleAcct?`<td class="r mono" style="font-weight:600">${fmt(runFn(r))}</td>`:''}
+      ${singleAcct?`<td class="r mono" style="font-weight:600">${fmt(r._bal||0)}</td>`:''}
       <td style="font-size:11px">${esc(m.by)}</td>
       <td style="font-size:11px">${esc(m.postedBy)}</td>
       <td class="mono" style="font-size:11px">${m.postedDate||'<span class="muted">—</span>'}</td></tr>`;
   });
   tbl.appendChild(tb);panel.appendChild(tbl);
-  setTimeout(()=>$$('#ledgerOut .doclink').forEach(c=>c.onclick=()=>{const r=slice[+c.dataset.ri];openEntry({jeid:r.jeid,doc:r.doc,date:r.date,rowRef:r});}),0);
+  setTimeout(()=>{
+    out.querySelectorAll('#ledgerOut .doclink,.doclink').forEach(c=>{if(c.dataset.ri!=null)c.onclick=()=>{const r=slice[+c.dataset.ri];openEntry({jeid:r.jeid,doc:r.doc,date:r.date,rowRef:r});};});
+    out.querySelectorAll('thead th[data-col]').forEach(th=>th.onclick=()=>{const c=th.dataset.col;
+      if(LEDGER_SORT.col===c)LEDGER_SORT.dir=(LEDGER_SORT.dir==='asc')?'desc':'asc';
+      else{LEDGER_SORT.col=c;LEDGER_SORT.dir=(c==='dr'||c==='cr'||c==='bal'||c==='date'||c==='pdate')?'desc':'asc';}
+      LEDGER_PAGE=0;drawLedger(out);});
+  },0);
 
   if(rows.length>PAGE){
     const pg=el('div','pager');
@@ -1911,7 +1922,6 @@ function drawLedger(out){
     $('#pgPrev')&&($('#pgPrev').onclick=()=>{LEDGER_PAGE--;drawLedger(out);out.scrollIntoView({behavior:'smooth',block:'start'});});
     $('#pgNext')&&($('#pgNext').onclick=()=>{LEDGER_PAGE++;drawLedger(out);out.scrollIntoView({behavior:'smooth',block:'start'});});
   } else out.appendChild(panel);
-  try{enableTableSort(out);}catch(e){}
 }
 function highlightRow(r){
   const tq=(LEDGER_FILTERS.text||'').toLowerCase();
@@ -3285,33 +3295,38 @@ function addAssetModal(prefill){
 /* Generate assets from purchase postings (debits to asset cost accounts) */
 function renderAcquisitions(v){
   const head=el('div','viewhead');
-  head.innerHTML=`<div><h2>Generate Assets from Purchases</h2><div class="desc">Capitalize acquisition postings (debits to Property &amp; Equipment / Right-of-Use accounts) into the asset register.</div></div>`;
+  const periodNote=(PERIOD.from||PERIOD.to)?` Showing acquisitions dated <b>${esc(PERIOD.from||'inception')} → ${esc(PERIOD.to||'latest')}</b> (top date filter). Clear the filter to see all.`:' Showing all periods — use the top date filter to narrow to a period.';
+  head.innerHTML=`<div><h2>Generate Assets from Purchases</h2><div class="desc">Capitalize acquisition postings (debits to Property &amp; Equipment / Right-of-Use accounts) into the asset register. Useful life &amp; depreciation period are set from the asset type; depreciation starts the month after the acquisition date.${periodNote}</div></div>`;
   v.appendChild(head);
   const costRoots=new Set(['Property and Equipment','Right of Use Assets']);
   const linked=new Set(ASSETS.map(a=>a.sourceKey).filter(Boolean));
-  const cands=ROWS.filter(r=>costRoots.has(r.acc.root)&&r.dr>0.5)
-    .map(r=>({r,key:r.date+'|'+r.acc.name+'|'+r.doc+'|'+r.dr.toFixed(2)}))
+  const cands=ROWS.filter(r=>costRoots.has(r.acc.root)&&r.dr>0.5&&inPeriod(r))
+    .map(r=>({r,key:r.date+'|'+r.acc.name+'|'+r.doc+'|'+r.dr.toFixed(2),life:(LIFE_DEFAULT[r.acc.name]||LIFE_DEFAULT[r.acc.root]||60)}))
     .filter(x=>!linked.has(x.key));
   const kp=el('div','kpis');
-  kp.innerHTML=kpiCount('a','Candidate Acquisitions',cands.length,'Not yet capitalized')+
+  kp.innerHTML=kpiCount('a','Candidate Acquisitions',cands.length,'In selected period, not yet capitalized')+
     kpi('a','Total Value',cands.reduce((s,c)=>s+c.r.dr,0),'Uncapitalized acquisitions')+
     kpiCount('e','Registered',ASSETS.length,'Assets already in register');
   v.appendChild(kp);
   const panel=el('div','panel');
   panel.innerHTML=`<div class="phd"><h3>Uncapitalized Acquisitions</h3><div class="meta">${cands.length}</div>
-    ${cands.length?`<button class="btn sm primary" id="genAll" style="margin-left:auto">Generate all</button>`:''}</div>`;
-  if(!cands.length){panel.appendChild(el('div','empty','<div>No uncapitalized acquisitions — every asset debit is already registered.</div>'));}
+    ${cands.length?`<button class="btn sm primary" id="genAll" style="margin-left:auto">Generate all (${cands.length})</button>`:''}</div>`;
+  if(!cands.length){panel.appendChild(el('div','empty','<div>No uncapitalized acquisitions in this period — every asset debit is already registered, or none fall in the selected date range.</div>'));}
   else{
     const tbl=el('table');
-    tbl.innerHTML=`<thead><tr><th>Date</th><th>Account</th><th>Doc #</th><th>Description</th><th class="r">Cost</th><th></th></tr></thead>`;
+    tbl.innerHTML=`<thead><tr><th>Date</th><th>Asset type (account)</th><th>Doc #</th><th>Description</th><th class="r">Cost</th><th class="r">Useful life</th><th>Depreciation period</th><th></th></tr></thead>`;
     const tb=el('tbody');
-    cands.slice(0,200).forEach((c,i)=>{tb.innerHTML+=`<tr><td class="mono">${c.r.date}</td><td class="acctcell">${esc(c.r.acc.name)}</td>
+    cands.slice(0,300).forEach((c,i)=>{const startYM=addMonths((c.r.date||todayISO()).slice(0,7)+'-01',1).slice(0,7);const endYM=addMonths((c.r.date||todayISO()).slice(0,7)+'-01',c.life).slice(0,7);
+      tb.innerHTML+=`<tr><td class="mono">${c.r.date}</td><td class="acctcell">${esc(c.r.acc.name)}</td>
       <td class="mono" style="font-size:12px">${esc(c.r.doc)||'—'}</td><td>${esc(c.r.memo||c.r.desc)}</td>
-      <td class="r mono">${fmt(c.r.dr)}</td><td class="r"><button class="btn sm" data-i="${i}">Capitalize</button></td></tr>`;});
+      <td class="r mono">${fmt(c.r.dr)}</td>
+      <td class="r mono">${c.life} mo <span class="muted">(${(c.life/12).toFixed(1)}y)</span></td>
+      <td class="mono" style="font-size:11px">${startYM} → ${endYM}</td>
+      <td class="r"><button class="btn sm" data-i="${i}">Capitalize</button></td></tr>`;});
     tbl.appendChild(tb);panel.appendChild(tbl);
   }
   v.appendChild(panel);
-  $('#genAll')&&($('#genAll').onclick=async()=>{for(const c of cands)genFromRow(c,false);await store.saveAssets();render();toast(cands.length+' assets generated');});
+  $('#genAll')&&($('#genAll').onclick=async()=>{for(const c of cands)genFromRow(c,false);await store.saveAssets();render();toast(cands.length+' asset(s) generated — life set by type, depreciation starts month after acquisition');});
   $$('#view [data-i]').forEach(b=>b.onclick=async()=>{genFromRow(cands[+b.dataset.i],false);await store.saveAssets();render();toast('Asset capitalized');});
 }
 function genFromRow(c,save){
@@ -3500,7 +3515,7 @@ function procDocModal(doc,startType){
   let PROC_ATTACH = editing&&doc.attachments ? doc.attachments.map(a=>({...a})) : [];
   const isPR=!editing||doc.type==='PR';
   $('#modalTitle').textContent=editing?(PROC_LABEL[doc.type]+' '+doc.num):(newType==='PO'?'New Purchase Order':'New Purchase Requisition');
-  const blankPRLine=()=>({itemId:'',desc:'',accName:'',amount:'',qty:1,capitalize:false,prepaid:false,pmonths:12,bu:'',loc:'',dept:''});
+  const blankPRLine=()=>({itemId:'',desc:'',accName:'',amount:'',qty:1,capitalize:false,prepaid:false,pmonths:12,pstart:'',bu:'',loc:'',dept:''});
   const lines=editing?doc.lines.map(l=>({...blankPRLine(),...l})):[blankPRLine()];
   const vendors=Object.keys(PARTY).filter(p=>/^VEN-/i.test(p)).sort();
   const prods=(typeof coProducts==='function'?coProducts():[]);
@@ -3530,7 +3545,8 @@ function procDocModal(doc,startType){
        <div style="display:flex;gap:18px;align-items:center;margin-top:7px;font-size:11px;color:var(--txt-soft)">
          <label style="display:flex;gap:5px;align-items:center"><input type="checkbox" data-i="${i}" data-k="capitalize" ${l.capitalize?'checked':''}${dis} style="width:auto">Fixed asset (capitalize)</label>
          <label style="display:flex;gap:5px;align-items:center"><input type="checkbox" data-i="${i}" data-k="prepaid" ${l.prepaid?'checked':''}${dis} style="width:auto">Prepaid — amortize later</label>
-         ${l.prepaid?`<label style="display:flex;gap:5px;align-items:center">over <input data-i="${i}" data-k="pmonths" class="r" style="width:50px" inputmode="numeric" value="${l.pmonths||12}"${dis}> months</label>`:''}
+         ${l.prepaid?`<label style="display:flex;gap:5px;align-items:center">over <input data-i="${i}" data-k="pmonths" class="r" style="width:50px" inputmode="numeric" value="${l.pmonths||12}"${dis}> months</label>
+         <label style="display:flex;gap:5px;align-items:center">starting <input type="date" data-i="${i}" data-k="pstart" value="${esc(l.pstart||'')}"${dis} style="width:auto" title="When the service/benefit begins — leave blank to start on the bill date"></label>`:''}
        </div></div>`;}).join('');}
   $('#modalBody').innerHTML=`
     ${editing?`<div style="margin-bottom:12px"><div class="pipe">${PROC_FLOW.map(s=>`<span class="stp ${PROC_FLOW.indexOf(doc.type)>=PROC_FLOW.indexOf(s)?'done':''} ${doc.type===s?'cur':''}">${PROC_LABEL[s]}</span>`).reduce((a,b,i)=>a+(i?'<span class="arw">→</span>':'')+b,'')}</div></div>`:''}
@@ -3607,7 +3623,7 @@ function procDocModal(doc,startType){
   async function savePR(existing){
     readLines();
     const date=$('#prDate').value,vendor=$('#prVendor').value.trim(),memo=$('#prMemo').value.trim();
-    const cl=lines.filter(l=>(l.itemId||l.accName||l.prepaid)&&(+l.amount||0)>0).map(l=>({itemId:l.itemId||'',desc:l.desc,accName:l.accName,amount:+l.amount,qty:+l.qty||1,capitalize:!!l.capitalize,prepaid:!!l.prepaid,pmonths:+l.pmonths||12,bu:l.bu||'',loc:l.loc||'',dept:l.dept||''}));
+    const cl=lines.filter(l=>(l.itemId||l.accName||l.prepaid)&&(+l.amount||0)>0).map(l=>({itemId:l.itemId||'',desc:l.desc,accName:l.accName,amount:+l.amount,qty:+l.qty||1,capitalize:!!l.capitalize,prepaid:!!l.prepaid,pmonths:+l.pmonths||12,pstart:l.pstart||'',bu:l.bu||'',loc:l.loc||'',dept:l.dept||''}));
     if(!cl.length){toast('Add at least one line with an item or account and an amount.',true);return;}
     const total=cl.reduce((s,l)=>s+l.amount,0);
     if(existing){existing.date=date;existing.vendor=vendor;existing.memo=memo;existing.lines=cl;existing.total=total;
@@ -3657,7 +3673,7 @@ async function advanceProc(doc,toType,payAmt){
     bill.lines.forEach(l=>{if(!l.prepaid&&!l.capitalize&&l.itemId){const it=prods.find(p=>p.id===l.itemId);if(it&&it.type==='inventory')billItemGRN(it,l,bill);}});
     // prepaid → amortization schedule
     bill.lines.forEach(l=>{if(l.prepaid&&typeof AMORT!=='undefined'){const it=l.itemId?prods.find(p=>p.id===l.itemId):null;const def=(prepaidAcc()||{}).name,exp=(it&&it.glAccount)||l.accName||(depExpenseAcc()||{}).name;
-      if(def&&exp){AMORT.schedules.push({id:amid(),name:(l.desc||(it?it.name:'Prepaid'))+' — '+bill.num,type:'prepaid',source:{kind:'bill',ref:bill.id,doc:bill.num},total:l.amount,method:'straight-line',term:+l.pmonths||12,startDate:bill.date,deferredAcct:def,expenseAcct:exp,createdBy:CURRENT_USER,createdAt:new Date().toISOString(),entries:genAmortEntries(l.amount,+l.pmonths||12,bill.date)});}}});
+      if(def&&exp){const amStart=l.pstart||bill.date;AMORT.schedules.push({id:amid(),name:(l.desc||(it?it.name:'Prepaid'))+' — '+bill.num,type:'prepaid',source:{kind:'bill',ref:bill.id,doc:bill.num},total:l.amount,method:'straight-line',term:+l.pmonths||12,startDate:amStart,billDate:bill.date,deferredAcct:def,expenseAcct:exp,createdBy:CURRENT_USER,createdAt:new Date().toISOString(),entries:genAmortEntries(l.amount,+l.pmonths||12,amStart)});}}});
     if(typeof AMORT!=='undefined'&&typeof saveAmort==='function')await saveAmort();
     if(typeof store.saveInv==='function')await store.saveInv();
     await store.saveAssets();await store.saveProc();closeModal();render();procDocModal(bill);
@@ -6323,7 +6339,7 @@ function amortModal(){
     <label class="fld">Source document (optional)<select id="amSrc" style="max-width:none"><option value="">Manual</option>${srcDocs.map(j=>`<option value="${j.jeid}">${esc(j.doc)} · ${esc((j.doctype||'JE'))} · ${fmt(j.amount)} · ${j.date}</option>`).join('')}</select></label>
     <label class="fld">Total amount (EGP)<input class="f r" id="amTotal" inputmode="decimal" style="max-width:none"></label>
     <label class="fld">Term (months)<input class="f r" id="amTerm" inputmode="numeric" value="12" style="max-width:none"></label>
-    <label class="fld">Start month<input class="f" id="amStart" type="date" value="${todayISO()}" style="max-width:none"></label>
+    <label class="fld">Recognition start (service begins)<input class="f" id="amStart" type="date" value="${todayISO()}" style="max-width:none" title="When the benefit/service starts — can be later than the payment date"></label>
     <label class="fld">Deferred / prepaid account (credit)<select id="amDef" style="max-width:none">${defAccts.map(a=>`<option value="${esc(a.name)}">${esc(a.name)}</option>`).join('')}</select></label>
     <label class="fld">Expense account (debit)<select id="amExp" style="max-width:none">${expAccts.map(a=>`<option value="${esc(a.name)}"${/amort|deprec/i.test(a.name)?' selected':''}>${esc(a.name)}</option>`).join('')}</select></label>
   </div>
@@ -6332,7 +6348,7 @@ function amortModal(){
   <div class="note" style="margin-top:12px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01M11 12h1v4h1"/></svg><div>The schedule recognizes the amount evenly over the term (straight-line). Each month posts <b>Dr Expense / Cr Deferred</b>. By default the initial deferral is assumed already booked (from the source bill/JE); tick the box above to have the schedule post it for you.</div></div>
   <div id="amPreview" class="hint" style="margin-top:10px"></div>`;
   $('#modalFoot').innerHTML=`<div style="margin-left:auto;display:flex;gap:10px"><button class="btn" id="amCancel">Cancel</button><button class="btn primary" id="amSave">Create schedule</button></div>`;
-  const prev=()=>{const t=+$('#amTotal').value||0,n=+$('#amTerm').value||1;const per=t&&n?fmt(Math.round((t/n)*100)/100):'0.00';$('#amPreview').innerHTML=t?`≈ <b>${per}</b> / month × ${n} months, starting ${($('#amStart').value||'').slice(0,7)}.`:'';};
+  const prev=()=>{const t=+$('#amTotal').value||0,n=+$('#amTerm').value||1;const per=t&&n?fmt(Math.round((t/n)*100)/100):'0.00';const st=($('#amStart').value||'').slice(0,7);const en=st&&n?addMonths(st+'-01',n-1).slice(0,7):'';$('#amPreview').innerHTML=t?`≈ <b>${per}</b> / month × ${n} months, from <b>${st}</b> to <b>${en}</b>.`:'';};
   $('#amSrc').onchange=e=>{const j=POSTED.find(x=>x.jeid===e.target.value);if(j){$('#amTotal').value=j.amount;if(!$('#amName').value)$('#amName').value=(j.doctype||'Amortization')+' '+j.doc;prev();}};
   ['amTotal','amTerm','amStart'].forEach(id=>$('#'+id).oninput=prev);
   $('#amPostInit').onchange=e=>{$('#amInitWrap').style.display=e.target.checked?'':'none';};
