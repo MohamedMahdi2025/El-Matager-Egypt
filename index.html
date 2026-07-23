@@ -905,7 +905,10 @@ function assetPostedDepByMonth(a){const map={};
     j.deps.filter(d=>d.assetId===a.id).forEach(d=>{const ym=d.month||(j.date||'').slice(0,7);if(!ym)return;map[ym]={amount:((map[ym]&&map[ym].amount)||0)+(+d.amount||0),doc:j.doc};});});
   return map;}
 /* Reset postedDepThrough to reflect ONLY real posted entries (heals assets pre-marked at creation on older builds) */
-function reconcileAssetPosted(a){const m=assetPostedDepByMonth(a);const months=Object.keys(m).sort();
+function reconcileAssetPosted(a){
+  if(a.depExpAcc&&typeof a.depExpAcc==='object')a.depExpAcc=a.depExpAcc.name||null;   // heal assets that stored account objects
+  if(a.accumDepAcc&&typeof a.accumDepAcc==='object')a.accumDepAcc=a.accumDepAcc.name||null;
+  const m=assetPostedDepByMonth(a);const months=Object.keys(m).sort();
   const before=addMonths((a.acqDate||todayISO()).slice(0,7)+'-01',-1);
   const shouldBe=months.length?months[months.length-1]:before;
   if((a.postedDepThrough||'')!==shouldBe){a.postedDepThrough=shouldBe;return true;}
@@ -2892,7 +2895,7 @@ function jeMaterializeSchedules(je){
       ASSETS.push({id:'as_'+Date.now()+'_'+Math.random().toString(36).slice(2,6),code,barcode:code,
         name:(je.memo||c.acct).slice(0,60),category:c.acct,acqDate:c.start,cost:c.amount,lifeMonths:c.months,salvage:0,method:'SL',
         status:'Active',postedDepThrough:addMonths((c.start||todayISO()).slice(0,7)+'-01',-1),
-        depExpAcc:(typeof depExpenseAcc==='function')?depExpenseAcc():null,accumDepAcc:(typeof accumDepAcc==='function')?accumDepAcc():null,
+        depExpAcc:((typeof depExpenseAcc==='function'&&depExpenseAcc())||{}).name||null,accumDepAcc:((typeof accumDepAcc==='function'&&accumDepAcc())||{}).name||null,
         sourceDoc:je.doc,sourceKey:'je:'+je.jeid});
       made++;
     }
@@ -3431,15 +3434,15 @@ function genFromRow(c,save){
 }
 /* Depreciation run (posts a JE for a chosen open period) */
 function runDepModal(){
-  const cm=cutoffMonth();
-  // next months after cutoff
-  const opts=[];const d=new Date(cm+'-01');
-  for(let i=1;i<=18;i++){d.setMonth(d.getMonth()+1);opts.push(d.toISOString().slice(0,7));}
+  const cm=todayISO().slice(0,7);   // default to the CURRENT month — never auto-post future depreciation
+  // offer a range of recent months through the current month (plus a few ahead), defaulting to the current month
+  const opts=[];const d=new Date(cm+'-01');d.setMonth(d.getMonth()-15);
+  for(let i=0;i<=18;i++){opts.push(d.toISOString().slice(0,7));d.setMonth(d.getMonth()+1);}
   $('#modalTitle').textContent='Run Depreciation';
   const active=ASSETS.filter(a=>a.status!=='Disposed');
   $('#modalBody').innerHTML=`
     <label class="fld" style="margin-bottom:10px">Depreciation period (month)
-      <select id="depMonth" style="max-width:none">${opts.map(m=>`<option value="${m}"${PERIOD_STATUS[m]==='closed'?' disabled':''}>${m}${PERIOD_STATUS[m]==='closed'?' (closed)':''}</option>`).join('')}</select></label>
+      <select id="depMonth" style="max-width:none">${opts.map(m=>`<option value="${m}"${m===cm?' selected':''}${PERIOD_STATUS[m]==='closed'?' disabled':''}>${m}${m===cm?' · current':''}${PERIOD_STATUS[m]==='closed'?' (closed)':''}</option>`).join('')}</select></label>
     <div class="note"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01M11 12h1v4h1"/></svg><div>Historical depreciation already posted in the imported ledger is preserved. This run posts a single balanced entry (Dr Depreciation Expense / Cr Accumulated Depreciation) for the selected month across ${active.length} active asset(s), and marks each as depreciated through that month.</div></div>
     <div id="depPreview" style="margin-top:12px"></div>`;
   const preview=()=>{const m=$('#depMonth').value;let total=0,n=0;
@@ -6340,7 +6343,7 @@ async function postAmortOne(sid,index,cutoff){
    ============================================================ */
 function renderMonthEnd(v){
   const canDo=canActIn(currentUser(),'financial')||canActIn(currentUser(),'amort')||isAdmin(currentUser());
-  if(typeof ME_MONTH==='undefined'||!ME_MONTH)window.ME_MONTH=(typeof cutoffMonth==='function'?addMonths(cutoffMonth(),1):todayISO().slice(0,7));
+  if(typeof ME_MONTH==='undefined'||!ME_MONTH)window.ME_MONTH=todayISO().slice(0,7);
   const head=el('div','viewhead');
   head.innerHTML=`<div><h2>Month-End Close</h2><div class="desc">Run the recurring period-end postings for the whole company from one place — depreciation for every asset and amortization for every prepaid/deferred schedule, through the month you choose. Skips already-posted and closed periods.</div></div>`;
   v.appendChild(head);
