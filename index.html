@@ -485,16 +485,16 @@ tr.click:hover{background:var(--accent-soft) !important}
 @keyframes aurora{0%,100%{background-position:0% 0%,100% 0%,50% 100%}50%{background-position:40% 30%,60% 20%,40% 80%}}
 .nsHeader,.subbar,.view{position:relative;z-index:1}
 
-#sidebar{width:240px;flex:none;display:flex;flex-direction:column;overflow-y:auto;overflow-x:hidden;z-index:40;
+#sidebar{width:240px;flex:none;display:flex;flex-direction:column;overflow:hidden;z-index:40;
   background:linear-gradient(180deg,#1b2e42,#132436 55%,#0d1b29);border-right:1px solid rgba(255,255,255,.06)}
-#sidebar::-webkit-scrollbar{width:9px}#sidebar::-webkit-scrollbar-thumb{background:#2b4763;border-radius:4px}#sidebar::-webkit-scrollbar-track{background:transparent}
-.sb-brand{display:flex;align-items:center;gap:11px;padding:16px 16px 12px;position:sticky;top:0;z-index:30;
+.menubar::-webkit-scrollbar{width:9px}.menubar::-webkit-scrollbar-thumb{background:#2b4763;border-radius:4px}.menubar::-webkit-scrollbar-track{background:transparent}
+.sb-brand{display:flex;align-items:center;gap:11px;padding:16px 16px 13px;flex:none;position:relative;z-index:5;
   background:#182838;box-shadow:0 8px 16px -10px rgba(0,0,0,.75);border-bottom:1px solid rgba(255,255,255,.07)}
 .sb-brand .logo{width:38px;height:38px;flex:none}
-.sb-brand-tx{line-height:1.1}
-.sb-brand-tx .bn{display:block;font-family:Georgia,'Iowan Old Style','Times New Roman',serif;font-weight:700;font-style:italic;font-size:16.5px;letter-spacing:.3px;background:linear-gradient(92deg,#ffffff 25%,#84c9ff);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent}
+.sb-brand-tx{line-height:1.12;min-width:0}
+.sb-brand-tx .bn{display:block;font-family:Georgia,'Iowan Old Style','Times New Roman',serif;font-weight:700;font-style:italic;font-size:15px;letter-spacing:.2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;background:linear-gradient(92deg,#ffffff 25%,#84c9ff);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent}
 .sb-brand-tx span{display:block;font-size:9px;color:#8ba6bf;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin-top:3px}
-.menubar{display:flex;flex-direction:column;gap:2px;padding:6px 10px 22px;overflow:visible;background:none;border:none;height:auto;min-height:0}
+.menubar{display:flex;flex-direction:column;gap:2px;padding:6px 10px 22px;flex:1 1 auto;min-height:0;overflow-y:auto;overflow-x:hidden;background:none;border:none}
 .sb-item{border-radius:10px;animation:sbIn .4s cubic-bezier(.2,.8,.3,1) both;animation-delay:calc(var(--i,0)*22ms)}
 @keyframes sbIn{from{opacity:0;transform:translateX(-14px)}to{opacity:1;transform:none}}
 .sb-btn{width:100%;display:flex;align-items:center;gap:11px;padding:10px 12px;border:none;background:none;color:#c4d4e2;
