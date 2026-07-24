@@ -488,6 +488,11 @@ tr.click:hover{background:var(--accent-soft) !important}
 #sidebar{width:240px;flex:none;display:flex;flex-direction:column;overflow:hidden;z-index:40;
   background:linear-gradient(180deg,#1b2e42,#132436 55%,#0d1b29);border-right:1px solid rgba(255,255,255,.06)}
 .menubar::-webkit-scrollbar{width:9px}.menubar::-webkit-scrollbar-thumb{background:#2b4763;border-radius:4px}.menubar::-webkit-scrollbar-track{background:transparent}
+#menubar{scrollbar-width:thin;scrollbar-color:#3d5c7a transparent}
+#menubar::-webkit-scrollbar{width:10px;height:10px}
+#menubar::-webkit-scrollbar-thumb{background:#3d5c7a;border-radius:6px;border:2px solid transparent;background-clip:content-box}
+#menubar::-webkit-scrollbar-thumb:hover{background:#4f7396;background-clip:content-box}
+#menubar::-webkit-scrollbar-track{background:transparent}
 .sb-brand{display:flex;align-items:center;gap:11px;padding:16px 16px 13px;flex:none;position:relative;z-index:5;
   background:#182838;box-shadow:0 8px 16px -10px rgba(0,0,0,.75);border-bottom:1px solid rgba(255,255,255,.07)}
 .sb-brand .logo{width:38px;height:38px;flex:none}
@@ -1214,7 +1219,25 @@ const MODULES=[
     {id:'purchases',t:'Purchase & VAT Analysis',icon:'trend'},
     {id:'procurement',t:'Vendor Spend & Sourcing',icon:'trend'}]},
   {id:'inventory',label:'Inventory',pages:[
-    {id:'inventory',t:'Inventory',icon:'asset'}]},
+    {id:'inventory',t:'Dashboard',icon:'grid'},
+    {id:'_invadd',t:'Add Item',icon:'plus',action:'invadd'},
+    {id:'_invmove',t:'Record Movement',icon:'plus',action:'invmove'},
+    {sep:1},
+    {id:'inv_items',t:'Item Master',icon:'list'},
+    {id:'inv_moves',t:'Stock Movements',icon:'book'},
+    {id:'inv_count',t:'Physical Count',icon:'edit'},
+    {id:'inv_registers',t:'Registers',icon:'book'},
+    {sep:1},
+    {id:'inv_val',t:'Valuation',icon:'scale'},
+    {id:'inv_reorder',t:'Reorder Report',icon:'trend'},
+    {id:'inv_abc',t:'ABC Analysis',icon:'trend'},
+    {id:'inv_aging',t:'Stock Aging',icon:'scale'},
+    {id:'inv_dead',t:'Dead / Slow',icon:'trend'},
+    {id:'inv_neg',t:'Negative Stock',icon:'scale'},
+    {sep:1},
+    {id:'inv_ledger',t:'Stock Ledger',icon:'book'},
+    {id:'inv_turn',t:'Turnover',icon:'trend'},
+    {id:'inv_wh',t:'Warehouses',icon:'bank'}]},
   {id:'crm',label:'CRM',pages:[
     {id:'crm',t:'CRM & Pipeline',icon:'users'}]},
   {id:'hr',label:'Human Resources',pages:[
@@ -1329,7 +1352,7 @@ function buildMenu(){
       m.pages.forEach(p=>{ if(p.sep)return;
         const a=el('a','sb-link'+(p.id===CURRENT?' cur':''));a.href='#';
         a.innerHTML=`<span class="dotli"></span><span class="sb-linktx">${esc(p.t)}</span>`;
-        a.onclick=e=>{e.preventDefault();OPEN_MENU=m.id;const act=p.action,pid=p.id;if(act==='je'){openJE();}else if(act==='newpr'){if(typeof procDocModal==='function')procDocModal(null);}else if(act==='newpo'){if(typeof procDocModal==='function')procDocModal(null,'PO');}else if(act==='pos'){window.PROCDOC_FILTER='PO';go('proccycle');}else go(pid);closeDrawer();};
+        a.onclick=e=>{e.preventDefault();OPEN_MENU=m.id;const act=p.action,pid=p.id;if(act==='je'){openJE();}else if(act==='newpr'){if(typeof procDocModal==='function')procDocModal(null);}else if(act==='newpo'){if(typeof procDocModal==='function')procDocModal(null,'PO');}else if(act==='pos'){window.PROCDOC_FILTER='PO';go('proccycle');}else if(act==='invadd'){go('inventory');if(typeof invItemModal==='function')setTimeout(invItemModal,60);}else if(act==='invmove'){go('inventory');if(typeof invMoveModal==='function')setTimeout(invMoveModal,60);}else go(pid);closeDrawer();};
         const star=el('span','sb-star'+(isFavPage(p.id)?' on':''));star.textContent=isFavPage(p.id)?'★':'☆';star.title='Add to Favorites';
         star.onclick=e=>{e.preventDefault();e.stopPropagation();toggleFavPage(p.id,p.t,m.label);buildMenu();};
         a.appendChild(star);
@@ -1424,6 +1447,7 @@ function render(){
     search:renderSearch,banking:(v)=>withEnqRender(v,'banking',renderBanking),vendors:(v)=>withEnqRender(v,'vendors',renderVendors),assetreg:(v)=>withEnqRender(v,'assetreg',renderAssetRegister),
     ap:(v)=>withEnqRender(v,'ap',renderAP),ar:(v)=>withEnqRender(v,'ar',renderAR),cashflow:renderCashFlow,depreciation:(v)=>withEnqRender(v,'depreciation',renderDepreciation),
     sales:(v)=>withEnqRender(v,'sales',renderSales),purchases:(v)=>withEnqRender(v,'purchases',renderPurchases),procurement:(v)=>withEnqRender(v,'procurement',renderProcurement),inventory:renderInventory,
+    inv_items:renderInventory,inv_moves:renderInventory,inv_count:renderInventory,inv_registers:renderInventory,inv_val:renderInventory,inv_reorder:renderInventory,inv_abc:renderInventory,inv_aging:renderInventory,inv_dead:renderInventory,inv_neg:renderInventory,inv_ledger:renderInventory,inv_turn:renderInventory,inv_wh:renderInventory,
     periods:renderPeriods,acquisitions:renderAcquisitions,proccycle:renderProcCycle,cycles:renderCycles,
     users:renderUsers,approvals:renderApprovals,roles:renderRolesMatrix,audit:renderAudit,amort:amortWorkspace,amort_detail:renderAmortDetail,amended:renderChangeHistory,companies:renderCompanies,reports_hub:renderReportsHub,import:renderImport,favorites:renderFavorites,dimensions:renderDimensions,pnl_dim:renderPnlDim,products:renderProducts,purchase_invoice:renderPurchaseInvoice,coasetup:renderCoaSetup,monthend:renderMonthEnd,crm:renderCRM,hr:renderHR,mfg:renderMfg,psa:renderProjects,eam:renderMaint,qms:renderQuality,tms:renderFleet,fsm:renderFieldSvc,grc:renderGRC,cloud:renderCloud}[CURRENT]||renderDashboard)(v);
   updateBalChip();
@@ -4609,6 +4633,9 @@ function subTabBar(tabs,active,onSel,fav){
    INVENTORY SUB-LEDGER  (item master · movements · valuation)
    ============================================================ */
 let INV_TAB='dash', INV_LEDGER_ITEM=null;
+const INV_PAGES=[['dash','Dashboard','inventory'],['items','Item Master','inv_items'],['moves','Stock Movements','inv_moves'],['count','Physical Count','inv_count'],['registers','Registers','inv_registers'],['val','Valuation','inv_val'],['reorder','Reorder Report','inv_reorder'],['abc','ABC Analysis','inv_abc'],['aging','Stock Aging','inv_aging'],['dead','Dead / Slow','inv_dead'],['neg','Negative Stock','inv_neg'],['ledger','Stock Ledger','inv_ledger'],['turn','Turnover','inv_turn'],['wh','Warehouses','inv_wh']];
+function invTabForPage(){const p=INV_PAGES.find(x=>x[2]===CURRENT);return p?p[0]:'dash';}
+function invPageForTab(t){const p=INV_PAGES.find(x=>x[0]===t);return p?p[2]:'inventory';}
 const INV_MOVE_LABEL={GRN:'Goods Receipt',ISSUE:'Stock Issue',ADJ:'Adjustment',XFER:'Transfer'};
 function invItemMoves(id){return INV.moves.filter(m=>m.itemId===id).sort((a,b)=>a.date<b.date?-1:(a.date>b.date?1:0));}
 function invState(id){
@@ -4635,7 +4662,8 @@ function invWorkspace(v){
   const tabs=[['dash','Dashboard'],['items','Item Master'],['moves','Stock Movements'],['count','Physical Count'],['registers','Registers'],['val','Valuation'],
     ['reorder','Reorder Report'],['abc','ABC Analysis'],['aging','Stock Aging'],['dead','Dead / Slow'],['neg','Negative Stock'],['ledger','Stock Ledger'],['turn','Turnover'],['wh','Warehouses']]
     .map(([id,label])=>({id,label}));
-  v.appendChild(subTabBar(tabs,INV_TAB,id=>{INV_TAB=id;render();},{page:'inventory',state:'inv',prefix:'Inventory'}));
+  INV_TAB=invTabForPage();
+  v.appendChild(subTabBar(tabs,INV_TAB,id=>{go(invPageForTab(id));}));
   const c=el('div');c.id='invBody';v.appendChild(c);
   if(!INV.items.length){
     c.appendChild(noteBox('A General Ledger holds no item-level stock data, so this is a full inventory <b>sub-ledger</b>. Add items and record movements, or load a sample catalog to explore every report. Movements can optionally post to GL control accounts.'));
