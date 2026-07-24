@@ -2726,7 +2726,11 @@ function openJE(existing,opts){
     ${locked?'':`<div class="hint" id="jeHint" style="margin-top:8px">Entry must balance before posting. Totals above your approval limit route for approval automatically.</div>`}`;
   drawJELines(locked);
   drawAttach(locked);
-  if(!locked){JE_SCHED={};jeSchedPanel();}
+  if(!locked){
+    JE_SCHED={};
+    if(editing&&Array.isArray(existing.autoSched)){existing.autoSched.forEach(c=>{const i=JE_LINES.findIndex(l=>l.accName===c.acct);if(i>=0)JE_SCHED[i]={kind:c.kind,on:true,start:c.start,months:c.months,expAcc:c.expAcc||''};});}
+    jeSchedPanel();
+  }
   if(!locked){
     $('#jeAdd').onclick=()=>{JE_LINES.push(blankLine());drawJELines(false);};
     const fileInp=$('#jeFile');if(fileInp)fileInp.onchange=e=>handleAttach(e.target.files);
@@ -2951,6 +2955,28 @@ async function postJE(existingId,doctype){
   if(Math.abs(dr-cr)>0.005){toast('Entry is out of balance by '+fmt(dr-cr)+' — debits must equal credits.',true);return;}
   if(!memo){toast('Add a memo so the entry is traceable.',true);return;}
   if(isPeriodClosed(date)){toast('Cannot post into closed period '+periodOf(date)+'. Reopen it first.',true);return;}
+  // require a complete recognition schedule for any prepaid / fixed-asset debit line
+  const _faRoots=['Property and Equipment','Right of Use Assets'];
+  const _schedProblems=[];
+  JE_LINES.forEach((l,i)=>{
+    if(!l.accName)return; const acc=ACC_BY_NAME[l.accName]; if(!acc)return; const amt=jeNum(l.dr); if(amt<=0)return;
+    const isPrepaid=acc.class==='ASSET'&&(/prepaid|deferred/i.test(acc.name)||l.accName===((typeof prepaidAcc==='function'&&prepaidAcc())||{}).name);
+    const isFA=acc.class==='ASSET'&&(_faRoots.indexOf(acc.root)>=0||/property|equipment|right of use|fixture|furnitur|vehicle|machin|building/i.test(acc.name));
+    if(!isPrepaid&&!isFA)return;
+    const s=JE_SCHED[i];
+    const kindLbl=isPrepaid?'amortization schedule':'fixed asset & depreciation';
+    if(!s||!s.on){_schedProblems.push('“'+acc.name+'”: tick “Create '+kindLbl+'” under Recognition schedules');return;}
+    const miss=[];
+    if(!s.start)miss.push(isPrepaid?'service start date':'in-service date');
+    if(!(+s.months>0))miss.push(isPrepaid?'number of months':'useful life (months)');
+    if(isPrepaid&&!s.expAcc)miss.push('expense account');
+    if(miss.length)_schedProblems.push('“'+acc.name+'”: add '+miss.join(', '));
+  });
+  if(_schedProblems.length){
+    const box=$('#jeSchedBox');if(box){box.style.boxShadow='0 0 0 2px var(--neg,#c0392b)';setTimeout(()=>{if(box)box.style.boxShadow='';},2600);box.scrollIntoView({behavior:'smooth',block:'center'});}
+    toast(_schedProblems.length===1?('Cannot post — '+_schedProblems[0]+'.'):('Cannot post — complete the recognition schedule: '+_schedProblems.join(' · ')+'.'),true);
+    return;
+  }
   const attachments=JE_ATTACH.map(a=>({...a}));
   const autoSched=[];
   Object.keys(JE_SCHED).forEach(k=>{const s=JE_SCHED[k];const l=JE_LINES[+k];if(s&&s.on&&l&&l.accName&&jeNum(l.dr)>0){
@@ -6449,7 +6475,7 @@ function renderAmortDetail(v){
     tb.innerHTML+=`<tr><td class="mono">${i+1}</td><td class="mono">${e.period}</td><td class="mono">${e.date}</td>
       <td class="r mono">${fmt(e.amount)}</td>
       <td>${e.posted?'<span class="st-tag st-approved">POSTED</span>':(closed?'<span class="st-tag st-rejected">PERIOD CLOSED</span>':(due?'<span class="st-tag st-pending">DUE</span>':'<span class="st-tag st-draft">SCHEDULED</span>'))}</td>
-      <td class="r">${e.posted?`<span class="muted mono" style="font-size:11px">${esc(e.jeid?('JE '+(POSTED.find(j=>j.jeid===e.jeid)||{}).doc||''):'')}</span>`:(canDo&&!closed?`<button class="btn sm" data-post="${i}">Post</button>`:'')}</td></tr>`;});
+      <td class="r">${e.posted?`<a href="#" class="lnk amjelink" data-jeid="${esc(e.jeid||'')}" style="font-size:11px">${esc(e.jeid?('JE '+((POSTED.find(j=>j.jeid===e.jeid)||{}).doc||'')):'view')}</a>`:(canDo&&!closed?`<button class="btn sm" data-post="${i}">Post</button>`:'')}</td></tr>`;});
   const totP=(s.entries||[]).filter(e=>e.posted).reduce((t,e)=>t+e.amount,0);
   tbl.innerHTML+=`<tfoot><tr style="font-weight:700;border-top:2px solid var(--header);background:#f4f6f8"><td colspan="3" style="padding:9px 14px">Recognized / Total</td><td class="r mono">${fmt(totP)} / ${fmt(s.total)}</td><td colspan="2"></td></tr></tfoot>`;
   tbl.appendChild(tb);panel.appendChild(tbl);v.appendChild(panel);
@@ -6457,6 +6483,7 @@ function renderAmortDetail(v){
   if($('#amDel'))$('#amDel').onclick=async()=>{if(confirm('Delete schedule "'+s.name+'"? Posted recognition JEs are kept.')){AMORT.schedules=AMORT.schedules.filter(x=>x.id!==s.id);await saveAmort();audit('Amortization schedule deleted',s.name,'');go('amort');toast('Schedule deleted');}};
   if($('#amPostDue'))$('#amPostDue').onclick=()=>postAmortOne(s.id,null,cutoff);
   $$('#view [data-post]').forEach(b=>b.onclick=()=>postAmortOne(s.id,+b.dataset.post,null));
+  $$('#view .amjelink').forEach(a=>a.onclick=e=>{e.preventDefault();const je=POSTED.find(j=>j.jeid===a.dataset.jeid);if(je)openEntry({jeid:je.jeid,doc:je.doc,date:je.date});else toast('Entry not found (it may have been reversed).',true);});
 }
 async function postAmortOne(sid,index,cutoff){
   const s=AMORT.schedules.find(x=>x.id===sid); if(!s)return;
