@@ -708,6 +708,8 @@ input.f:focus,select:focus,.accpick:focus,input:focus{outline:none;border-color:
 /* Refresh / chips micro-interaction */
 .pclear,.cochip{transition:transform .12s ease,box-shadow .15s ease}
 .pclear:hover{transform:translateY(-1px)}
+.prline select,.prline input,.prline .roval{min-width:0;max-width:100%;box-sizing:border-box}
+.prline .del{box-sizing:border-box}
 /* ============ LOGIN — glass card on animated aurora ============ */
 #login{position:fixed;inset:0;z-index:1000;display:flex;align-items:center;justify-content:center;padding:24px;overflow:hidden;
   background:linear-gradient(135deg,#0a1628 0%,#0e2038 45%,#0a2436 100%)}
@@ -2557,7 +2559,7 @@ function salesDocModal(doc,startType){
   const dimSel=(key,label,val,i)=>{const vals=(typeof dimValues==='function'?dimValues(key):[])||[];return `<select data-i="${i}" data-k="${key}" style="font-size:11px"${dis}><option value="">${label}…</option>${vals.map(x=>`<option${x===val?' selected':''}>${esc(x)}</option>`).join('')}</select>`;};
   function lineNet(l){const n=(+l.qty||0)*(+l.unit||0);return n||(+l.amount||0);}
   function linesHtml(){return `
-    <div style="display:grid;grid-template-columns:2.1fr 2.1fr 62px 96px 70px 108px 30px;gap:8px;padding:0 9px 6px;font-size:9.5px;font-weight:700;letter-spacing:.6px;color:var(--txt-faint);text-transform:uppercase">
+    <div style="display:grid;grid-template-columns:minmax(0,2.1fr) minmax(0,2.1fr) 62px 96px 70px 108px 30px;gap:8px;padding:0 9px 6px;border:1px solid transparent;box-sizing:border-box;font-size:9.5px;font-weight:700;letter-spacing:.6px;color:var(--txt-faint);text-transform:uppercase">
       <div>Item / Revenue account</div><div>Description</div><div class="r" style="text-align:right">Qty</div><div class="r" style="text-align:right">Unit price</div><div class="r" style="text-align:right">VAT %</div><div class="r" style="text-align:right">Line total</div><div></div>
     </div>`+lines.map((l,i)=>{
      const it=prods.find(p=>p.id===l.itemId);const isInv=!!(it&&it.type==='inventory');
@@ -2566,7 +2568,7 @@ function salesDocModal(doc,startType){
         :`<select data-i="${i}" data-k="accName" style="font-size:11px"${dis}><option value="">Revenue account…</option>${revOpts(l.accName)}</select>`;
      const onhand=isInv?itemOnHand(it,l.store):0;
      return `<div class="prline" style="border:1px solid var(--line);border-radius:9px;padding:9px;margin-bottom:8px">
-       <div style="display:grid;grid-template-columns:2.1fr 2.1fr 62px 96px 70px 108px 30px;gap:8px;align-items:center">
+       <div style="display:grid;grid-template-columns:minmax(0,2.1fr) minmax(0,2.1fr) 62px 96px 70px 108px 30px;gap:8px;align-items:center">
          <select data-i="${i}" data-k="itemId" style="font-size:12px"${dis}><option value="">— item / product —</option>${itemOpts(l.itemId)}</select>
          <input data-i="${i}" data-k="desc" placeholder="Description" value="${esc(l.desc)}"${dis}>
          <input class="r" data-i="${i}" data-k="qty" inputmode="decimal" value="${l.qty||1}"${dis}>
@@ -4013,7 +4015,7 @@ function procDocModal(doc,startType){
   const dimSel=(key,label,val,i)=>{const vals=(typeof dimValues==='function'?dimValues(key):[])||[];return `<select data-i="${i}" data-k="${key}" style="font-size:11px"${dis}><option value="">${label}…</option>${vals.map(v=>`<option${v===val?' selected':''}>${esc(v)}</option>`).join('')}</select>`;};
   const whs=(typeof invWarehouses==='function'?invWarehouses():['Main']);
   function linesHtml(){return `
-    <div class="prhead" style="display:grid;grid-template-columns:2.1fr 2.1fr 62px 96px 70px 108px 30px;gap:8px;padding:0 9px 6px;font-size:9.5px;font-weight:700;letter-spacing:.6px;color:var(--txt-faint);text-transform:uppercase">
+    <div class="prhead" style="display:grid;grid-template-columns:minmax(0,2.1fr) minmax(0,2.1fr) 62px 96px 70px 108px 30px;gap:8px;padding:0 9px 6px;border:1px solid transparent;box-sizing:border-box;font-size:9.5px;font-weight:700;letter-spacing:.6px;color:var(--txt-faint);text-transform:uppercase">
       <div>Item / Account</div><div>Description</div><div class="r" style="text-align:right">Qty</div><div class="r" style="text-align:right">Unit price</div><div class="r" style="text-align:right">VAT %</div><div class="r" style="text-align:right">Line total</div><div></div>
     </div>`+lines.map((l,i)=>{
      const it=prods.find(p=>p.id===l.itemId);
@@ -4026,7 +4028,7 @@ function procDocModal(doc,startType){
           ? `<div class="roval" style="font-size:11px;padding:6px 8px"><span class="st-tag ${isInv?'st-approved':'st-draft'}" style="font-size:8px">${esc(prodTypeLabel(it.type))}</span> ${esc(it.glAccount||'⚠ set item GL account')}</div>`
           : `<select data-i="${i}" data-k="accName" style="font-size:11px"${dis}><option value="">Account…</option>${acctOpts(l.accName)}</select>`);
      return `<div class="prline" style="border:1px solid var(--line);border-radius:9px;padding:9px;margin-bottom:8px">
-       <div style="display:grid;grid-template-columns:2.1fr 2.1fr 62px 96px 70px 108px 30px;gap:8px;align-items:center">
+       <div style="display:grid;grid-template-columns:minmax(0,2.1fr) minmax(0,2.1fr) 62px 96px 70px 108px 30px;gap:8px;align-items:center">
          <select data-i="${i}" data-k="itemId" style="font-size:12px"${dis}><option value="">— item / product —</option>${itemOpts(l.itemId)}</select>
          <input data-i="${i}" data-k="desc" placeholder="Description" value="${esc(l.desc)}"${dis}>
          <input class="r" data-i="${i}" data-k="qty" inputmode="decimal" value="${l.qty||1}"${dis} title="Quantity">
