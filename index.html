@@ -999,7 +999,7 @@ const store={
   async saveProc(){try{await window.storage.set(PROC_KEY,JSON.stringify(PROC));await window.storage.set(SEQ_KEY,JSON.stringify(SEQ));}catch(e){}},
   async saveUsers(){try{await window.storage.set(USERS_KEY,JSON.stringify(USERS));await window.storage.set(CFG_KEY,JSON.stringify({currentUser:CURRENT_USER,approvalsOn:APPROVALS_ON}));}catch(e){}},
   async saveCfg(){try{await window.storage.set(CFG_KEY,JSON.stringify({currentUser:CURRENT_USER,approvalsOn:APPROVALS_ON}));}catch(e){}},
-  async saveInv(){try{await window.storage.set(INV_KEY,JSON.stringify(INV));await window.storage.set(SEQ_KEY,JSON.stringify(SEQ));}catch(e){}},
+  async saveInv(){try{await window.storage.set(INV_KEY,JSON.stringify(INV));await window.storage.set(SEQ_KEY,JSON.stringify(SEQ));}catch(e){} try{if(typeof markDirtyCompany==='function')markDirtyCompany();}catch(e){}},
 };
 
 /* ---- Accounting periods ---- */
@@ -2656,6 +2656,10 @@ async function advanceSales(doc,toType){
   const prods=(typeof coProducts==='function'?coProducts():[]);
   if(toType==='SI'){
     const ar=arAcc();if(!ar){toast('No Accounts Receivable control account found.',true);return;}
+    // stock availability check per line & store (no overselling)
+    const short=[];
+    doc.lines.forEach(l=>{const it=l.itemId?prods.find(p=>p.id===l.itemId):null;if(it&&it.type==='inventory'){const oh=itemOnHand(it,l.store);if((+l.qty||0)>oh+1e-9)short.push('“'+(it.name||l.desc||'')+'” @ '+(l.store||'—')+': need '+fmt(+l.qty||0)+', on hand '+fmt(oh));}});
+    if(short.length){toast('Cannot invoice — insufficient stock: '+short.join(' · ')+'. Receive stock first or reduce the quantity.',true);return;}
     const rev=(revAcc()||{}).name;
     const jl=doc.lines.map(l=>{const it=l.itemId?prods.find(p=>p.id===l.itemId):null;const racc=l.accName||rev;
       return {accName:racc,desc:l.desc||(it?it.name:racc),party:doc.customer,dr:0,cr:l.amount,bu:l.bu||'',loc:l.loc||'',dept:l.dept||''};});
