@@ -902,7 +902,7 @@ function assetAccumDep(a,asOf){ // accumulated depreciation = months actually po
 /* Actual posted depreciation per asset, taken from real posted DEP journals (deps[] breakdown) */
 function assetPostedDepByMonth(a){const map={};
   (typeof POSTED!=='undefined'?POSTED:[]).filter(j=>j.doctype==='Depreciation'&&(j.status===undefined||j.status==='posted')&&Array.isArray(j.deps)).forEach(j=>{
-    j.deps.filter(d=>d.assetId===a.id).forEach(d=>{const ym=d.month||(j.date||'').slice(0,7);if(!ym)return;map[ym]={amount:((map[ym]&&map[ym].amount)||0)+(+d.amount||0),doc:j.doc};});});
+    j.deps.filter(d=>d.assetId===a.id).forEach(d=>{const ym=d.month||(j.date||'').slice(0,7);if(!ym)return;map[ym]={amount:((map[ym]&&map[ym].amount)||0)+(+d.amount||0),doc:j.doc,jeid:j.jeid};});});
   return map;}
 /* Reset postedDepThrough to reflect ONLY real posted entries (heals assets pre-marked at creation on older builds) */
 function reconcileAssetPosted(a){
@@ -2569,6 +2569,7 @@ function drawSearch(out){
    ============================================================ */
 let JE_LINES=[];
 let JE_SCHED={};   // per-line recognition-schedule config (amortization / depreciation) set on the manual entry
+let JE_VIEWREFS=[];   // schedules/assets this entry created — shown inline on the matching GL line
 let JE_ATTACH=[];
 const TX_TYPES=[
   {t:'Journal (Manual)',prefix:'JE-M-',seq:'je'},
@@ -2594,16 +2595,18 @@ function openJE(existing,opts){
   if(typeof REPORT_SCOPE!=='undefined'&&REPORT_SCOPE==='consolidated'){toast('Switch to “This company” to create or edit transactions.',true);return;}
   if(rmeta(currentUser()).readonly && !opts.viewOnly){toast('Your role is read-only. You can view documents but not create or edit them.',true);return;}
   if(!editing && !canCreateTxn(currentUser())){toast('You don’t have permission to create transactions.',true);return;}
-  const locked = editing && isPeriodClosed(existing.date);
+  const postedLock = editing && existing.status==='posted' && !isPeriodClosed(existing.date);
+  const locked = editing && (isPeriodClosed(existing.date) || existing.status==='posted');
   JE_ATTACH = editing ? (existing.attachments?existing.attachments.map(a=>({...a})):[]) : [];
   let doctype = editing ? (existing.doctype||'Journal (Manual)') : (opts.doctype||'Journal (Manual)');
   $('#modalTitle').textContent= editing?('Entry — '+existing.doc+(locked?'  🔒':'')) : 'New Transaction';
   JE_LINES = editing ? existing.lines.map(l=>({...l})) : [blankLine(),blankLine()];
+  JE_VIEWREFS = (editing && Array.isArray(existing.createdRefs)) ? existing.createdRefs : [];
   const body=$('#modalBody');
   const dis = locked?' disabled':'';
   const typeSel = editing?'' : `<label class="fld">Document type<select id="jeType" style="max-width:none">${TX_TYPES.map(t=>`<option${t.t===doctype?' selected':''}>${t.t}</option>`).join('')}</select></label>`;
   body.innerHTML=`
-    ${locked?`<div class="note" style="margin-bottom:14px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><div>Accounting period <b>${periodOf(existing.date)}</b> is <b>closed</b>. This entry is read-only. Reopen the period under Administration → Accounting Periods to edit it.</div></div>`:''}
+    ${locked?`<div class="note" style="margin-bottom:14px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><div>${postedLock?'This entry is <b>posted and locked</b>. Posted entries cannot be edited — use <b>Reverse entry</b> to correct it (the original, and anything it created such as amortization/depreciation schedules, are always kept for audit and reversed together).':('Accounting period <b>'+periodOf(existing.date)+'</b> is <b>closed</b>. This entry is read-only. Reopen the period under Administration → Accounting Periods to edit it.')}</div></div>`:''}
     ${editing?`<div style="margin-bottom:10px"><span class="st-tag ${existing.status==='pending'?'st-pending':'st-posted'}">${(existing.status||'posted').toUpperCase()}</span> <span class="muted" style="font-size:12px">· ${esc(doctype)}</span></div>`:''}
     <div class="jgrid">
       ${typeSel}
@@ -2640,9 +2643,10 @@ function openJE(existing,opts){
   }
   const foot=$('#modalFoot');
   if(locked){
-    foot.innerHTML=`<div class="hint" style="margin:0">This entry sits in a closed period and cannot be modified.</div>
-      <div style="margin-left:auto"><button class="btn" id="jeCancel">Close</button></div>`;
+    foot.innerHTML=`<div class="hint" style="margin:0">${postedLock?'Posted entries are locked — reverse to correct.':'This entry sits in a closed period and cannot be modified.'}</div>
+      <div style="margin-left:auto;display:flex;gap:10px">${postedLock?`<button class="btn" id="jeHist">History</button><button class="btn danger" id="jeReverse">Reverse entry</button>`:''}<button class="btn" id="jeCancel">Close</button></div>`;
     $('#jeCancel').onclick=closeModal;
+    if(postedLock){$('#jeReverse').onclick=()=>reverseJE(existing.jeid);if($('#jeHist'))$('#jeHist').onclick=()=>txnLogModal(existing.doc);}
   }else{
     foot.innerHTML=`<div class="hint" style="margin:0">Approval limit: ${userLimit()===Infinity?'unlimited':fmt(userLimit())} · acting as ${esc(currentUser()?currentUser().name:'—')}</div>
       <div style="margin-left:auto;display:flex;gap:10px">
@@ -2749,10 +2753,19 @@ function drawJELines(locked){
       <div><input class="r" data-i="${i}" data-k="cr" inputmode="decimal" placeholder="0.00" value="${ln.cr}"${dis}></div>
       <div>${locked?'':`<button class="del" data-del="${i}" title="Remove line">×</button>`}</div>`;
     box.appendChild(row);
+    // if this entry created a schedule/asset for this account, surface it right on the line
+    (JE_VIEWREFS||[]).filter(r=>r.acct===ln.accName).forEach(r=>{
+      const note=el('div','jeschref');note.style.cssText='margin:-2px 0 8px;padding:5px 10px;font-size:11px;background:#eef6ff;border:1px solid #d5e6fb;border-radius:7px;display:flex;align-items:center;gap:8px;color:#1e4b82';
+      note.innerHTML=`<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 5h16M4 12h16M4 19h10"/></svg><span>Created <b>${esc(r.label)}</b>${r.detail?(' · '+esc(r.detail)):''}</span><a href="#" class="lnk jeSchOpen" data-kind="${r.kind}" data-id="${esc(r.id)}" style="margin-left:auto">Open schedule →</a>`;
+      box.appendChild(note);
+    });
     if(JE_DIMS){const dr=el('div','jedims');dr.style.cssText='display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:-2px 0 8px;padding:0 2px';
       dr.innerHTML=['bu','loc','dept','emp'].map(k=>dimField(i,k,ln,dis)).join('');
       box.appendChild(dr);}
   });
+  $$('#jeRows .jeSchOpen').forEach(a=>a.onclick=e=>{e.preventDefault();const kind=a.dataset.kind,id=a.dataset.id;
+    if(kind==='fa'){const as=ASSETS.find(x=>x.id===id);if(as)assetDepScheduleModal(as);else toast('Asset was removed (entry reversed).',true);}
+    else{const s=AMORT.schedules.find(x=>x.id===id);if(s){AMORT_VIEW=id;closeModal();go('amort_detail');}else toast('Schedule was removed (entry reversed).',true);}});
   if(locked)return;
   const tog=$('#jeDimTog');if(tog)tog.onchange=e=>{JE_DIMS=e.target.checked;drawJELines(false);};
   $$('#jeRows select,#jeRows input:not([type=checkbox])').forEach(inp=>{
@@ -2854,7 +2867,7 @@ async function postJE(existingId,doctype){
   let theJe;
   if(existingId){
     const je=POSTED.find(x=>x.jeid===existingId);
-    if(je.status==='posted' && !isAdmin(currentUser()) && rmeta(currentUser()).rank<80){toast('Posted entries can only be corrected by Reversal.',true);return;}
+    if(je.status==='posted'){toast('Posted entries are locked — use Reverse to correct them.',true);return;}
     if(isPeriodClosed(je.date)){toast('Original period is closed — entry cannot be changed.',true);return;}
     je.date=date;je.doc=doc;je.memo=memo;je.lines=lines;je.attachments=attachments;je.amount=dr;
     if(je.status!=='pending')je.status='posted';
@@ -2880,23 +2893,27 @@ async function postJE(existingId,doctype){
 }
 function jeMaterializeSchedules(je){
   if(!je||!je.autoSched||!je.autoSched.length||je.autoSchedDone)return;
-  let made=0;
+  let made=0; je.createdRefs=je.createdRefs||[];
   je.autoSched.forEach(c=>{
     if(c.kind==='amort'){
       const exp=c.expAcc||((ACC.find(a=>a.class==='EXPENSE'&&!/deprec|amort/i.test(a.name))||{}).name);
       if(!exp)return;
-      AMORT.schedules.push({id:amid(),name:(je.memo||'Prepaid')+' — '+je.doc,type:'prepaid',source:{kind:'je',ref:je.jeid,doc:je.doc},
+      const sid=amid();const nm=(je.memo||'Prepaid')+' — '+je.doc;
+      AMORT.schedules.push({id:sid,name:nm,type:'prepaid',source:{kind:'je',ref:je.jeid,doc:je.doc},
         total:c.amount,method:'straight-line',term:c.months,startDate:c.start,billDate:je.date,
         deferredAcct:c.acct,expenseAcct:exp,createdBy:CURRENT_USER,createdAt:new Date().toISOString(),
         entries:genAmortEntries(c.amount,c.months,c.start)});
+      je.createdRefs.push({kind:'amort',acct:c.acct,id:sid,label:'Amortization schedule',detail:c.months+' months from '+(c.start||'').slice(0,7)});
       made++;
     } else if(c.kind==='fa'){
       const code=(typeof nextAssetCode==='function')?nextAssetCode():('FA-'+(ASSETS.length+1));
-      ASSETS.push({id:'as_'+Date.now()+'_'+Math.random().toString(36).slice(2,6),code,barcode:code,
+      const aid='as_'+Date.now()+'_'+Math.random().toString(36).slice(2,6);
+      ASSETS.push({id:aid,code,barcode:code,
         name:(je.memo||c.acct).slice(0,60),category:c.acct,acqDate:c.start,cost:c.amount,lifeMonths:c.months,salvage:0,method:'SL',
         status:'Active',postedDepThrough:addMonths((c.start||todayISO()).slice(0,7)+'-01',-1),
         depExpAcc:((typeof depExpenseAcc==='function'&&depExpenseAcc())||{}).name||null,accumDepAcc:((typeof accumDepAcc==='function'&&accumDepAcc())||{}).name||null,
         sourceDoc:je.doc,sourceKey:'je:'+je.jeid});
+      je.createdRefs.push({kind:'fa',acct:c.acct,id:aid,code:code,label:'Fixed asset '+code,detail:c.months+'-month depreciation from '+(c.start||'').slice(0,7)});
       made++;
     }
   });
@@ -2904,22 +2921,49 @@ function jeMaterializeSchedules(je){
   if(made&&typeof audit==='function')audit('Recognition schedule created',je.doc,made+' schedule(s)');
 }
 function bumpSeqFor(doc){for(const t of TX_TYPES){if(t.prefix!=='JE-M-'&&doc.indexOf(t.prefix)===0){const n=+doc.slice(t.prefix.length);if(n>(SEQ[t.seq]||0))SEQ[t.seq]=n;}}}
+function mkJEReversal(src,memoPrefix){return {jeid:'je_'+Date.now()+'_'+Math.random().toString(36).slice(2,7),date:todayISO(),doc:(src.doc||'JE')+'-REV',
+  memo:(memoPrefix||'Reversal')+' — '+(src.memo||src.doc||''),lines:(src.lines||[]).map(l=>({accName:l.accName,desc:'Reversal: '+(l.desc||''),party:l.party||'',dr:+l.cr||0,cr:+l.dr||0})),
+  doctype:'Reversal',attachments:[],status:'posted',by:CURRENT_USER,amount:src.amount||0,needChain:[],approvals:[],reversalOf:src.jeid,createdAt:new Date().toISOString()};}
 async function reverseJE(jeid){
   const je=POSTED.find(x=>x.jeid===jeid);if(!je)return;
   if(!can('reverse',{module:pageModuleId('journals')})){toast('Only a Controller, CFO or Administrator can reverse posted entries.',true);return;}
   if(je.status!=='posted'){toast('Only posted entries can be reversed.',true);return;}
   if(je.reversed){toast('This entry has already been reversed.',true);return;}
   if(isPeriodClosed(je.date)){toast('Cannot reverse an entry in a closed period. Reopen it first.',true);return;}
-  if(!confirm(`Reverse ${je.doc}?\nA reversing entry will be posted (the original is kept for audit).`))return;
-  const rlines=je.lines.map(l=>({accName:l.accName,desc:'Reversal: '+(l.desc||''),party:l.party||'',dr:+l.cr||0,cr:+l.dr||0}));
-  const rdoc=(je.doc||'JE')+'-REV';
-  POSTED.push({jeid:'je_'+Date.now()+'_rev',date:todayISO(),doc:rdoc,memo:'Reversal of '+je.doc+' — '+(je.memo||''),
-    lines:rlines,doctype:'Reversal',attachments:[],status:'posted',by:CURRENT_USER,amount:je.amount||0,
-    needChain:[],approvals:[],reversalOf:je.jeid,createdAt:new Date().toISOString()});
-  je.reversed=true; je.reversedBy=rdoc; je.reversedAt=new Date().toISOString();
-  audit('Reversed entry',je.doc,'→ '+rdoc);
-  await store.save();rebuild();closeModal();render();
-  toast('Reversing entry '+rdoc+' posted. Original retained for audit.');
+  // downstream artifacts this entry created
+  const linkedAssets=(typeof ASSETS!=='undefined'?ASSETS:[]).filter(a=>a.sourceKey==='je:'+jeid);
+  const linkedScheds=(typeof AMORT!=='undefined'&&AMORT.schedules?AMORT.schedules:[]).filter(s=>s.source&&s.source.ref===jeid);
+  let downAmort=0;linkedScheds.forEach(s=>downAmort+=(s.entries||[]).filter(e=>e.posted).length);
+  let downDep=0;linkedAssets.forEach(a=>downDep+=Object.keys(assetPostedDepByMonth(a)).length);
+  const cascade=linkedAssets.length||linkedScheds.length;
+  const extra=cascade?('\n\nThis will ALSO reverse & remove:'+(linkedAssets.length?('\n• '+linkedAssets.length+' fixed asset(s) + '+downDep+' posted depreciation month(s)'):'')+(linkedScheds.length?('\n• '+linkedScheds.length+' amortization schedule(s) + '+downAmort+' posted month(s)'):'')):'';
+  if(!confirm('Reverse '+je.doc+'?\nA reversing entry will be posted (the original is kept for audit).'+extra))return;
+  const today=todayISO();
+  // 1) amortization schedules created by this entry — reverse posted recognition, then drop the schedule
+  linkedScheds.forEach(s=>{
+    (s.entries||[]).forEach(e=>{if(e.posted&&e.jeid){const amje=POSTED.find(j=>j.jeid===e.jeid);
+      if(amje&&!amje.reversed&&!isPeriodClosed(amje.date)){POSTED.push(mkJEReversal(amje,'Reverse amortization (schedule cancelled)'));amje.reversed=true;amje.reversedAt=new Date().toISOString();}}});
+    AMORT.schedules=AMORT.schedules.filter(x=>x.id!==s.id);
+    if(typeof audit==='function')audit('Amortization schedule reversed',s.name||s.id,'via '+je.doc);
+  });
+  // 2) fixed assets created by this entry — net-reverse posted depreciation, then remove the asset
+  linkedAssets.forEach(a=>{
+    const pm=assetPostedDepByMonth(a);const tot=Object.keys(pm).reduce((x,k)=>x+(pm[k].amount||0),0);
+    if(tot>0.005){const de=a.depExpAcc||((depExpenseAcc()||{}).name),ac=a.accumDepAcc||((accumDepAcc()||{}).name);
+      if(de&&ac){POSTED.push({jeid:'je_'+Date.now()+'_dr'+Math.random().toString(36).slice(2,5),date:today,doc:(a.code||'FA')+'-DEP-REV',
+        memo:'Reverse accumulated depreciation — asset '+(a.name||a.code)+' removed (reversal of '+je.doc+')',
+        lines:[{accName:ac,desc:'Reverse accum. depreciation',party:'',dr:tot,cr:0},{accName:de,desc:'Reverse depreciation expense',party:'',dr:0,cr:tot}],
+        doctype:'Reversal',attachments:[],status:'posted',by:CURRENT_USER,amount:tot,needChain:[],approvals:[],createdAt:new Date().toISOString()});}}
+    ASSETS=ASSETS.filter(x=>x.id!==a.id);
+    if(typeof audit==='function')audit('Fixed asset reversed & removed',a.code||a.name,'via '+je.doc);
+  });
+  // 3) reverse the original entry itself
+  const rev=mkJEReversal(je,'Reversal of '+je.doc);
+  POSTED.push(rev);
+  je.reversed=true;je.reversedBy=rev.doc;je.reversedAt=new Date().toISOString();
+  audit('Reversed entry',je.doc,'→ '+rev.doc+(cascade?' (cascade)':''));
+  await store.save();await store.saveAssets();if(typeof saveAmort==='function')await saveAmort();rebuild();closeModal();render();
+  toast(cascade?('Reversed '+je.doc+' and all linked schedules/assets.'):('Reversing entry '+rev.doc+' posted. Original retained for audit.'));
 }
 
 /* ============================================================
@@ -3326,7 +3370,7 @@ function assetDepScheduleModal(a){
   let acc=0,rows='';
   for(let i=0;i<a.lifeMonths;i++){ const ym=addMonths(startYM,i); const dep=Math.min(monthly,depBase-acc); acc+=dep;
     const nbv=a.cost-acc; const pm=postedMap[ym]; const posted=!!pm; const docNo=pm?pm.doc:'';
-    rows+=`<tr><td class="mono">${i+1}</td><td class="mono">${ym}</td><td class="r mono">${fmt(dep)}</td><td class="r mono">${fmt(acc)}</td><td class="r mono">${fmt(nbv)}</td><td class="mono" style="font-size:11px">${docNo?esc(docNo):'—'}</td><td>${posted?'<span class="st-tag st-approved" style="font-size:9px">POSTED</span>':'<span class="st-tag st-draft" style="font-size:9px">SCHEDULED</span>'}</td></tr>`;
+    rows+=`<tr><td class="mono">${i+1}</td><td class="mono">${ym}</td><td class="r mono">${fmt(dep)}</td><td class="r mono">${fmt(acc)}</td><td class="r mono">${fmt(nbv)}</td><td class="mono" style="font-size:11px">${docNo?`<a href="#" class="lnk depjelink" data-jeid="${esc(pm.jeid||'')}" data-doc="${esc(docNo)}">${esc(docNo)}</a>`:'—'}</td><td>${posted?'<span class="st-tag st-approved" style="font-size:9px">POSTED</span>':'<span class="st-tag st-draft" style="font-size:9px">SCHEDULED</span>'}</td></tr>`;
     if(acc>=depBase-0.005)break;
   }
   const de=a.depExpAcc||((depExpenseAcc()||{}).name)||'—', ac=a.accumDepAcc||((accumDepAcc()||{}).name)||'—';
@@ -3340,6 +3384,7 @@ function assetDepScheduleModal(a){
      <div class="panel" style="box-shadow:none;margin-top:12px;max-height:340px;overflow:auto"><table><thead><tr><th>#</th><th>Period</th><th class="r">Depreciation</th><th class="r">Accumulated</th><th class="r">NBV</th><th>Entry #</th><th>Status</th></tr></thead><tbody>${rows}</tbody></table></div>`;
   $('#modalFoot').innerHTML=`<div class="hint" style="margin:0">Straight-line over ${a.lifeMonths} months from ${startYM}. Posted rows show the depreciation entry number.</div><div style="margin-left:auto"><button class="btn" id="faSchedBack">Back</button></div>`;
   $('#faSchedBack').onclick=()=>assetModal(a);
+  setTimeout(()=>{$$('#modalBody .depjelink').forEach(el2=>el2.onclick=e=>{e.preventDefault();const jid=el2.dataset.jeid,dc=el2.dataset.doc;const je=POSTED.find(j=>j.jeid===jid)||POSTED.find(j=>j.doc===dc);if(je)openEntry({jeid:je.jeid,doc:je.doc,date:je.date});else toast('Entry not found.',true);});},0);
   openModal();
 }
 function addAssetModal(prefill){
