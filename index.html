@@ -708,6 +708,61 @@ input.f:focus,select:focus,.accpick:focus,input:focus{outline:none;border-color:
 /* Refresh / chips micro-interaction */
 .pclear,.cochip{transition:transform .12s ease,box-shadow .15s ease}
 .pclear:hover{transform:translateY(-1px)}
+/* ============ LOGIN — glass card on animated aurora ============ */
+#login{position:fixed;inset:0;z-index:1000;display:flex;align-items:center;justify-content:center;padding:24px;overflow:hidden;
+  background:linear-gradient(135deg,#0a1628 0%,#0e2038 45%,#0a2436 100%)}
+.lx-bg{position:absolute;inset:0;overflow:hidden;z-index:0}
+.lx-bg span{position:absolute;border-radius:50%;filter:blur(70px);opacity:.55;will-change:transform}
+.lx-bg .o1{width:520px;height:520px;left:-120px;top:-140px;background:radial-gradient(circle,#3b6dff,transparent 68%);animation:lxo 17s ease-in-out infinite}
+.lx-bg .o2{width:560px;height:560px;right:-160px;bottom:-180px;background:radial-gradient(circle,#00c2d6,transparent 68%);animation:lxo 21s ease-in-out infinite reverse}
+.lx-bg .o3{width:420px;height:420px;right:22%;top:8%;background:radial-gradient(circle,#7c5cff,transparent 68%);opacity:.4;animation:lxo 26s ease-in-out infinite}
+@keyframes lxo{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(40px,50px) scale(1.12)}}
+.lx-bg .grid{position:absolute;inset:0;opacity:.5;background-image:radial-gradient(rgba(255,255,255,.06) 1px,transparent 1px);background-size:26px 26px;mask-image:radial-gradient(ellipse 80% 70% at 50% 45%,#000,transparent 75%);-webkit-mask-image:radial-gradient(ellipse 80% 70% at 50% 45%,#000,transparent 75%)}
+.lx-card{position:relative;z-index:2;width:100%;max-width:412px;padding:40px 38px 30px;border-radius:24px;
+  background:linear-gradient(180deg,rgba(23,38,60,.78),rgba(14,26,44,.72));
+  border:1px solid rgba(255,255,255,.12);backdrop-filter:blur(26px) saturate(1.2);-webkit-backdrop-filter:blur(26px) saturate(1.2);
+  box-shadow:0 40px 90px -30px rgba(0,0,0,.7),0 0 0 1px rgba(255,255,255,.04) inset,0 1px 0 rgba(255,255,255,.14) inset;
+  animation:lxIn .6s cubic-bezier(.2,.9,.25,1);color:#eaf2fb}
+@keyframes lxIn{from{opacity:0;transform:translateY(20px) scale(.97)}to{opacity:1;transform:none}}
+.lx-card:before{content:"";position:absolute;inset:-1px;border-radius:24px;padding:1px;background:linear-gradient(135deg,rgba(109,94,252,.6),rgba(0,194,214,.5),transparent 60%);-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;pointer-events:none;opacity:.7}
+.lx-logo{width:72px;height:72px;margin:0 auto 18px;filter:drop-shadow(0 14px 34px rgba(0,194,214,.55))}
+.lx-logo svg{width:72px;height:72px;border-radius:19px;animation:heroIn .8s cubic-bezier(.2,.9,.25,1)}
+.lx-brand{text-align:center;margin-bottom:22px}
+.lx-brand b{display:block;font-family:Georgia,'Iowan Old Style','Times New Roman',serif;font-style:italic;font-weight:700;font-size:23px;letter-spacing:.3px;
+  background:linear-gradient(92deg,#ffffff 25%,#8fd0ff);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent}
+.lx-brand span{display:block;font-size:9.5px;letter-spacing:2.2px;text-transform:uppercase;color:#7f9bb8;font-weight:700;margin-top:5px}
+.lx-h{font-size:22px;font-weight:700;letter-spacing:-.3px;margin:0 0 4px;text-align:center;color:#fff}
+.lx-sub{font-size:12.5px;color:#93abc4;text-align:center;margin:0 0 22px}
+.lx-field{margin-bottom:14px}
+.lx-field>label{display:block;font-size:11px;font-weight:700;letter-spacing:.4px;color:#8fa8c2;text-transform:uppercase;margin:0 0 7px}
+.lx-inp{position:relative;display:flex;align-items:center}
+.lx-inp>svg{position:absolute;left:14px;width:17px;height:17px;color:#6f8bab;pointer-events:none}
+.lx-inp input{width:100%;height:48px;border-radius:12px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.05);
+  padding:0 14px 0 42px;font-family:inherit;font-size:14px;color:#eef5fc;outline:none;transition:border-color .16s,box-shadow .16s,background .16s}
+.lx-inp input::placeholder{color:#6f88a3}
+.lx-inp input:focus{border-color:#4fb8ff;background:rgba(255,255,255,.08);box-shadow:0 0 0 4px rgba(79,184,255,.16)}
+.lx-tog{position:absolute;right:12px;background:none;border:none;color:#7f9bb8;font-size:10.5px;font-weight:800;letter-spacing:.6px;cursor:pointer;padding:4px}
+.lx-tog:hover{color:#bfe0ff}
+.lx-row{display:flex;align-items:center;justify-content:space-between;margin:4px 0 20px;font-size:12.5px}
+.lx-row label{display:flex;align-items:center;gap:8px;color:#9fb6cd;cursor:pointer;margin:0}
+.lx-row input[type=checkbox]{width:auto;accent-color:#3b8ae0}
+.lx-row a{color:#66c0ff;text-decoration:none;font-weight:600}
+.lx-row a:hover{text-decoration:underline}
+.lx-signin{width:100%;height:50px;border:none;border-radius:13px;cursor:pointer;font-size:15px;font-weight:700;letter-spacing:.2px;color:#fff;
+  display:flex;align-items:center;justify-content:center;gap:9px;
+  background:linear-gradient(135deg,#4f7bff,#00b6d4);box-shadow:0 12px 30px -8px rgba(0,150,220,.7),0 0 0 1px rgba(255,255,255,.1) inset;
+  transition:transform .14s ease,box-shadow .2s ease,filter .2s ease}
+.lx-signin svg{transition:transform .2s ease}
+.lx-signin:hover{transform:translateY(-2px);filter:brightness(1.07);box-shadow:0 18px 40px -10px rgba(0,150,220,.8)}
+.lx-signin:hover svg{transform:translateX(4px)}
+.lx-signin:active{transform:translateY(0)}
+#login .login-err{background:rgba(192,57,43,.16);border:1px solid rgba(255,120,105,.4);color:#ffb4ab;border-radius:11px;padding:10px 13px;font-size:12.5px;margin-bottom:14px;display:none;align-items:center;gap:8px}
+#login .login-err.show{display:flex}
+#login .login-demo{margin-top:18px;padding:11px 14px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:11px;font-size:11px;color:#9fb6cd;line-height:1.7}
+#login .login-demo b{color:#dceaf7}
+#login .login-demo code{font-family:var(--mono);background:rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.12);border-radius:5px;padding:1px 6px;color:#8fd0ff}
+.lx-foot{text-align:center;font-size:10.5px;color:#607890;margin-top:20px;letter-spacing:.3px}
+@media(max-width:480px){.lx-card{padding:32px 24px 24px}}
 /* ---- Login redesign ---- */
 .login-brand{padding:56px 66px}
 .login-brand:before{animation:orbFloat 15s ease-in-out infinite}
@@ -731,44 +786,31 @@ input.f:focus,select:focus,.accpick:focus,input:focus{outline:none;border-color:
 </style>
 
 <div id="login" class="hide">
-  <div class="login-brand">
-    <div class="lgb">
-      <div class="hero-logo"><svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Best Books Online"><defs><linearGradient id="bbHero" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#6d5efc"/><stop offset="1" stop-color="#00b3d6"/></linearGradient><linearGradient id="bbHeroBar" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#dff3ff"/></linearGradient></defs><rect x="2.5" y="2.5" width="43" height="43" rx="13" fill="url(#bbHero)"/><rect x="12" y="27" width="6.5" height="9.5" rx="2.2" fill="url(#bbHeroBar)"/><rect x="20.75" y="21" width="6.5" height="15.5" rx="2.2" fill="url(#bbHeroBar)"/><rect x="29.5" y="14.5" width="6.5" height="22" rx="2.2" fill="url(#bbHeroBar)"/><line x1="13.6" y1="30" x2="16.9" y2="30" stroke="#6d5efc" stroke-width="1.1" stroke-linecap="round"/><line x1="22.35" y1="24" x2="25.65" y2="24" stroke="#6d5efc" stroke-width="1.1" stroke-linecap="round"/><line x1="31.1" y1="17.6" x2="34.4" y2="17.6" stroke="#00b3d6" stroke-width="1.1" stroke-linecap="round"/><path d="M38 8.4l.95 2.35 2.35.95-2.35.95-.95 2.35-.95-2.35-2.35-.95 2.35-.95z" fill="#ffd54a"/></svg></div>
-      <div class="nm"><b class="bn">Best Books Online</b><small>ERP System · Ledger Console</small></div>
-      <h1>The financial control<br>center for your books.</h1>
-      <p>General ledger, payables &amp; receivables, treasury, fixed assets, procurement and reporting — one connected, real-time system.</p>
-      <div class="feat">
-        <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg>Real-time consolidated financial statements</div>
-        <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg>Full procurement-to-pay &amp; fixed-asset lifecycle</div>
-        <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg>Role-based approvals and period controls</div>
-      </div>
+  <div class="lx-bg"><span class="o1"></span><span class="o2"></span><span class="o3"></span><span class="grid"></span></div>
+  <div class="lx-card">
+    <div class="lx-logo"><svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Best Books Online"><defs><linearGradient id="bbHero" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#6d5efc"/><stop offset="1" stop-color="#00b3d6"/></linearGradient><linearGradient id="bbHeroBar" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#dff3ff"/></linearGradient></defs><rect x="2.5" y="2.5" width="43" height="43" rx="13" fill="url(#bbHero)"/><rect x="12" y="27" width="6.5" height="9.5" rx="2.2" fill="url(#bbHeroBar)"/><rect x="20.75" y="21" width="6.5" height="15.5" rx="2.2" fill="url(#bbHeroBar)"/><rect x="29.5" y="14.5" width="6.5" height="22" rx="2.2" fill="url(#bbHeroBar)"/><line x1="13.6" y1="30" x2="16.9" y2="30" stroke="#6d5efc" stroke-width="1.1" stroke-linecap="round"/><line x1="22.35" y1="24" x2="25.65" y2="24" stroke="#6d5efc" stroke-width="1.1" stroke-linecap="round"/><line x1="31.1" y1="17.6" x2="34.4" y2="17.6" stroke="#00b3d6" stroke-width="1.1" stroke-linecap="round"/><path d="M38 8.4l.95 2.35 2.35.95-2.35.95-.95 2.35-.95-2.35-2.35-.95 2.35-.95z" fill="#ffd54a"/></svg></div>
+    <div class="lx-brand"><b>Best Books Online</b><span>ERP System · Ledger Console</span></div>
+    <h2 class="lx-h">Welcome back</h2>
+    <div class="lx-sub">Sign in to your financial control center.</div>
+    <div class="login-err" id="loginErr"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg><span id="loginErrTxt"></span></div>
+    <div class="lx-field">
+      <label>Email or username</label>
+      <div class="lx-inp"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>
+        <input type="text" id="loginEmail" autocomplete="username" placeholder="email or username"></div>
     </div>
-    <div class="foot">© 2026 Best Books Online · ERP System</div>
-  </div>
-  <div class="login-panel">
-    <div class="login-card">
-      <h2>Sign in</h2>
-      <div class="sub">Use your Best Books Online account to continue.</div>
-      <div class="login-err" id="loginErr"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg><span id="loginErrTxt"></span></div>
-      <div class="field">
-        <label>Email or username</label>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>
-        <input type="text" id="loginEmail" autocomplete="username" placeholder="email or username">
-      </div>
-      <div class="field">
-        <label>Password</label>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+    <div class="lx-field">
+      <label>Password</label>
+      <div class="lx-inp"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
         <input type="password" id="loginPass" autocomplete="current-password" placeholder="••••••••">
-        <button class="togpw" id="togPw" type="button">SHOW</button>
-      </div>
-      <div class="row">
-        <label><input type="checkbox" id="loginRemember" checked style="width:auto"> Keep me signed in</label>
-        <a href="#" id="forgotLink">Forgot password?</a>
-      </div>
-      <button class="signin" id="loginBtn">Log In</button>
-      <div class="login-demo" id="loginDemo"></div>
-      <div class="login-copyright">Secured workspace · Best Books Online Ledger Console</div>
+        <button class="lx-tog" id="togPw" type="button">SHOW</button></div>
     </div>
+    <div class="lx-row">
+      <label><input type="checkbox" id="loginRemember" checked> Keep me signed in</label>
+      <a href="#" id="forgotLink">Forgot password?</a>
+    </div>
+    <button class="lx-signin" id="loginBtn"><span>Log In</span><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
+    <div class="login-demo" id="loginDemo"></div>
+    <div class="lx-foot">Secured workspace · © 2026 Best Books Online</div>
   </div>
 </div>
 <div id="app">
@@ -2443,8 +2485,9 @@ function renderDepreciation(v){
 function renderSales(v){
   const head=el('div','viewhead');
   head.innerHTML=`<div><h2>Sales — Revenue Analysis</h2><div class="desc">Recognised revenue by period and category, ${DASH_BASIS==='Q'?'quarterly':'yearly'}.</div></div>
-    <div class="tools"><div class="toggle" id="basisToggle2"><button data-b="Y" class="${DASH_BASIS==='Y'?'on':''}">Yearly</button><button data-b="Q" class="${DASH_BASIS==='Q'?'on':''}">Quarterly</button></div></div>`;
+    <div class="tools"><button class="btn primary sm" id="newSObtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>New Sales Order</button><div class="toggle" id="basisToggle2"><button data-b="Y" class="${DASH_BASIS==='Y'?'on':''}">Yearly</button><button data-b="Q" class="${DASH_BASIS==='Q'?'on':''}">Quarterly</button></div></div>`;
   v.appendChild(head);
+  salesLedgerPanel(v);
   const S=buildSeries(DASH_BASIS),K=S.keys;
   const rev=S.flow.map(f=>classTotalsOf(f).rev);
   const P=classTotalsOf(SNAP_PERIOD);
@@ -2474,6 +2517,182 @@ function renderSales(v){
   v.appendChild(noteBox('Revenue here is drawn from GL income accounts. Order-, product- and customer-level sales analytics require a Sales sub-ledger (sales orders / invoices with line items), which can be layered in when that data is available.'));
   $$('#view tr[data-acc]').forEach(tr=>tr.onclick=()=>go('ledger',{acct:tr.dataset.acc}));
   $$('#basisToggle2 button').forEach(b=>b.onclick=()=>{DASH_BASIS=b.dataset.b;render();});
+  $('#newSObtn')&&($('#newSObtn').onclick=()=>salesDocModal(null,'SO'));
+}
+function salesLedgerPanel(v){
+  const docs=(typeof PROC!=='undefined'?PROC:[]).filter(d=>d.flow==='sales').slice().sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+  const panel=el('div','panel');panel.style.marginBottom='16px';
+  panel.innerHTML=`<div class="phd"><h3>Sales Documents</h3><div class="meta">${docs.length}</div><button class="btn sm primary" id="newSObtn2" style="margin-left:auto"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>New Sales Order</button></div>`;
+  if(!docs.length){panel.appendChild(el('div','empty','<div>No sales documents yet. Create a Sales Order to start the order-to-cash cycle: Sales Order → Invoice → Receipt.</div>'));}
+  else{
+    const tbl=el('table');
+    tbl.innerHTML=`<thead><tr><th>Document</th><th>Type</th><th>Date</th><th>Customer</th><th>Due</th><th class="r">Subtotal</th><th class="r">VAT</th><th class="r">Total</th><th>Status</th><th></th></tr></thead>`;
+    const tb=el('tbody');
+    docs.slice(0,300).forEach(d=>{const paid=d.type==='SI'&&(d.payStatus==='paid');
+      tb.innerHTML+=`<tr class="click" data-id="${d.id}"><td class="mono">${esc(d.num)}</td><td><span class="st-tag ${d.type==='RCPT'?'st-approved':(d.type==='SI'?'st-pending':'st-draft')}" style="font-size:9px">${SALES_LABEL[d.type]||d.type}</span></td>
+      <td class="mono">${d.date}</td><td>${esc(d.customer||d.vendor||'')}</td><td class="mono" style="font-size:11px">${d.dueDate?esc(d.dueDate):'—'}</td>
+      <td class="r mono">${fmt(d.subtotal||0)}</td><td class="r mono">${fmt(d.vatTotal||0)}</td><td class="r mono">${fmt(d.total||0)}</td>
+      <td><span class="st-tag ${d.status==='approved'||paid?'st-approved':(d.status==='pending'?'st-pending':'st-draft')}" style="font-size:9px">${paid?'PAID':(d.status||'').toUpperCase()}</span></td>
+      <td class="r"><span class="lnk">Open →</span></td></tr>`;});
+    tbl.appendChild(tb);panel.appendChild(tbl);
+  }
+  v.appendChild(panel);
+  $('#newSObtn2')&&($('#newSObtn2').onclick=()=>salesDocModal(null,'SO'));
+  $$('#view tr[data-id]').forEach(tr=>tr.onclick=()=>{const d=PROC.find(x=>x.id===tr.dataset.id);if(d)salesDocModal(d);});
+}
+function salesDocModal(doc,startType){
+  const editing=!!doc;
+  const type=editing?doc.type:'SO';
+  let SATT = editing&&doc.attachments ? doc.attachments.map(a=>({...a})) : [];
+  $('#modalTitle').textContent=editing?((SALES_LABEL[doc.type]||'Sales')+' '+doc.num):'New Sales Order';
+  const blank=()=>({itemId:'',desc:'',accName:'',qty:1,unit:'',amount:'',vat:defaultVatRate(),store:'',bu:'',loc:'',dept:''});
+  const lines=editing?doc.lines.map(l=>({...blank(),...l})):[blank()];
+  const custs=Object.keys(PARTY||{}).filter(p=>/^CUST-|customer/i.test(p)).sort();
+  const prods=(typeof coProducts==='function'?coProducts():[]);
+  const whs=(typeof invWarehouses==='function'?invWarehouses():['Main']);
+  const revOpts=a=>ACC.filter(x=>x.class==='REVENUE').map(x=>`<option value="${esc(x.name)}"${a===x.name?' selected':''}>${x.code?esc(x.code)+' · ':''}${esc(x.name)}</option>`).join('');
+  const itemOpts=sel=>prods.map(p=>`<option value="${esc(p.id)}"${sel===p.id?' selected':''}>${esc(p.name)} · ${prodTypeLabel(p.type)}</option>`).join('');
+  const readOnly=editing&&doc.status!=='draft';
+  const dis=readOnly?' disabled':'';
+  const dimSel=(key,label,val,i)=>{const vals=(typeof dimValues==='function'?dimValues(key):[])||[];return `<select data-i="${i}" data-k="${key}" style="font-size:11px"${dis}><option value="">${label}…</option>${vals.map(x=>`<option${x===val?' selected':''}>${esc(x)}</option>`).join('')}</select>`;};
+  function lineNet(l){const n=(+l.qty||0)*(+l.unit||0);return n||(+l.amount||0);}
+  function linesHtml(){return `
+    <div style="display:grid;grid-template-columns:2.1fr 2.1fr 62px 96px 70px 108px 30px;gap:8px;padding:0 9px 6px;font-size:9.5px;font-weight:700;letter-spacing:.6px;color:var(--txt-faint);text-transform:uppercase">
+      <div>Item / Revenue account</div><div>Description</div><div class="r" style="text-align:right">Qty</div><div class="r" style="text-align:right">Unit price</div><div class="r" style="text-align:right">VAT %</div><div class="r" style="text-align:right">Line total</div><div></div>
+    </div>`+lines.map((l,i)=>{
+     const it=prods.find(p=>p.id===l.itemId);const isInv=!!(it&&it.type==='inventory');
+     const net=lineNet(l);const lineTot=net*(1+(+l.vat||0)/100);
+     const revCell=it?`<div class="roval" style="font-size:11px;padding:6px 8px"><span class="st-tag ${isInv?'st-approved':'st-draft'}" style="font-size:8px">${esc(prodTypeLabel(it.type))}</span> → ${esc((revAcc()||{}).name||'Revenue')}</div>`
+        :`<select data-i="${i}" data-k="accName" style="font-size:11px"${dis}><option value="">Revenue account…</option>${revOpts(l.accName)}</select>`;
+     const onhand=isInv?itemOnHand(it,l.store):0;
+     return `<div class="prline" style="border:1px solid var(--line);border-radius:9px;padding:9px;margin-bottom:8px">
+       <div style="display:grid;grid-template-columns:2.1fr 2.1fr 62px 96px 70px 108px 30px;gap:8px;align-items:center">
+         <select data-i="${i}" data-k="itemId" style="font-size:12px"${dis}><option value="">— item / product —</option>${itemOpts(l.itemId)}</select>
+         <input data-i="${i}" data-k="desc" placeholder="Description" value="${esc(l.desc)}"${dis}>
+         <input class="r" data-i="${i}" data-k="qty" inputmode="decimal" value="${l.qty||1}"${dis}>
+         <input class="r" data-i="${i}" data-k="unit" inputmode="decimal" placeholder="0.00" value="${l.unit!==''&&l.unit!=null?l.unit:(l.amount&&l.qty?(+l.amount/(+l.qty||1)).toFixed(2):'')}"${dis}>
+         <input class="r" data-i="${i}" data-k="vat" inputmode="decimal" value="${l.vat!=null?l.vat:defaultVatRate()}"${dis}>
+         <div class="roval r mono" style="padding:6px 8px;font-size:12px;font-weight:600">${fmt(lineTot)}</div>
+         <div>${readOnly?'':`<button class="del" data-del="${i}">×</button>`}</div>
+       </div>
+       <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:8px;margin-top:6px">
+         ${revCell}${dimSel('bu','Business line',l.bu,i)}${dimSel('loc','Location',l.loc,i)}${dimSel('dept','Department',l.dept,i)}
+       </div>
+       ${isInv?`<div style="display:flex;gap:10px;align-items:center;margin-top:7px;font-size:11px;color:var(--txt-soft)">
+         <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="var(--accent)" stroke-width="2"><path d="M3 7l9-4 9 4v10l-9 4-9-4z"/><path d="M3 7l9 4 9-4M12 11v10"/></svg>
+         <b style="color:var(--txt)">Ship from store</b>
+         <select data-i="${i}" data-k="store" style="font-size:11px;max-width:200px"${dis}><option value="">Select store…</option>${whs.map(w=>`<option${l.store===w?' selected':''}>${esc(w)}</option>`).join('')}</select>
+         ${l.store?`<span class="${(+l.qty||0)>onhand?'':'muted'}" style="${(+l.qty||0)>onhand?'color:var(--neg);font-weight:600':''}">on hand: ${fmt(onhand)}${(+l.qty||0)>onhand?' ⚠ insufficient':''}</span>`:'<span class="muted">required (WMS stock-out)</span>'}
+       </div>`:''}</div>`;}).join('');}
+  $('#modalBody').innerHTML=`
+    ${editing?`<div style="margin-bottom:12px"><div class="pipe">${SALES_FLOW.map(s=>`<span class="stp ${SALES_FLOW.indexOf(doc.type)>=SALES_FLOW.indexOf(s)?'done':''} ${doc.type===s?'cur':''}">${SALES_LABEL[s]}</span>`).reduce((a,b,i)=>a+(i?'<span class="arw">→</span>':'')+b,'')}</div></div>`:''}
+    <div class="jgrid">
+      <label class="fld">Date<input class="f" type="date" id="soDate" value="${editing?doc.date:todayISO()}" style="max-width:none"${dis}></label>
+      <label class="fld">Customer<input class="f" id="soCust" list="custList" value="${esc(editing?(doc.customer||doc.vendor||''):'')}" style="max-width:none"${dis}>
+        <datalist id="custList">${custs.map(x=>`<option value="${esc(x)}">`).join('')}</datalist></label>
+    </div>
+    <div class="jgrid" style="margin-top:8px">
+      <label class="fld">Payment terms<select class="f" id="soTerms" style="max-width:none"${dis}>${[['0','Due on receipt'],['15','Net 15'],['30','Net 30'],['45','Net 45'],['60','Net 60'],['90','Net 90']].map(t=>`<option value="${t[0]}"${String((editing&&doc.payTerms!=null)?doc.payTerms:30)===t[0]?' selected':''}>${t[1]}</option>`).join('')}</select></label>
+      <label class="fld">Memo<input class="f" id="soMemo" value="${esc(editing?doc.memo:'')}" style="max-width:none"${dis}></label>
+    </div>
+    <div class="hint" style="margin:8px 0">Order-to-cash: <b>Sales Order → Invoice → Receipt</b>. Inventory items ship from a store (WMS stock-out at average cost, COGS recognised). Output VAT is posted on invoicing.</div>
+    <div class="jerows" id="soLines" style="border-top:none">${linesHtml()}</div>
+    ${readOnly?'':`<button class="btn sm ghost" id="soAdd" style="margin-top:10px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>Add line</button>`}
+    <div class="jetot" style="margin-top:12px;display:flex;flex-direction:column;gap:4px;align-items:flex-end">
+      <div style="display:flex;gap:18px;font-size:13px;color:var(--txt-soft)"><span>Subtotal (before VAT)</span> <span class="v mono" id="soSub" style="min-width:120px;text-align:right">0.00</span></div>
+      <div style="display:flex;gap:18px;font-size:13px;color:var(--txt-soft)"><span>Output VAT</span> <span class="v mono" id="soVat" style="min-width:120px;text-align:right">0.00</span></div>
+      <div style="display:flex;gap:18px;font-size:15px;font-weight:700;border-top:1px solid var(--line);padding-top:5px"><span class="b">Total (after VAT)</span> <span class="v mono" id="soTotal" style="min-width:120px;text-align:right">0.00</span></div>
+    </div>
+    ${editing&&doc.jelinks&&doc.jelinks.length?`<div class="note" style="margin-top:12px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/></svg><div>Linked GL entries: ${doc.jelinks.map(j=>esc(j)).join(', ')}</div></div>`:''}`;
+  function readLines(){$$('#soLines [data-i]').forEach(inp=>{const i=+inp.dataset.i,k=inp.dataset.k;lines[i][k]=inp.value;});}
+  function recalc(){readLines();let sub=0,vt=0;lines.forEach(l=>{const net=lineNet(l);l.amount=+net.toFixed(2);sub+=net;vt+=net*(+l.vat||0)/100;});
+    if($('#soSub'))$('#soSub').textContent=fmt(sub);if($('#soVat'))$('#soVat').textContent=fmt(vt);if($('#soTotal'))$('#soTotal').textContent=fmt(sub+vt);
+    $$('#soLines .prline').forEach((row,i)=>{const c=row.querySelector('.roval.r.mono');if(c&&lines[i]){const net=lineNet(lines[i]);c.textContent=fmt(net*(1+(+lines[i].vat||0)/100));}});return sub+vt;}
+  function bind(){$$('#soLines [data-i]').forEach(inp=>{const k=inp.dataset.k;
+    if(k==='itemId'){inp.onchange=()=>{readLines();const i=+inp.dataset.i;const it=prods.find(p=>p.id===lines[i].itemId);if(it){if(!lines[i].desc)lines[i].desc=it.name;if(!(+lines[i].unit)&&it.price)lines[i].unit=it.price;if(it.vatRate!=null)lines[i].vat=it.vatRate;}$('#soLines').innerHTML=linesHtml();bind();recalc();};}
+    else if(k==='store'){inp.onchange=()=>{readLines();$('#soLines').innerHTML=linesHtml();bind();recalc();};}
+    else inp.oninput=recalc;});
+    $$('#soLines .del').forEach(b=>b.onclick=()=>{readLines();lines.splice(+b.dataset.del,1);if(!lines.length)lines.push(blank());$('#soLines').innerHTML=linesHtml();bind();recalc();});}
+  bind();recalc();
+  if(!readOnly)$('#soAdd')&&($('#soAdd').onclick=()=>{readLines();lines.push(blank());$('#soLines').innerHTML=linesHtml();bind();recalc();});
+  const foot=$('#modalFoot');const acts=[];
+  if(!editing||doc.status==='draft'){acts.push('<button class="btn primary" id="soSave">Save sales order</button>');}
+  if(editing){
+    if(doc.type==='SO'&&doc.status==='approved'&&!doc.invoiced)acts.push('<button class="btn primary" id="soToInv">Create invoice</button>');
+    if(doc.type==='SO'&&doc.invoiced)acts.push('<span class="st-tag st-approved" style="align-self:center">Invoiced → '+esc(doc.childNum||'')+'</span>');
+    if(doc.type==='SI'&&(doc.payStatus||'open')!=='paid')acts.push('<button class="btn primary" id="soToRcpt">Record receipt</button>');
+    if(doc.type==='SI'&&doc.payStatus==='paid')acts.push('<span class="st-tag st-approved" style="align-self:center">Paid in full</span>');
+  }
+  const bits=[];if(editing){bits.push('Status: '+(doc.status||'').toUpperCase());if(doc.fromNum)bits.push('From '+esc(doc.fromNum));if(doc.childNum)bits.push('→ '+esc(doc.childNum));if(doc.type==='SI')bits.push((doc.dueDate?('Due '+doc.dueDate+' · '):'')+'Received '+fmt(doc.paidAmount||0)+' / '+fmt(doc.total||0));}
+  foot.innerHTML=`<div class="hint" style="margin:0">${editing?bits.join(' · '):'Sales order starts the order-to-cash cycle.'}</div>
+    <div style="margin-left:auto;display:flex;gap:10px">${acts.join('')}<button class="btn" id="soClose">Close</button></div>`;
+  $('#soClose').onclick=closeModal;
+  $('#soSave')&&($('#soSave').onclick=()=>saveSalesDoc(editing?doc:null));
+  $('#soToInv')&&($('#soToInv').onclick=()=>advanceSales(doc,'SI'));
+  $('#soToRcpt')&&($('#soToRcpt').onclick=()=>advanceSales(doc,'RCPT'));
+  openModal();
+  async function saveSalesDoc(existing){
+    readLines();
+    const date=$('#soDate').value,customer=$('#soCust').value.trim(),memo=$('#soMemo').value.trim(),payTerms=+($('#soTerms')?$('#soTerms').value:30)||0;
+    const invMissing=lines.filter(l=>{const it=prods.find(p=>p.id===l.itemId);return it&&it.type==='inventory'&&lineNet(l)>0&&!l.store;});
+    if(invMissing.length){toast('Select a ship-from store for every inventory line (WMS stock-out location).',true);return;}
+    const cl=lines.filter(l=>(l.itemId||l.accName)&&lineNet(l)>0).map(l=>{const net=+lineNet(l).toFixed(2);const va=+(net*(+l.vat||0)/100).toFixed(2);
+      return {itemId:l.itemId||'',desc:l.desc,accName:l.accName,qty:+l.qty||1,unit:+l.unit||(+l.qty?net/(+l.qty||1):net),amount:net,vat:+l.vat||0,vatAmount:va,lineTotal:+(net+va).toFixed(2),store:l.store||'',bu:l.bu||'',loc:l.loc||'',dept:l.dept||''};});
+    if(!cl.length){toast('Add at least one line with an item or revenue account.',true);return;}
+    const subtotal=+cl.reduce((s,l)=>s+l.amount,0).toFixed(2),vatTotal=+cl.reduce((s,l)=>s+l.vatAmount,0).toFixed(2),total=+(subtotal+vatTotal).toFixed(2);
+    const dueDate=addDaysISO(date,payTerms);
+    if(!customer){toast('Enter a customer.',true);return;}
+    if(existing){Object.assign(existing,{date,customer,memo,lines:cl,subtotal,vatTotal,total,payTerms,dueDate,attachments:SATT,status:needsApproval(total)?'pending':'approved'});}
+    else{const chain=(typeof APPROVALS_ON!=='undefined'&&APPROVALS_ON)?approvalChain(total):[];
+      PROC.push({id:pcid(),flow:'sales',type:'SO',num:nextSeq('so','SO-',5),date,customer,memo,lines:cl,subtotal,vatTotal,total,payTerms,dueDate,attachments:SATT,status:chain.length?'pending':'approved',needChain:chain,approvals:[],by:CURRENT_USER,jelinks:[]});
+      if(typeof audit==='function')audit(chain.length?'Sales order submitted':'Sales order created',customer,fmt(total));}
+    await store.saveProc();closeModal();render();
+    toast(needsApproval(total)?'Sales order submitted for approval.':'Sales order saved & approved.');
+  }
+}
+async function advanceSales(doc,toType){
+  const prods=(typeof coProducts==='function'?coProducts():[]);
+  if(toType==='SI'){
+    const ar=arAcc();if(!ar){toast('No Accounts Receivable control account found.',true);return;}
+    const rev=(revAcc()||{}).name;
+    const jl=doc.lines.map(l=>{const it=l.itemId?prods.find(p=>p.id===l.itemId):null;const racc=l.accName||rev;
+      return {accName:racc,desc:l.desc||(it?it.name:racc),party:doc.customer,dr:0,cr:l.amount,bu:l.bu||'',loc:l.loc||'',dept:l.dept||''};});
+    const vatT=+(doc.vatTotal||0).toFixed(2);
+    if(vatT>0.005){const va=vatOutAcc();if(va)jl.push({accName:va.name,desc:'Output VAT',party:doc.customer,dr:0,cr:vatT});}
+    const grand=+(doc.total||0).toFixed(2);
+    jl.unshift({accName:ar.name,desc:'Invoice '+doc.num,party:doc.customer,dr:grand,cr:0});
+    const je=await postSystemJE(doc.date,nextSeq('si','SI-',5),'Sales invoice — '+(doc.customer||''),jl,{doctype:'Sales Invoice'});
+    if(!je)return;
+    const cog=cogsAcc();let cogsLines=[],totalCogs=0;
+    doc.lines.forEach(l=>{const it=l.itemId?prods.find(p=>p.id===l.itemId):null;if(it&&it.type==='inventory'){
+      const cost=itemAvgCost(it)*(+l.qty||0);totalCogs+=cost;
+      const inv=(INV.items||[]).find(x=>(it.code&&x.sku===it.code)||x.name===it.name);
+      if(inv){INV.moves.push({id:'mv_'+Date.now()+'_'+Math.random().toString(36).slice(2,6),date:doc.date,itemId:inv.id,type:'ISSUE',warehouse:l.store||'Main',qtyIn:0,qtyOut:+l.qty||0,unitCost:itemAvgCost(it),ref:je.doc,memo:'Sale '+(doc.customer||'')});}
+      if(cog){cogsLines.push({accName:cog.name,desc:'COGS '+(it.name||''),party:doc.customer,dr:+cost.toFixed(2),cr:0});cogsLines.push({accName:itemInvName(it),desc:'Inventory issue '+(it.name||''),party:doc.customer,dr:0,cr:+cost.toFixed(2)});}
+    }});
+    if(cogsLines.length&&totalCogs>0.005){await postSystemJE(doc.date,nextSeq('cogs','COGS-',5),'Cost of sales — '+(doc.customer||''),cogsLines,{doctype:'Cost of Sales'});}
+    const inv={id:pcid(),flow:'sales',type:'SI',num:je.doc,date:doc.date,customer:doc.customer,memo:doc.memo,lines:doc.lines.map(l=>({...l})),
+      subtotal:doc.subtotal,vatTotal:vatT,total:grand,payTerms:doc.payTerms,dueDate:doc.dueDate||addDaysISO(doc.date,doc.payTerms||30),
+      status:je.status==='pending'?'pending':'approved',payStatus:'open',paidAmount:0,by:CURRENT_USER,siJe:je.jeid,fromId:doc.id,fromNum:doc.num,jelinks:[je.doc]};
+    PROC.push(inv);doc.invoiced=true;doc.childNum=je.doc;
+    if(typeof store.saveInv==='function')await store.saveInv();
+    await store.saveProc();closeModal();render();salesDocModal(inv);
+    const extra=doc.lines.some(l=>{const it=prods.find(p=>p.id===l.itemId);return it&&it.type==='inventory';})?' · stock issued & COGS posted':'';
+    toast('Sales invoice '+inv.num+' posted (SO '+doc.num+' kept)'+extra+(je.status==='pending'?' (pending approval)':''));return;
+  }
+  if(toType==='RCPT'){
+    const ar=arAcc(),cash=cashAcc();if(!ar||!cash){toast('Missing AR/cash account.',true);return;}
+    const remaining=+((doc.total||0)-(doc.paidAmount||0)).toFixed(2);if(!(remaining>0)){toast('Nothing outstanding.',true);return;}
+    const je=await postSystemJE(todayISO(),nextSeq('rcpt','RCPT-',5),'Customer receipt — '+(doc.customer||''),
+      [{accName:cash.name,desc:'Receipt '+doc.num,party:doc.customer,dr:remaining,cr:0},
+       {accName:ar.name,desc:'Settle '+doc.num,party:doc.customer,dr:0,cr:remaining}],{doctype:'Customer Receipt'});
+    if(!je)return;
+    PROC.push({id:pcid(),flow:'sales',type:'RCPT',num:je.doc,date:todayISO(),customer:doc.customer,memo:'Receipt for '+doc.num,lines:[],total:remaining,status:'approved',by:CURRENT_USER,rcptJe:je.jeid,fromId:doc.id,fromNum:doc.num,jelinks:[je.doc]});
+    doc.paidAmount=+((doc.paidAmount||0)+remaining).toFixed(2);doc.payStatus='paid';
+    if(typeof audit==='function')audit('Customer receipt '+je.doc,doc.customer,fmt(remaining)+' against '+doc.num);
+    await store.saveProc();closeModal();render();salesDocModal(doc);
+    toast('Receipt '+je.doc+' posted ('+fmt(remaining)+') — invoice fully settled'+(je.status==='pending'?' (pending approval)':''));return;
+  }
 }
 
 /* ---- Purchases & VAT ---- */
@@ -3225,6 +3444,18 @@ function cashAcc(){return accByRoot(CASH_ROOT);}
 function apAcc(){return accByRoot('Accounts Payable/s');}
 function arAcc(){return accByRoot('Accounts Receivable/s');}
 function vatInAcc(){return accByRoot('VAT On Purchases');}
+function vatOutAcc(){return ACC.find(a=>/vat.*(sales|output|payable)|output.*vat|sales.*vat/i.test(a.name))||accByRoot('VAT On Sales')||accByRoot('VAT/Tax Liability')||ACC.find(a=>/output.*vat|vat.*sales|vat.*payable/i.test(a.name));}
+function cogsAcc(){return accByRoot('Cost of Sales')||accByRoot('Cost of Goods Sold')||ACC.find(a=>a.class==='EXPENSE'&&/cost of (sales|goods)/i.test(a.name));}
+function itemInvName(it){return (it&&it.glAccount)||(ACC.find(a=>/inventory/i.test(a.name))||{}).name||'';}
+function itemAvgCost(it){ if(!it||typeof INV==='undefined')return +it&&it.cost||0;
+  const inv=(INV.items||[]).find(x=>(it.code&&x.sku===it.code)||x.name===it.name); if(!inv)return +it.cost||+it.price||0;
+  let q=0,val=0;(INV.moves||[]).filter(m=>m.itemId===inv.id&&(+m.qtyIn||0)>0).forEach(m=>{q+=(+m.qtyIn||0);val+=(+m.qtyIn||0)*(+m.unitCost||0);});
+  return q>0?val/q:(+it.cost||+it.price||0);}
+function itemOnHand(it,store){ if(!it||typeof INV==='undefined')return 0;
+  const inv=(INV.items||[]).find(x=>(it.code&&x.sku===it.code)||x.name===it.name); if(!inv)return 0;
+  return (INV.moves||[]).filter(m=>m.itemId===inv.id&&(!store||m.warehouse===store)).reduce((s,m)=>s+((+m.qtyIn||0)-(+m.qtyOut||0)),0);}
+const SALES_LABEL={SO:'Sales Order',SI:'Sales Invoice',RCPT:'Customer Receipt'};
+const SALES_FLOW=['SO','SI','RCPT'];
 function prepaidAcc(){return ACC.find(a=>a.class==='ASSET'&&/^prepaid/i.test(a.name))||ACC.find(a=>a.class==='ASSET'&&/prepaid/i.test(a.name))||accByRoot('Prepaid Expenses');}
 function ensurePrepaidAcc(){const chart=(typeof activeCoa==='function'&&activeCoa())||DATA.accounts;if(!Array.isArray(chart))return;if(!chart.some(a=>a.class==='ASSET'&&/prepaid/i.test(a.name))){chart.push({name:'Prepaid Expenses',class:'ASSET',root:'Prepaid Expenses',path:['Prepaid Expenses','Prepaid Expenses'],code:''});try{assignCodes(chart);}catch(e){}if(typeof activeCoa==='function'&&activeCoa()&&typeof persistCompanies==='function')persistCompanies();rebuild();}}
 function prodTypeLabel(t){return {inventory:'Inventory',non_inventory:'Non-inventory','non-inventory':'Non-inventory',service:'Service'}[t]||t||'';}
@@ -3232,7 +3463,7 @@ function billItemGRN(it,l,doc){ if(!it||it.type!=='inventory'||typeof INV==='und
   let inv=INV.items.find(x=>(it.code&&x.sku===it.code)||x.name===it.name);
   if(!inv){inv={id:'it_'+Date.now().toString(36)+Math.random().toString(36).slice(2,5),sku:it.code||it.sku||'',name:it.name,category:it.category||'Purchased',uom:it.uom||'ea',reorder:0};INV.items.push(inv);}
   const qty=+l.qty||1; const unit=qty>0?(+l.amount/qty):+l.amount;
-  INV.moves.push({id:'mv_'+Date.now()+'_'+Math.random().toString(36).slice(2,6),date:doc.date,itemId:inv.id,type:'GRN',warehouse:'Main',qtyIn:qty,qtyOut:0,unitCost:unit,ref:doc.num,memo:'Bill '+(doc.vendor||'')});
+  INV.moves.push({id:'mv_'+Date.now()+'_'+Math.random().toString(36).slice(2,6),date:doc.date,itemId:inv.id,type:'GRN',warehouse:l.store||'Main',qtyIn:qty,qtyOut:0,unitCost:unit,ref:doc.num,memo:'Bill '+(doc.vendor||'')});
 }
 function revAcc(){return accByRoot('Revenue','REVENUE')||ACC.find(a=>a.class==='REVENUE');}
 function gainLossAcc(){return accByRoot('Realized Gain/Loss')||accByRoot('Other (income)/expenses')||ACC.find(a=>a.class==='REVENUE');}
@@ -3771,7 +4002,7 @@ function procDocModal(doc,startType){
   let PROC_ATTACH = editing&&doc.attachments ? doc.attachments.map(a=>({...a})) : [];
   const isPR=!editing||doc.type==='PR';
   $('#modalTitle').textContent=editing?(PROC_LABEL[doc.type]+' '+doc.num):(newType==='PO'?'New Purchase Order':'New Purchase Requisition');
-  const blankPRLine=()=>({itemId:'',desc:'',accName:'',amount:'',qty:1,capitalize:false,prepaid:false,pmonths:12,pstart:'',bu:'',loc:'',dept:''});
+  const blankPRLine=()=>({itemId:'',desc:'',accName:'',qty:1,unit:'',amount:'',vat:defaultVatRate(),store:'',capitalize:false,prepaid:false,pmonths:12,pstart:'',bu:'',loc:'',dept:''});
   const lines=editing?doc.lines.map(l=>({...blankPRLine(),...l})):[blankPRLine()];
   const vendors=Object.keys(PARTY).filter(p=>/^VEN-/i.test(p)).sort();
   const prods=(typeof coProducts==='function'?coProducts():[]);
@@ -3780,30 +4011,44 @@ function procDocModal(doc,startType){
   const readOnly=editing&&doc.status!=='draft'&&doc.status!=='rejected';
   const dis=readOnly?' disabled':'';
   const dimSel=(key,label,val,i)=>{const vals=(typeof dimValues==='function'?dimValues(key):[])||[];return `<select data-i="${i}" data-k="${key}" style="font-size:11px"${dis}><option value="">${label}…</option>${vals.map(v=>`<option${v===val?' selected':''}>${esc(v)}</option>`).join('')}</select>`;};
-  function linesHtml(){return lines.map((l,i)=>{
+  const whs=(typeof invWarehouses==='function'?invWarehouses():['Main']);
+  function linesHtml(){return `
+    <div class="prhead" style="display:grid;grid-template-columns:2.1fr 2.1fr 62px 96px 70px 108px 30px;gap:8px;padding:0 9px 6px;font-size:9.5px;font-weight:700;letter-spacing:.6px;color:var(--txt-faint);text-transform:uppercase">
+      <div>Item / Account</div><div>Description</div><div class="r" style="text-align:right">Qty</div><div class="r" style="text-align:right">Unit price</div><div class="r" style="text-align:right">VAT %</div><div class="r" style="text-align:right">Line total</div><div></div>
+    </div>`+lines.map((l,i)=>{
      const it=prods.find(p=>p.id===l.itemId);
+     const isInv=!!(it&&it.type==='inventory');
+     const net=(+l.qty||0)*(+l.unit||0)||(+l.amount||0);
+     const lineTot=net*(1+(+l.vat||0)/100);
      const acctCell = l.prepaid
        ? `<div class="roval" style="font-size:11px;padding:6px 8px">→ ${esc((prepaidAcc()||{}).name||'Prepaid Expenses')} <span class="muted">(amortized later)</span></div>`
        : (it
-          ? `<div class="roval" style="font-size:11px;padding:6px 8px"><span class="st-tag ${it.type==='inventory'?'st-approved':'st-draft'}" style="font-size:8px">${esc(prodTypeLabel(it.type))}</span> ${esc(it.glAccount||'⚠ set item GL account')}</div>`
+          ? `<div class="roval" style="font-size:11px;padding:6px 8px"><span class="st-tag ${isInv?'st-approved':'st-draft'}" style="font-size:8px">${esc(prodTypeLabel(it.type))}</span> ${esc(it.glAccount||'⚠ set item GL account')}</div>`
           : `<select data-i="${i}" data-k="accName" style="font-size:11px"${dis}><option value="">Account…</option>${acctOpts(l.accName)}</select>`);
-     return `<div class="prline" style="border:1px solid var(--line);border-radius:8px;padding:9px;margin-bottom:8px">
-       <div style="display:grid;grid-template-columns:2fr 2fr 70px 100px 30px;gap:8px;align-items:center">
+     return `<div class="prline" style="border:1px solid var(--line);border-radius:9px;padding:9px;margin-bottom:8px">
+       <div style="display:grid;grid-template-columns:2.1fr 2.1fr 62px 96px 70px 108px 30px;gap:8px;align-items:center">
          <select data-i="${i}" data-k="itemId" style="font-size:12px"${dis}><option value="">— item / product —</option>${itemOpts(l.itemId)}</select>
          <input data-i="${i}" data-k="desc" placeholder="Description" value="${esc(l.desc)}"${dis}>
-         <input class="r" data-i="${i}" data-k="qty" inputmode="decimal" placeholder="Qty" value="${l.qty||1}"${dis} title="Quantity">
-         <input class="r" data-i="${i}" data-k="amount" inputmode="decimal" placeholder="Amount" value="${l.amount}"${dis}>
+         <input class="r" data-i="${i}" data-k="qty" inputmode="decimal" value="${l.qty||1}"${dis} title="Quantity">
+         <input class="r" data-i="${i}" data-k="unit" inputmode="decimal" placeholder="0.00" value="${l.unit!==''&&l.unit!=null?l.unit:(l.amount&&l.qty?(+l.amount/(+l.qty||1)).toFixed(2):'')}"${dis} title="Unit price">
+         <input class="r" data-i="${i}" data-k="vat" inputmode="decimal" value="${l.vat!=null?l.vat:defaultVatRate()}"${dis} title="VAT %">
+         <div class="roval r mono" style="padding:6px 8px;font-size:12px;font-weight:600">${fmt(lineTot)}</div>
          <div>${readOnly?'':`<button class="del" data-del="${i}">×</button>`}</div>
        </div>
        <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:8px;margin-top:6px">
          ${acctCell}${dimSel('bu','Business line',l.bu,i)}${dimSel('loc','Location',l.loc,i)}${dimSel('dept','Department',l.dept,i)}
        </div>
-       <div style="display:flex;gap:18px;align-items:center;margin-top:7px;font-size:11px;color:var(--txt-soft)">
+       ${isInv?`<div style="display:flex;gap:10px;align-items:center;margin-top:7px;font-size:11px;color:var(--txt-soft)">
+         <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="var(--accent)" stroke-width="2"><path d="M3 7l9-4 9 4v10l-9 4-9-4z"/><path d="M3 7l9 4 9-4M12 11v10"/></svg>
+         <b style="color:var(--txt)">Receive into store</b>
+         <select data-i="${i}" data-k="store" style="font-size:11px;max-width:220px"${dis}><option value="">Select store / warehouse…</option>${whs.map(w=>`<option${l.store===w?' selected':''}>${esc(w)}</option>`).join('')}</select>
+         <span class="muted">required for inventory items (WMS)</span>
+       </div>`:`<div style="display:flex;gap:18px;align-items:center;margin-top:7px;font-size:11px;color:var(--txt-soft)">
          <label style="display:flex;gap:5px;align-items:center"><input type="checkbox" data-i="${i}" data-k="capitalize" ${l.capitalize?'checked':''}${dis} style="width:auto">Fixed asset (capitalize)</label>
          <label style="display:flex;gap:5px;align-items:center"><input type="checkbox" data-i="${i}" data-k="prepaid" ${l.prepaid?'checked':''}${dis} style="width:auto">Prepaid — amortize later</label>
          ${l.prepaid?`<label style="display:flex;gap:5px;align-items:center">over <input data-i="${i}" data-k="pmonths" class="r" style="width:50px" inputmode="numeric" value="${l.pmonths||12}"${dis}> months</label>
          <label style="display:flex;gap:5px;align-items:center">starting <input type="date" data-i="${i}" data-k="pstart" value="${esc(l.pstart||'')}"${dis} style="width:auto" title="When the service/benefit begins — leave blank to start on the bill date"></label>`:''}
-       </div></div>`;}).join('');}
+       </div>`}</div>`;}).join('');}
   $('#modalBody').innerHTML=`
     ${editing?`<div style="margin-bottom:12px"><div class="pipe">${PROC_FLOW.map(s=>`<span class="stp ${PROC_FLOW.indexOf(doc.type)>=PROC_FLOW.indexOf(s)?'done':''} ${doc.type===s?'cur':''}">${PROC_LABEL[s]}</span>`).reduce((a,b,i)=>a+(i?'<span class="arw">→</span>':'')+b,'')}</div></div>`:''}
     <div class="jgrid">
@@ -3811,11 +4056,18 @@ function procDocModal(doc,startType){
       <label class="fld">Vendor<input class="f" id="prVendor" list="venList" value="${esc(editing?doc.vendor:'')}" style="max-width:none"${dis}>
         <datalist id="venList">${vendors.map(x=>`<option value="${esc(x)}">`).join('')}</datalist></label>
     </div>
-    <label class="fld" style="margin:8px 0">Memo<input class="f" id="prMemo" value="${esc(editing?doc.memo:'')}" style="max-width:none"${dis}></label>
+    <div class="jgrid" style="margin-top:8px">
+      <label class="fld">Payment terms<select class="f" id="prTerms" style="max-width:none"${dis}>${[['0','Due on receipt'],['15','Net 15'],['30','Net 30'],['45','Net 45'],['60','Net 60'],['90','Net 90']].map(t=>`<option value="${t[0]}"${String((editing&&doc.payTerms!=null)?doc.payTerms:30)===t[0]?' selected':''}>${t[1]}</option>`).join('')}</select></label>
+      <label class="fld">Memo<input class="f" id="prMemo" value="${esc(editing?doc.memo:'')}" style="max-width:none"${dis}></label>
+    </div>
     <div class="hint" style="margin:4px 0 8px">Each line: pick an <b>item/product</b> (GL auto-assigned by inventory / non-inventory type) or leave blank for a custom account. Tag <b>business line / location / department</b>, mark <b>Fixed asset</b> to capitalize, or <b>Prepaid</b> to amortize later.</div>
     <div class="jerows" id="prLines" style="border-top:none">${linesHtml()}</div>
     ${readOnly?'':`<button class="btn sm ghost" id="prAdd" style="margin-top:10px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>Add line</button>`}
-    <div class="jetot" style="margin-top:12px"><div><span class="b">Total</span> <span class="v" id="prTotal">0.00</span></div></div>
+    <div class="jetot" style="margin-top:12px;display:flex;flex-direction:column;gap:4px;align-items:flex-end">
+      <div style="display:flex;gap:18px;font-size:13px;color:var(--txt-soft)"><span>Subtotal (before VAT)</span> <span class="v mono" id="prSub" style="min-width:120px;text-align:right">0.00</span></div>
+      <div style="display:flex;gap:18px;font-size:13px;color:var(--txt-soft)"><span>VAT</span> <span class="v mono" id="prVat" style="min-width:120px;text-align:right">0.00</span></div>
+      <div style="display:flex;gap:18px;font-size:15px;font-weight:700;border-top:1px solid var(--line);padding-top:5px;margin-top:2px"><span class="b">Total (after VAT)</span> <span class="v mono" id="prTotal" style="min-width:120px;text-align:right">0.00</span></div>
+    </div>
     <div class="attachbox" id="prAttachBox" style="margin-top:12px">
       <div style="display:flex;align-items:center;justify-content:space-between">
         <span style="font-size:12px;font-weight:600;color:var(--txt-soft)">Attachments (quote, invoice, approval)</span>
@@ -3825,10 +4077,15 @@ function procDocModal(doc,startType){
     </div>
     ${editing&&doc.jelinks&&doc.jelinks.length?`<div class="note" style="margin-top:12px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/></svg><div>Linked GL entries: ${doc.jelinks.map(j=>esc(j)).join(', ')}</div></div>`:''}`;
   function readLines(){$$('#prLines [data-i]').forEach(inp=>{const i=+inp.dataset.i,k=inp.dataset.k;lines[i][k]=(inp.type==='checkbox')?inp.checked:inp.value;});}
-  function recalc(){readLines();const t=lines.reduce((s,l)=>s+(+l.amount||0),0);$('#prTotal').textContent=fmt(t);return t;}
+  function lineNet(l){const n=(+l.qty||0)*(+l.unit||0);return n||(+l.amount||0);}
+  function recalc(){readLines();let sub=0,vt=0;lines.forEach(l=>{const net=lineNet(l);l.amount=+net.toFixed(2);sub+=net;vt+=net*(+l.vat||0)/100;});
+    const tot=sub+vt;if($('#prSub'))$('#prSub').textContent=fmt(sub);if($('#prVat'))$('#prVat').textContent=fmt(vt);if($('#prTotal'))$('#prTotal').textContent=fmt(tot);
+    // refresh each line total cell without full re-render (keeps focus)
+    $$('#prLines .prline').forEach((row,i)=>{const cell=row.querySelector('.roval.r.mono');if(cell&&lines[i]){const net=lineNet(lines[i]);cell.textContent=fmt(net*(1+(+lines[i].vat||0)/100));}});
+    return tot;}
   function bind(){$$('#prLines [data-i]').forEach(inp=>{const k=inp.dataset.k;
       if(k==='itemId'||k==='prepaid'||k==='capitalize'){inp.onchange=()=>{readLines();const i=+inp.dataset.i;const it=prods.find(p=>p.id===lines[i].itemId);
-          if(k==='itemId'&&it){if(!lines[i].desc)lines[i].desc=it.name;if(!(+lines[i].amount)&&(it.price||it.cost))lines[i].amount=it.price||it.cost;}
+          if(k==='itemId'&&it){if(!lines[i].desc)lines[i].desc=it.name;if(!(+lines[i].unit)&&(it.price||it.cost))lines[i].unit=it.price||it.cost;if(it.vatRate!=null)lines[i].vat=it.vatRate;if(it.type!=='inventory'){lines[i].store='';}}
           if(k==='prepaid'&&inp.checked)lines[i].capitalize=false;
           if(k==='capitalize'&&inp.checked)lines[i].prepaid=false;
           $('#prLines').innerHTML=linesHtml();bind();recalc();};}
@@ -3865,7 +4122,7 @@ function procDocModal(doc,startType){
   const chainBits=[];
   if(doc&&doc.fromNum)chainBits.push('From '+esc(doc.fromNum));
   if(doc&&doc.childNum)chainBits.push('→ '+esc(doc.childNum));
-  if(doc&&doc.type==='BILL')chainBits.push('Paid '+fmt(doc.paidAmount||0)+' / '+fmt(doc.total)+((doc.payStatus&&doc.payStatus!=='open')?(' ('+doc.payStatus+')'):''));
+  if(doc&&doc.type==='BILL'){if(doc.dueDate)chainBits.push('Due '+esc(doc.dueDate)+(doc.payTerms!=null?(' (Net '+doc.payTerms+')'):''));chainBits.push('Paid '+fmt(doc.paidAmount||0)+' / '+fmt(doc.total)+((doc.payStatus&&doc.payStatus!=='open')?(' ('+doc.payStatus+')'):''));}
   const pays=editing&&doc.type==='BILL'?procChildren(doc).filter(d=>d.type==='PMT'):[];
   foot.innerHTML=`<div class="hint" style="margin:0">${editing?('Status: '+doc.status.toUpperCase()+(chainBits.length?(' · '+chainBits.join(' · ')):'')):'Requisition starts the cycle.'}</div>
     <div style="margin-left:auto;display:flex;gap:10px">${acts.join('')}<button class="btn" id="prClose">Close</button></div>`;
@@ -3879,21 +4136,30 @@ function procDocModal(doc,startType){
   async function savePR(existing){
     readLines();
     const date=$('#prDate').value,vendor=$('#prVendor').value.trim(),memo=$('#prMemo').value.trim();
-    const cl=lines.filter(l=>(l.itemId||l.accName||l.prepaid)&&(+l.amount||0)>0).map(l=>({itemId:l.itemId||'',desc:l.desc,accName:l.accName,amount:+l.amount,qty:+l.qty||1,capitalize:!!l.capitalize,prepaid:!!l.prepaid,pmonths:+l.pmonths||12,pstart:l.pstart||'',bu:l.bu||'',loc:l.loc||'',dept:l.dept||''}));
-    if(!cl.length){toast('Add at least one line with an item or account and an amount.',true);return;}
-    const total=cl.reduce((s,l)=>s+l.amount,0);
-    if(existing){existing.date=date;existing.vendor=vendor;existing.memo=memo;existing.lines=cl;existing.total=total;
+    const payTerms=+($('#prTerms')?$('#prTerms').value:30)||0;
+    // validate inventory lines have a store (WMS requirement)
+    const invMissing=lines.filter(l=>{const it=prods.find(p=>p.id===l.itemId);return it&&it.type==='inventory'&&lineNet(l)>0&&!l.store;});
+    if(invMissing.length){toast('Select a store / warehouse for every inventory line before saving (WMS requires a receiving location).',true);return;}
+    const cl=lines.filter(l=>(l.itemId||l.accName||l.prepaid)&&lineNet(l)>0).map(l=>{const net=+lineNet(l).toFixed(2);const vatAmt=+(net*(+l.vat||0)/100).toFixed(2);
+      return {itemId:l.itemId||'',desc:l.desc,accName:l.accName,qty:+l.qty||1,unit:+l.unit||(+l.qty?net/(+l.qty||1):net),amount:net,vat:+l.vat||0,vatAmount:vatAmt,lineTotal:+(net+vatAmt).toFixed(2),store:l.store||'',capitalize:!!l.capitalize,prepaid:!!l.prepaid,pmonths:+l.pmonths||12,pstart:l.pstart||'',bu:l.bu||'',loc:l.loc||'',dept:l.dept||''};});
+    if(!cl.length){toast('Add at least one line with an item or account and a quantity/price.',true);return;}
+    const subtotal=+cl.reduce((s,l)=>s+l.amount,0).toFixed(2);
+    const vatTotal=+cl.reduce((s,l)=>s+l.vatAmount,0).toFixed(2);
+    const total=+(subtotal+vatTotal).toFixed(2);
+    const dueDate=addDaysISO(date,payTerms);
+    if(existing){existing.date=date;existing.vendor=vendor;existing.memo=memo;existing.lines=cl;existing.subtotal=subtotal;existing.vatTotal=vatTotal;existing.total=total;existing.payTerms=payTerms;existing.dueDate=dueDate;
       existing.attachments=PROC_ATTACH.map(a=>({...a}));
       existing.status=needsApproval(total)?'pending':'approved';}
     else{const chain=(typeof APPROVALS_ON!=='undefined'&&APPROVALS_ON)?approvalChain(total):[];
       const num=newType==='PO'?nextSeq('po','PO-',5):nextSeq('pr','PR-',5);
       PROC.push({id:'pc_'+Date.now()+'_'+Math.random().toString(36).slice(2,6),type:newType,num,
-      date,vendor,memo,lines:cl,total,attachments:PROC_ATTACH.map(a=>({...a})),status:chain.length?'pending':'approved',needChain:chain,approvals:[],by:CURRENT_USER,jelinks:[]});
+      date,vendor,memo,lines:cl,subtotal,vatTotal,total,payTerms,dueDate,attachments:PROC_ATTACH.map(a=>({...a})),status:chain.length?'pending':'approved',needChain:chain,approvals:[],by:CURRENT_USER,jelinks:[]});
       if(typeof audit==='function')audit(chain.length?(newType+' submitted'):(newType+' created'),vendor,fmt(total));}
     await store.saveProc();closeModal();render();
     toast(needsApproval(total)?(newType==='PO'?'Purchase order submitted for approval.':'Requisition submitted for approval.'):(newType==='PO'?'Purchase order saved & approved.':'Requisition saved & approved.'));
   }
 }
+function addDaysISO(iso,days){try{const d=new Date((iso||todayISO())+'T00:00:00');d.setDate(d.getDate()+(+days||0));return d.toISOString().slice(0,10);}catch(e){return iso;}}
 function pcid(){return 'pc_'+Date.now()+'_'+Math.random().toString(36).slice(2,6);}
 function procChildren(doc){return PROC.filter(d=>d.fromId===doc.id);}
 async function advanceProc(doc,toType,payAmt){
@@ -3913,11 +4179,15 @@ async function advanceProc(doc,toType,payAmt){
     if(doc.lines.some(l=>l.prepaid))ensurePrepaidAcc();
     const jlines=doc.lines.map(l=>{const it=l.itemId?prods.find(p=>p.id===l.itemId):null;let acct=l.prepaid?(prepaidAcc()||{}).name:(it?it.glAccount:l.accName);if(!acct)acct=l.accName||(depExpenseAcc()||{}).name;
       return {accName:acct,desc:l.desc||(it?it.name:acct),party:doc.vendor,dr:l.amount,cr:0,bu:l.bu||'',loc:l.loc||'',dept:l.dept||''};});
-    jlines.push({accName:ap.name,desc:'Bill from '+doc.num,party:doc.vendor,dr:0,cr:doc.total});
+    const vatTotal=+(doc.vatTotal!=null?doc.vatTotal:doc.lines.reduce((s,l)=>s+(+l.vatAmount||0),0)).toFixed(2);
+    if(vatTotal>0.005){const vacc=vatInAcc();if(vacc)jlines.push({accName:vacc.name,desc:'Input VAT',party:doc.vendor,dr:vatTotal,cr:0});}
+    const grand=+(doc.total!=null?doc.total:(doc.lines.reduce((s,l)=>s+(+l.amount||0),0)+vatTotal)).toFixed(2);
+    jlines.push({accName:ap.name,desc:'Bill from '+doc.num,party:doc.vendor,dr:0,cr:grand});
     const je=await postSystemJE(doc.date,nextSeq('bill','BILL-',5),'Vendor bill — '+(doc.vendor||''),jlines,{doctype:'Vendor Bill'});
     if(!je)return;
     const bill={id:pcid(),type:'BILL',num:je.doc,date:doc.date,vendor:doc.vendor,memo:doc.memo,
-      lines:doc.lines.map(l=>({...l})),total:doc.total,status:je.status==='pending'?'pending':'approved',
+      lines:doc.lines.map(l=>({...l})),subtotal:doc.subtotal,vatTotal:vatTotal,total:grand,payTerms:doc.payTerms!=null?doc.payTerms:30,dueDate:doc.dueDate||addDaysISO(doc.date,doc.payTerms!=null?doc.payTerms:30),
+      status:je.status==='pending'?'pending':'approved',
       payStatus:'open',paidAmount:0,by:CURRENT_USER,billJe:je.jeid,fromId:doc.id,fromNum:doc.num,jelinks:[je.doc]};
     PROC.push(bill);doc.billed=true;doc.childNum=je.doc;
     // capitalize asset lines
