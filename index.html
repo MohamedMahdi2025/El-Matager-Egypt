@@ -708,21 +708,42 @@ input.f:focus,select:focus,.accpick:focus,input:focus{outline:none;border-color:
 /* Refresh / chips micro-interaction */
 .pclear,.cochip{transition:transform .12s ease,box-shadow .15s ease}
 .pclear:hover{transform:translateY(-1px)}
+/* ---- Login redesign ---- */
+.login-brand{padding:56px 66px}
+.login-brand:before{animation:orbFloat 15s ease-in-out infinite}
+.login-brand:after{animation:orbFloat 20s ease-in-out infinite reverse}
+@keyframes orbFloat{0%,100%{transform:translate(0,0)}50%{transform:translate(-26px,28px)}}
+.login-brand .hero-logo{width:90px;height:90px;margin-bottom:26px;filter:drop-shadow(0 18px 44px rgba(0,179,214,.5))}
+.login-brand .hero-logo svg{width:90px;height:90px;border-radius:23px;animation:heroIn .75s cubic-bezier(.2,.9,.25,1)}
+@keyframes heroIn{from{opacity:0;transform:translateY(16px) scale(.88)}to{opacity:1;transform:none}}
+.login-brand .nm{margin-bottom:30px}
+.login-brand .nm .bn{display:block;font-family:Georgia,'Iowan Old Style','Times New Roman',serif;font-weight:700;font-style:italic;font-size:27px;letter-spacing:.3px;line-height:1.05;background:linear-gradient(92deg,#ffffff 28%,#84c9ff);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent}
+.login-brand .nm small{display:block;font-size:10.5px;color:#9db4c9;font-weight:700;letter-spacing:1.9px;text-transform:uppercase;margin-top:6px}
+.login-brand h1{font-size:36px;line-height:1.16;letter-spacing:-.7px;background:linear-gradient(90deg,#ffffff,#cfe6ff);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.login-brand .feat div{padding:9px 0;border-bottom:1px solid rgba(255,255,255,.06)}
+.login-brand .feat svg{color:#67c7ff}
+.login-panel{box-shadow:-10px 0 60px rgba(16,30,43,.10)}
+.login-card{animation:viewIn .5s ease}
+.login-card h2{font-size:25px}
+.login-card input[type=text],.login-card input[type=password]{height:46px;border-radius:10px}
+.login-card .field>svg{top:36px}
+.login-card .signin{height:48px;border-radius:10px;background:var(--accent-grad);box-shadow:0 8px 22px rgba(22,104,168,.34)}
 </style>
 
 <div id="login" class="hide">
   <div class="login-brand">
     <div class="lgb">
-      <div class="mark"><svg class="glyph" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Best Books Online"><defs><linearGradient id="bbNewL" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#6d5efc"/><stop offset="1" stop-color="#00b3d6"/></linearGradient><linearGradient id="bbBarL" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#dff3ff"/></linearGradient></defs><rect x="2.5" y="2.5" width="43" height="43" rx="13" fill="url(#bbNewL)"/><rect x="12" y="27" width="6.5" height="9.5" rx="2.2" fill="url(#bbBarL)"/><rect x="20.75" y="21" width="6.5" height="15.5" rx="2.2" fill="url(#bbBarL)"/><rect x="29.5" y="14.5" width="6.5" height="22" rx="2.2" fill="url(#bbBarL)"/><line x1="13.6" y1="30" x2="16.9" y2="30" stroke="#6d5efc" stroke-width="1.1" stroke-linecap="round"/><line x1="22.35" y1="24" x2="25.65" y2="24" stroke="#6d5efc" stroke-width="1.1" stroke-linecap="round"/><line x1="31.1" y1="17.6" x2="34.4" y2="17.6" stroke="#00b3d6" stroke-width="1.1" stroke-linecap="round"/><path d="M38 8.4l.95 2.35 2.35.95-2.35.95-.95 2.35-.95-2.35-2.35-.95 2.35-.95z" fill="#ffd54a"/></svg><div class="nm"><b class="bn">Best Books Online</b><small>ERP System · Ledger Console</small></div></div>
-      <h1>The financial control center for Best Books Online.</h1>
-      <p>General ledger, payables &amp; receivables, treasury, fixed assets, procurement and reporting — one connected system.</p>
+      <div class="hero-logo"><svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Best Books Online"><defs><linearGradient id="bbHero" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#6d5efc"/><stop offset="1" stop-color="#00b3d6"/></linearGradient><linearGradient id="bbHeroBar" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#dff3ff"/></linearGradient></defs><rect x="2.5" y="2.5" width="43" height="43" rx="13" fill="url(#bbHero)"/><rect x="12" y="27" width="6.5" height="9.5" rx="2.2" fill="url(#bbHeroBar)"/><rect x="20.75" y="21" width="6.5" height="15.5" rx="2.2" fill="url(#bbHeroBar)"/><rect x="29.5" y="14.5" width="6.5" height="22" rx="2.2" fill="url(#bbHeroBar)"/><line x1="13.6" y1="30" x2="16.9" y2="30" stroke="#6d5efc" stroke-width="1.1" stroke-linecap="round"/><line x1="22.35" y1="24" x2="25.65" y2="24" stroke="#6d5efc" stroke-width="1.1" stroke-linecap="round"/><line x1="31.1" y1="17.6" x2="34.4" y2="17.6" stroke="#00b3d6" stroke-width="1.1" stroke-linecap="round"/><path d="M38 8.4l.95 2.35 2.35.95-2.35.95-.95 2.35-.95-2.35-2.35-.95 2.35-.95z" fill="#ffd54a"/></svg></div>
+      <div class="nm"><b class="bn">Best Books Online</b><small>ERP System · Ledger Console</small></div>
+      <h1>The financial control<br>center for your books.</h1>
+      <p>General ledger, payables &amp; receivables, treasury, fixed assets, procurement and reporting — one connected, real-time system.</p>
       <div class="feat">
         <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg>Real-time consolidated financial statements</div>
         <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg>Full procurement-to-pay &amp; fixed-asset lifecycle</div>
         <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg>Role-based approvals and period controls</div>
       </div>
     </div>
-    <div class="foot">© 2026 Best Books Online · Nana Group (Egypt : eDirect)</div>
+    <div class="foot">© 2026 Best Books Online · ERP System</div>
   </div>
   <div class="login-panel">
     <div class="login-card">
